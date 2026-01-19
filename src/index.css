@@ -7,18 +7,262 @@
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #0f172a; /* slate-900 */
-
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* Theme variables - will be set by ThemeContext */
+  --theme-bg: #0f172a;
+  --theme-surface: #1e293b;
+  --theme-surface-secondary: #334155;
+  --theme-border: #475569;
+  --theme-text: #f1f5f9;
+  --theme-text-secondary: #cbd5e1;
+  --theme-primary: #3b82f6;
+  --theme-primary-hover: #2563eb;
+  --theme-accent: #60a5fa;
 }
 
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background-color: var(--theme-bg);
+  color: var(--theme-text);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Custom Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--theme-bg);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--theme-surface-secondary);
+  border-radius: 5px;
+  border: 2px solid var(--theme-bg);
+  transition: background 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--theme-border);
+}
+
+/* For Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--theme-surface-secondary) var(--theme-bg);
+}
+
+/* Background image overlay */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: var(--bg-image-opacity, 0);
+  z-index: -1;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+body.has-bg-image::before {
+  background-image: var(--bg-image-url, none);
+}
+
+/* Global theme-aware utility classes */
+.bg-theme {
+  background-color: var(--theme-bg) !important;
+}
+
+.bg-theme-surface {
+  background-color: var(--theme-surface) !important;
+}
+
+.bg-theme-surface-secondary {
+  background-color: var(--theme-surface-secondary) !important;
+}
+
+.text-theme {
+  color: var(--theme-text) !important;
+}
+
+.text-theme-secondary {
+  color: var(--theme-text-secondary) !important;
+}
+
+.border-theme {
+  border-color: var(--theme-border) !important;
+}
+
+.text-theme-primary {
+  color: var(--theme-primary) !important;
+}
+
+.bg-theme-primary {
+  background-color: var(--theme-primary) !important;
+}
+
+/* Override common Tailwind classes to use theme variables */
+.bg-slate-800 {
+  background-color: var(--theme-bg) !important;
+}
+
+.bg-slate-700 {
+  background-color: var(--theme-surface) !important;
+}
+
+.bg-slate-600 {
+  background-color: var(--theme-surface-secondary) !important;
+}
+
+.text-slate-100,
+.text-slate-200,
+.text-slate-300 {
+  color: var(--theme-text) !important;
+}
+
+.text-slate-400,
+.text-slate-500 {
+  color: var(--theme-text-secondary) !important;
+}
+
+.border-slate-600 {
+  border-color: var(--theme-border) !important;
+}
+
+.text-blue-400,
+.text-blue-500 {
+  color: var(--theme-accent) !important;
+}
+
+.bg-blue-600 {
+  background-color: var(--theme-primary) !important;
+}
+
+.bg-blue-500 {
+  background-color: var(--theme-primary-hover) !important;
+}
+
+/* Date picker calendar icon visibility fix - dark by default, invert for dark themes */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+/* Invert for dark themes to make them white/visible */
+:root[data-theme-type="dark"] input[type="date"]::-webkit-calendar-picker-indicator,
+:root[data-theme-type="dark"] input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+/* Calendar popup styling - theme aware */
+::-webkit-calendar-picker-indicator {
+  background-color: transparent;
+  color: var(--theme-text);
+}
+
+input[type="date"]::-webkit-datetime-edit,
+input[type="datetime-local"]::-webkit-datetime-edit {
+  color: var(--theme-text);
+}
+
+input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper {
+  color: var(--theme-text);
+}
+
+/* Calendar window background - matches theme */
+::-webkit-calendar-picker-indicator:active,
+::-webkit-calendar-picker-indicator:focus {
+  background-color: var(--theme-surface);
+}
+
+@property --rainbow-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+/* Rainbow Groupbox Animation - Pure Outline Glow */
+.rainbow-groupbox {
+  position: relative;
+  z-index: 0;
+  border: none !important;
+  /* Ensure we don't have double borders */
+}
+
+body.rainbow-mode .rainbow-groupbox::before {
+  content: '';
+  position: absolute;
+  /* Stay inside to avoid clipping by overflow: hidden */
+  inset: 0;
+  border-radius: inherit;
+  padding: var(--rainbow-thickness, 2px);
+
+  /* Conic gradient for circular motion around the edges */
+  background: conic-gradient(from var(--rainbow-angle),
+      #ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff, #7a00ff, #ff00c8, #ff0000);
+  background-size: 100% 100%;
+
+  /* Mask out the center to only show the border thinning/outline */
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+
+  z-index: 10;
+  pointer-events: none;
+  opacity: var(--rainbow-brightness, 0.8);
+  filter: blur(0.5px);
+  animation: rainbow-rotate var(--rainbow-speed, 5s) linear infinite;
+  transition: opacity 0.3s ease;
+}
+
+/* Ensure content stays above the rainbow pseudo-element */
+.rainbow-groupbox>* {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes rainbow-rotate {
+  from {
+    --rainbow-angle: 0deg;
+  }
+
+  to {
+    --rainbow-angle: 360deg;
+  }
+}
+
+@keyframes rainbow-scroll {
+  from {
+    background-position: 0% 0%;
+  }
+
+  to {
+    background-position: var(--rainbow-length, 200%) 0%;
+  }
 }

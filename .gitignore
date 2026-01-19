@@ -42,6 +42,11 @@ build
 backups/
 *.backup
 
+# Google Drive credentials
+credentials.json
+*.credentials.json
+google_drive_token.json
+
 # OS files
 Thumbs.db
 .DS_Store
@@ -52,3 +57,30 @@ Thumbs.db
 *.swp
 *.swo
 *~
+
+# Build and Release
+release/
+dist/
+dist-electron/
+build/
+out/
+*.tsbuildinfo
+
+# Archives
+*.tar.gz
+*.7z
+*.zip
+*.rar
+
+# Sensitive data
+.encryption_key
+
+# Gradle and Android build artifacts
+.gradle/
+build/
+captures/
+local.properties
+*.apk
+*.aar
+*.jks
+

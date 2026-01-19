@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name"></string>
+    <string name="pin_prompt">Введіть PIN</string>
+    <string name="pin_setup">Встановити PIN</string>
+    <string name="pin_confirm">Підтвердіть PIN</string>
+    <string name="pin_error">Невірний PIN</string>
+    <string name="pin_mismatch">PIN не співпадає</string>
+    <string name="server_started">Сервер запущено</string>
+    <string name="server_stopped">Сервер зупинено</string>
+    <string name="backup_created">Бекап створено</string>
+    <string name="backup_failed">Помилка створення бекапу</string>
+</resources>
+

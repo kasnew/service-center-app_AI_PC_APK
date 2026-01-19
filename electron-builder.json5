@@ -3,6 +3,7 @@
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
   "appId": "com.servicecenter.app",
   "asar": true,
+  "compression": "store",
   "productName": "ServiceCenterApp",
   "directories": {
     "output": "release/${version}"
@@ -46,9 +47,20 @@
   },
   "linux": {
     "target": [
-      "AppImage"
+      "AppImage",
+      "deb",
+      "rpm",
+      "tar.gz",
+      "snap",
+      "flatpak"
     ],
     "artifactName": "${productName}-Linux-${version}.${ext}",
-    "category": "Utility"
+    "category": "Utility",
+    "desktop": {
+      "Name": "Service Center",
+      "Comment": "Service Center Management Application",
+      "Categories": "Utility;Office;"
+    },
+    "maintainer": "Service Center Team"
   }
 }

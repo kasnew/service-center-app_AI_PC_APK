@@ -6,6 +6,12 @@ export interface GetRepairsParams {
     search?: string;
     status?: RepairStatus | RepairStatus[];
     shouldCall?: boolean;
+    executor?: string;
+    dateStart?: string;
+    dateEnd?: string;
+    paymentDateStart?: string;
+    paymentDateEnd?: string;
+    advancedFilters?: any[];
 }
 
 export interface GetRepairsResponse {
@@ -34,5 +40,9 @@ export const repairApi = {
 
     getNextReceiptId: async (): Promise<number> => {
         return await window.ipcRenderer.invoke('get-next-receipt-id');
+    },
+
+    getStatusCounts: async (): Promise<Record<number, number>> => {
+        return await window.ipcRenderer.invoke('get-status-counts');
     }
 };

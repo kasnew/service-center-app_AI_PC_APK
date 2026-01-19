@@ -24,54 +24,9 @@ export const RENDERER_DIST = path.join(process.env.APP_ROOT, 'dist')
 
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 'public') : RENDERER_DIST
 
-let win: BrowserWindow | null
+export let win: BrowserWindow | null
 
-function createMenu() {
-  const template: Electron.MenuItemConstructorOptions[] = [
-    {
-      label: 'Файл',
-      submenu: [
-        { role: 'quit', label: 'Вихід' }
-      ]
-    },
-    {
-      label: 'Редагування',
-      submenu: [
-        { role: 'undo', label: 'Скасувати' },
-        { role: 'redo', label: 'Повторити' },
-        { type: 'separator' },
-        { role: 'cut', label: 'Вирізати' },
-        { role: 'copy', label: 'Копіювати' },
-        { role: 'paste', label: 'Вставити' },
-        { role: 'selectAll', label: 'Виділити все' }
-      ]
-    },
-    {
-      label: 'Вигляд',
-      submenu: [
-        { role: 'reload', label: 'Перезавантажити' },
-        { role: 'forceReload', label: 'Примусове перезавантаження' },
-        { role: 'toggleDevTools', label: 'Інструменти розробника' },
-        { type: 'separator' },
-        { role: 'resetZoom', label: 'Скинути масштаб' },
-        { role: 'zoomIn', label: 'Збільшити' },
-        { role: 'zoomOut', label: 'Зменшити' },
-        { type: 'separator' },
-        { role: 'togglefullscreen', label: 'На весь екран' }
-      ]
-    },
-    {
-      label: 'Вікно',
-      submenu: [
-        { role: 'minimize', label: 'Згорнути' },
-        { role: 'close', label: 'Закрити' }
-      ]
-    }
-  ]
 
-  const menu = Menu.buildFromTemplate(template)
-  Menu.setApplicationMenu(menu)
-}
 
 function createWindow() {
   win = new BrowserWindow({
@@ -118,6 +73,38 @@ app.on('activate', () => {
 app.whenReady().then(() => {
   initDatabase()
   registerIpcHandlers()
-  createMenu()
+
+  // Start sync server automatically
+  import('./syncServer').then(({ startSyncServer }) => {
+    startSyncServer(3000).catch(err => {
+      console.error('Failed to start sync server automatically:', err);
+    });
+  });
+
+  // Create application menu with developer tools
+  const template: any = [
+    {
+      label: 'Вигляд',
+      submenu: [
+        {
+          label: 'Перезавантажити',
+          accelerator: 'CmdOrCtrl+R',
+          click: () => {
+            BrowserWindow.getFocusedWindow()?.reload();
+          }
+        },
+        {
+          label: 'Інструменти розробника',
+          accelerator: 'F12',
+          click: () => {
+            BrowserWindow.getFocusedWindow()?.webContents.toggleDevTools();
+          }
+        }
+      ]
+    }
+  ];
+
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
   createWindow()
 })
