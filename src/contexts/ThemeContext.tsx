@@ -103,10 +103,6 @@ export const themes: Theme[] = [
 interface ThemeContextType {
   currentTheme: Theme;
   setTheme: (themeId: string) => void;
-  backgroundImage: string | null;
-  setBackgroundImage: (imagePath: string | null) => void;
-  backgroundOpacity: number;
-  setBackgroundOpacity: (opacity: number) => void;
   rainbowEnabled: boolean;
   setRainbowEnabled: (enabled: boolean) => void;
   rainbowSpeed: number;
@@ -125,8 +121,6 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [currentTheme, setCurrentTheme] = useState<Theme>(themes[0]);
-  const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
-  const [backgroundOpacity, setBackgroundOpacity] = useState<number>(0.3);
   const [themeBrightness, setThemeBrightness] = useState<number>(100); // percentage, 100 = normal
 
   // Rainbow settings
@@ -144,16 +138,6 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       if (theme) {
         setCurrentTheme(theme);
       }
-    }
-
-    const savedBgImage = localStorage.getItem('backgroundImage');
-    if (savedBgImage) {
-      setBackgroundImage(savedBgImage);
-    }
-
-    const savedOpacity = localStorage.getItem('backgroundOpacity');
-    if (savedOpacity) {
-      setBackgroundOpacity(parseFloat(savedOpacity));
     }
 
     const savedRainbowEnabled = localStorage.getItem('rainbowEnabled');
@@ -221,21 +205,6 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   }, [rainbowEnabled, rainbowSpeed, rainbowBrightness, rainbowThickness, rainbowLength]);
 
-  // Apply background image
-  useEffect(() => {
-    const root = document.documentElement;
-    const body = document.body;
-
-    if (backgroundImage) {
-      root.style.setProperty('--bg-image-url', `url(${backgroundImage})`);
-      root.style.setProperty('--bg-image-opacity', backgroundOpacity.toString());
-      body.classList.add('has-bg-image');
-    } else {
-      body.classList.remove('has-bg-image');
-      root.style.setProperty('--bg-image-opacity', '0');
-    }
-  }, [backgroundImage, backgroundOpacity]);
-
   const setTheme = (themeId: string) => {
     const theme = themes.find(t => t.id === themeId);
     if (theme) {
@@ -248,29 +217,11 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
-  const handleSetBackgroundImage = (imagePath: string | null) => {
-    setBackgroundImage(imagePath);
-    if (imagePath) {
-      localStorage.setItem('backgroundImage', imagePath);
-    } else {
-      localStorage.removeItem('backgroundImage');
-    }
-  };
-
-  const handleSetBackgroundOpacity = (opacity: number) => {
-    setBackgroundOpacity(opacity);
-    localStorage.setItem('backgroundOpacity', opacity.toString());
-  };
-
   return (
     <ThemeContext.Provider
       value={{
         currentTheme,
         setTheme,
-        backgroundImage,
-        setBackgroundImage: handleSetBackgroundImage,
-        backgroundOpacity,
-        setBackgroundOpacity: handleSetBackgroundOpacity,
         rainbowEnabled,
         setRainbowEnabled: (val: boolean) => { setRainbowEnabled(val); localStorage.setItem('rainbowEnabled', val.toString()); },
         rainbowSpeed,

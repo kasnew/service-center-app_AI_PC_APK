@@ -478,8 +478,8 @@ export default function PartsManager({
                         <table className="w-full text-sm">
                             <thead className={`border-b ${isLight ? 'bg-slate-200 border-slate-300' : 'bg-slate-800 border-slate-600'}`}>
                                 <tr>
-                                    <th className={`px-3 py-3 text-left text-sm font-bold uppercase tracking-wider ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
-                                        Постачальник
+                                    <th className={`px-2 py-3 text-left text-sm font-bold uppercase tracking-wider w-16 ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                                        Пост.
                                     </th>
                                     <th className={`px-3 py-3 text-left text-sm font-bold uppercase tracking-wider ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
                                         Назва
@@ -505,7 +505,7 @@ export default function PartsManager({
                                         key={part.id}
                                         className={`hover:bg-gray-100/10 ${editingPart?.id === part.id ? 'bg-blue-500/10 border-l-4 border-l-blue-500' : ''}`}
                                     >
-                                        <td className={`px-3 py-4 font-medium ${isLight ? 'text-slate-800' : 'text-slate-100'}`}>{part.supplier}</td>
+                                        <td className={`px-2 py-4 font-medium truncate max-w-[80px] ${isLight ? 'text-slate-800' : 'text-slate-100'}`} title={part.supplier}>{part.supplier}</td>
                                         <td className={`px-3 py-4 ${isLight ? 'text-slate-800' : 'text-slate-100'}`}>{part.name}</td>
                                         <td className={`px-3 py-4 text-right ${isLight ? 'text-slate-800' : 'text-slate-100'}`}>
                                             {editingPart?.id === part.id ? (

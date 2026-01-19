@@ -84,3 +84,17 @@ local.properties
 *.aar
 *.jks
 
+# Build and Release artifacts
+*.AppImage
+*.exe
+*.deb
+*.rpm
+*.snap
+*.flatpak
+*.dmg
+*.pkg
+
+# Android specific build output
+android-app/app/build/
+android-app/.gradle/
+android-app/local.properties

@@ -10,9 +10,10 @@ interface QRCodeModalProps {
     onClose: () => void;
     phoneNumber: string;
     clientName?: string;
+    workDone?: string;
 }
 
-export const QRCodeModal: React.FC<QRCodeModalProps> = ({ isOpen, onClose, phoneNumber, clientName }) => {
+export const QRCodeModal: React.FC<QRCodeModalProps> = ({ isOpen, onClose, phoneNumber, clientName, workDone }) => {
     const { currentTheme } = useTheme();
     const isLight = currentTheme.type === 'light';
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -100,9 +101,21 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({ isOpen, onClose, phone
                                 {clientName}
                             </p>
                         )}
-                        <p className="text-xs text-slate-500 max-w-[240px] mx-auto mt-4 leading-relaxed">
-                            Відскануйте QR-код камерою телефону, щоб миттєво розпочати дзвінок
-                        </p>
+                        {workDone ? (
+                            <div className={`mt-4 p-3 rounded-lg text-sm max-w-[280px] mx-auto text-left border ${isLight ? 'bg-blue-50 border-blue-100 text-blue-800' : 'bg-blue-900/20 border-blue-800/50 text-blue-200'}`}>
+                                <div className="font-bold mb-1 flex items-center gap-1.5 opacity-80 uppercase text-[10px] tracking-wider">
+                                    <Smartphone className="w-3 h-3" />
+                                    Виконана робота:
+                                </div>
+                                <div className="line-clamp-6 leading-relaxed">
+                                    {workDone}
+                                </div>
+                            </div>
+                        ) : (
+                            <p className="text-xs text-slate-500 max-w-[240px] mx-auto mt-4 leading-relaxed">
+                                Відскануйте QR-код камерою телефону, щоб миттєво розпочати дзвінок
+                            </p>
+                        )}
                     </div>
 
                     <div className="w-full flex gap-3">

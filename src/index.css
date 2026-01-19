@@ -61,27 +61,6 @@ body {
   scrollbar-color: var(--theme-surface-secondary) var(--theme-bg);
 }
 
-/* Background image overlay */
-body::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  opacity: var(--bg-image-opacity, 0);
-  z-index: -1;
-  pointer-events: none;
-  transition: opacity 0.3s ease;
-}
-
-body.has-bg-image::before {
-  background-image: var(--bg-image-url, none);
-}
-
 /* Global theme-aware utility classes */
 .bg-theme {
   background-color: var(--theme-bg) !important;

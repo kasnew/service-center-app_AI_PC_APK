@@ -3029,41 +3029,7 @@ export function registerIpcHandlers() {
     };
   });
 
-  // Save background image
-  ipcMain.handle('save-background-image', async (_event, { fileName, fileData }) => {
-    try {
-      const dbPath = getDbPath();
-      const dbDir = path.dirname(dbPath);
-      const imagesDir = path.join(dbDir, 'background-images');
 
-      // Create images directory if it doesn't exist
-      if (!fs.existsSync(imagesDir)) {
-        fs.mkdirSync(imagesDir, { recursive: true });
-      }
-
-      // Generate unique filename
-      const timestamp = Date.now();
-      const ext = path.extname(fileName);
-      const baseName = path.basename(fileName, ext);
-      const uniqueFileName = `${baseName}_${timestamp}${ext}`;
-      const filePath = path.join(imagesDir, uniqueFileName);
-
-      // Save file
-      fs.writeFileSync(filePath, Buffer.from(fileData));
-
-      // Return relative path for use in app
-      return {
-        success: true,
-        filePath: `file://${filePath}`,
-      };
-    } catch (error: any) {
-      console.error('Error saving background image:', error);
-      return {
-        success: false,
-        error: error.message,
-      };
-    }
-  });
 
   // ========== GOOGLE DRIVE INTEGRATION ==========
   // Temporarily disabled

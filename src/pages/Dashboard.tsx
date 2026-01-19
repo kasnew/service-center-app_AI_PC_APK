@@ -30,7 +30,7 @@ export const Dashboard: React.FC = () => {
     const [paymentModal, setPaymentModal] = React.useState<{ repairId: number; receiptId: number; status: RepairStatus } | null>(null);
     const [paymentType, setPaymentType] = React.useState<'Готівка' | 'Картка'>('Готівка');
     const [searchInput, setSearchInput] = React.useState('');
-    const [qrModalData, setQrModalData] = React.useState<{ phoneNumber: string; clientName: string } | null>(null);
+    const [qrModalData, setQrModalData] = React.useState<{ phoneNumber: string; clientName: string; workDone?: string } | null>(null);
     const [isAdvancedModalOpen, setIsAdvancedModalOpen] = React.useState(false);
     const queryClient = useQueryClient();
     const searchInputRef = React.useRef<HTMLInputElement>(null);
@@ -120,7 +120,7 @@ export const Dashboard: React.FC = () => {
     const { data: statusCounts = {} } = useQuery({
         queryKey: ['status-counts'],
         queryFn: () => repairApi.getStatusCounts(),
-        refetchInterval: 30000, // Refresh every 30 seconds
+        refetchInterval: 10000, // Refresh every 10 seconds to catch external changes
     });
 
     const { data, isLoading, isError } = useQuery<GetRepairsResponse>({
@@ -138,7 +138,7 @@ export const Dashboard: React.FC = () => {
             advancedFilters: advancedFilters.length > 0 ? advancedFilters : undefined
         }),
         placeholderData: keepPreviousData,
-        refetchInterval: 10000, // Refresh every 10 seconds to get updates from mobile app
+        refetchInterval: 3000, // Refresh every 3 seconds to get updates from executor web/mobile
     });
 
     // Broad fetch for fuzzy search fallback (only if search is active and backend returned nothing)
@@ -626,18 +626,19 @@ export const Dashboard: React.FC = () => {
                         Дзвінок
                     </button>
 
-                    {/* Executor Filter */}
                     <select
                         value={executorFilter}
                         onChange={(e) => handleExecutorFilterChange(e.target.value)}
                         className="px-4 py-2 rounded-lg text-sm font-medium border-2 bg-slate-800 border-slate-600 text-slate-300 hover:border-slate-500 transition-all focus:outline-none focus:border-blue-500"
                     >
                         <option value="">Всі виконавці</option>
-                        {executors.map((executor: any) => (
-                            <option key={executor.ID} value={executor.Name}>
-                                {executor.Name}
-                            </option>
-                        ))}
+                        {executors
+                            .filter((executor: any) => !(executor.SalaryPercent === 0 && executor.ProductsPercent === 0))
+                            .map((executor: any) => (
+                                <option key={executor.ID} value={executor.Name}>
+                                    {executor.Name}
+                                </option>
+                            ))}
                     </select>
 
                     <button
@@ -780,7 +781,8 @@ export const Dashboard: React.FC = () => {
                                                             e.stopPropagation();
                                                             setQrModalData({
                                                                 phoneNumber: formatPhoneNumber(repair.clientPhone),
-                                                                clientName: repair.clientName
+                                                                clientName: repair.clientName,
+                                                                workDone: repair.workDone
                                                             });
                                                         }}
                                                         className="p-1 rounded bg-slate-800/50 hover:bg-blue-600/30 text-slate-400 hover:text-blue-400 transition-all flex-shrink-0"
@@ -923,11 +925,13 @@ export const Dashboard: React.FC = () => {
                                                         : 'border-slate-600 text-slate-200 bg-slate-700'
                                                         }`}
                                                 >
-                                                    {executors.map((executor: any) => (
-                                                        <option key={executor.ID} value={executor.Name} className={isLight ? 'bg-white text-slate-900' : 'bg-slate-800 text-slate-200'}>
-                                                            {executor.Name}
-                                                        </option>
-                                                    ))}
+                                                    {executors
+                                                        .filter((executor: any) => !(executor.SalaryPercent === 0 && executor.ProductsPercent === 0))
+                                                        .map((executor: any) => (
+                                                            <option key={executor.ID} value={executor.Name} className={isLight ? 'bg-white text-slate-900' : 'bg-slate-800 text-slate-200'}>
+                                                                {executor.Name}
+                                                            </option>
+                                                        ))}
                                                 </select>
                                             </div>
                                         </td>
@@ -1100,6 +1104,7 @@ export const Dashboard: React.FC = () => {
                 onClose={() => setQrModalData(null)}
                 phoneNumber={qrModalData?.phoneNumber || ''}
                 clientName={qrModalData?.clientName}
+                workDone={qrModalData?.workDone}
             />
 
             <AdvancedFiltersModal

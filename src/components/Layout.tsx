@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, NavLink, Outlet } from 'react-router-dom';
 import { LayoutDashboard, Wrench, ShoppingCart, Banknote, Settings } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -13,6 +13,22 @@ export const Layout: React.FC = () => {
     const queryClient = useQueryClient();
     const navigate = useNavigate();
     const [isToggling, setIsToggling] = useState(false);
+
+    // Listen for executor web changes for instant refresh
+    useEffect(() => {
+        const handleExecutorDataChanged = (_event: any, data: any) => {
+            console.log('Executor data changed:', data);
+            // Instantly invalidate repairs cache when executor makes a change
+            queryClient.invalidateQueries({ queryKey: ['repairs'] });
+            queryClient.invalidateQueries({ queryKey: ['status-counts'] });
+        };
+
+        window.ipcRenderer.on('executor-data-changed', handleExecutorDataChanged);
+
+        return () => {
+            window.ipcRenderer.off('executor-data-changed', handleExecutorDataChanged);
+        };
+    }, [queryClient]);
 
     // Global Hotkeys
     useHotkeys('ctrl+n', () => {

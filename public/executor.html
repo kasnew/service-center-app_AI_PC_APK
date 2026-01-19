@@ -627,45 +627,154 @@
             return div;
         }
 
+        // Toast notification system
+        function showToast(message, type = 'success') {
+            // Remove existing toast
+            const existing = document.querySelector('.toast-notification');
+            if (existing) existing.remove();
+            
+            const toast = document.createElement('div');
+            toast.className = 'toast-notification';
+            toast.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                padding: 12px 20px;
+                background: ${type === 'success' ? 'var(--success)' : 'var(--danger)'};
+                color: white;
+                border-radius: 8px;
+                font-weight: 500;
+                z-index: 9999;
+                animation: slideIn 0.3s ease-out;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            `;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.animation = 'slideOut 0.3s ease-out forwards';
+                setTimeout(() => toast.remove(), 300);
+            }, 2000);
+        }
+        
+        // Add toast animation styles
+        const toastStyles = document.createElement('style');
+        toastStyles.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(toastStyles);
+        
+        // Debounce timers for auto-save
+        const saveTimers = {};
+        
         async function updateIsPaid(id, isPaid) {
+            // Immediate UI update
+            const checkbox = document.getElementById(`isPaid-${id}`);
+            const label = checkbox?.parentElement?.querySelector('span');
+            if (label) {
+                label.textContent = isPaid ? 'Оплачено' : 'Не оплачено';
+                label.style.color = isPaid ? 'var(--success)' : 'var(--danger)';
+            }
+            
             try {
                 await api(`/api/my/repairs/${id}/status`, {
                     method: 'PUT',
                     body: JSON.stringify({ isPaid })
                 });
-                loadRepairs();
+                showToast(isPaid ? 'Оплачено ✓' : 'Статус оновлено');
             } catch (e) {
-                alert('Помилка: ' + e.message);
+                // Revert on error
+                if (checkbox) checkbox.checked = !isPaid;
+                if (label) {
+                    label.textContent = !isPaid ? 'Оплачено' : 'Не оплачено';
+                    label.style.color = !isPaid ? 'var(--success)' : 'var(--danger)';
+                }
+                showToast('Помилка: ' + e.message, 'error');
             }
         }
 
-        async function saveWorkDone(id) {
+        function saveWorkDone(id) {
             const textarea = document.getElementById(`workDone-${id}`);
             const workDone = textarea.value;
-
-            try {
-                await api(`/api/my/repairs/${id}/status`, {
-                    method: 'PUT',
-                    body: JSON.stringify({ workDone })
-                });
-                alert('Збережено!');
-            } catch (e) {
-                alert('Помилка: ' + e.message);
+            
+            // Show saving indicator
+            const btn = textarea.parentElement?.querySelector('button');
+            if (btn) {
+                btn.textContent = 'Збереження...';
+                btn.disabled = true;
             }
+
+            // Clear existing timer for this id
+            if (saveTimers[id]) clearTimeout(saveTimers[id]);
+            
+            // Debounced save
+            saveTimers[id] = setTimeout(async () => {
+                try {
+                    await api(`/api/my/repairs/${id}/status`, {
+                        method: 'PUT',
+                        body: JSON.stringify({ workDone })
+                    });
+                    showToast('Збережено ✓');
+                    if (btn) {
+                        btn.textContent = 'Зберегти';
+                        btn.disabled = false;
+                    }
+                } catch (e) {
+                    showToast('Помилка: ' + e.message, 'error');
+                    if (btn) {
+                        btn.textContent = 'Зберегти';
+                        btn.disabled = false;
+                    }
+                }
+            }, 300);
+        }
+        
+        // Auto-save workDone on input (debounced)
+        function setupAutoSave(id) {
+            const textarea = document.getElementById(`workDone-${id}`);
+            if (!textarea || textarea.dataset.autoSaveSetup) return;
+            textarea.dataset.autoSaveSetup = 'true';
+            
+            let autoSaveTimer = null;
+            textarea.addEventListener('input', () => {
+                if (autoSaveTimer) clearTimeout(autoSaveTimer);
+                // Auto-save after 1.5 seconds of no typing
+                autoSaveTimer = setTimeout(() => saveWorkDone(id), 1500);
+            });
         }
 
         async function updateStatus(id) {
             const select = document.querySelector(`.status-select[data-id="${id}"]`);
             const status = parseInt(select.value);
+            const oldStatus = select.dataset.oldValue;
 
             try {
                 await api(`/api/my/repairs/${id}/status`, {
                     method: 'PUT',
                     body: JSON.stringify({ status })
                 });
-                loadRepairs();
+                // Update local state
+                select.dataset.oldValue = status;
+                
+                // Update badge without full reload
+                const card = select.closest('.repair-card');
+                const badge = card?.querySelector('.status-badge');
+                if (badge) {
+                    badge.className = `status-badge status-${status}`;
+                    badge.textContent = statusNames[status] || 'Невідомо';
+                }
+                showToast('Статус оновлено ✓');
             } catch (e) {
-                alert('Помилка: ' + e.message);
+                // Revert on error
+                if (oldStatus) select.value = oldStatus;
+                showToast('Помилка: ' + e.message, 'error');
             }
         }
 

@@ -7,6 +7,23 @@ import crypto from 'crypto';
 const JDN_EPOCH = 2440587.5;
 const MS_PER_DAY = 86400 * 1000;
 
+// Function to notify main window about data changes
+function notifyMainWindow(eventType: string, data?: any) {
+    try {
+        // Dynamic import to avoid circular dependency
+        import('./main').then(({ win }) => {
+            if (win && !win.isDestroyed()) {
+                win.webContents.send('executor-data-changed', { eventType, data, timestamp: Date.now() });
+            }
+        }).catch(() => {
+            // Ignore errors if main is not available
+        });
+    } catch (e) {
+        // Ignore errors
+    }
+}
+
+
 function toJsDate(jdn: number | null): string | null {
     if (jdn === null || jdn === undefined || jdn === 0) return null;
     const timestamp = (jdn - JDN_EPOCH) * MS_PER_DAY;
@@ -19,6 +36,72 @@ function toDelphiDate(isoDate: string | Date | null): number | null {
     if (isNaN(date.getTime())) return null;
     const timestamp = date.getTime();
     return (timestamp / MS_PER_DAY) + JDN_EPOCH;
+}
+
+// Cash register helpers
+function getCashRegisterSettings(db: any) {
+    const settings = {
+        cardCommissionPercent: 1.5,
+        cashRegisterEnabled: false,
+        cashRegisterStartDate: '',
+    };
+
+    try {
+        const cardCommission = db.prepare('SELECT value FROM settings WHERE key = ?').get('card_commission_percent') as any;
+        const enabled = db.prepare('SELECT value FROM settings WHERE key = ?').get('cash_register_enabled') as any;
+        const startDate = db.prepare('SELECT value FROM settings WHERE key = ?').get('cash_register_start_date') as any;
+
+        if (cardCommission) settings.cardCommissionPercent = parseFloat(cardCommission.value);
+        if (enabled) settings.cashRegisterEnabled = enabled.value === 'true';
+        if (startDate) settings.cashRegisterStartDate = startDate.value;
+    } catch (e) {
+        console.error('Error getting register settings:', e);
+    }
+
+    return settings;
+}
+
+function getBalances(db: any) {
+    try {
+        const latest = db.prepare(`
+            SELECT Готівка as cash, Карта as card 
+            FROM Каса 
+            ORDER BY ID DESC 
+            LIMIT 1
+        `).get() as any;
+
+        return {
+            cash: latest?.cash || 0,
+            card: latest?.card || 0
+        };
+    } catch (e) {
+        return { cash: 0, card: 0 };
+    }
+}
+
+function createTransaction(db: any, data: any) {
+    const { category, description, amount, cash, card, executorId, executorName, receiptId, paymentType, relatedTransactionId, dateExecuted } = data;
+    const now = new Date().toISOString();
+
+    db.prepare(`
+        INSERT INTO Каса (
+            Дата_створення, Дата_виконання, Категорія, Опис, Сума, Готівка, Карта,
+            ВиконавецьID, ВиконавецьІмя, КвитанціяID, ТипОплати, ЗвязанаТранзакціяID, UpdateTimestamp
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    `).run(
+        toDelphiDate(now),
+        toDelphiDate(dateExecuted || now),
+        category,
+        description,
+        amount,
+        cash,
+        card,
+        executorId,
+        executorName,
+        receiptId,
+        paymentType,
+        relatedTransactionId
+    );
 }
 
 // Simple JWT-like token generation (no external deps)
@@ -383,16 +466,17 @@ export async function startExecutorWebServer(port: number = 3001): Promise<{ suc
                 const isFullAccess = salaryPercent === 0 && productsPercent === 0;
 
                 // Verify this repair belongs to the executor (unless admin or fullAccess)
-                const repair = db.prepare('SELECT Виконавець FROM Ремонт WHERE ID = ?').get(id) as any;
-                if (!repair) {
+                const repairRecord = db.prepare('SELECT Квитанция, Сумма, Оплачено, Состояние, Виконавець FROM Ремонт WHERE ID = ?').get(id) as any;
+                if (!repairRecord) {
                     return res.status(404).json({ error: 'Repair not found' });
                 }
-                if (repair.Виконавець !== executorName && req.user.role !== 'admin' && !isFullAccess) {
+                if (repairRecord.Виконавець !== executorName && req.user.role !== 'admin' && !isFullAccess) {
                     return res.status(403).json({ error: 'Access denied' });
                 }
 
                 const updates: string[] = [];
                 const params: any[] = [];
+                let isNowPaid = false;
 
                 if (status !== undefined) {
                     updates.push('Состояние = ?');
@@ -407,6 +491,21 @@ export async function startExecutorWebServer(port: number = 3001): Promise<{ suc
                 if (req.body.isPaid !== undefined && isFullAccess) {
                     updates.push('Оплачено = ?');
                     params.push(req.body.isPaid ? 1 : 0);
+
+                    // If marking as paid, also set status to "Issued" (6) and set dateEnd
+                    if (req.body.isPaid) {
+                        isNowPaid = true;
+                        updates.push('Состояние = ?');
+                        params.push(6); // Status: Issued (Видано)
+                        updates.push('Конец_ремонта = ?');
+                        params.push(toDelphiDate(new Date().toISOString()));
+                        updates.push('ТипОплати = ?');
+                        params.push('Готівка');
+                    } else {
+                        // If unmarking paid, set status back to "In Progress" (2)
+                        updates.push('Состояние = ?');
+                        params.push(2); // Status: In Progress (У роботі)
+                    }
                 }
 
                 if (updates.length === 0) {
@@ -416,7 +515,49 @@ export async function startExecutorWebServer(port: number = 3001): Promise<{ suc
                 updates.push("UpdateTimestamp = datetime('now')");
                 params.push(id);
 
-                db.prepare(`UPDATE Ремонт SET ${updates.join(', ')} WHERE ID = ?`).run(...params);
+                // Start DB transaction for atomicity
+                db.transaction(() => {
+                    db.prepare(`UPDATE Ремонт SET ${updates.join(', ')} WHERE ID = ?`).run(...params);
+
+                    // --- CASH REGISTER LOGIC ---
+                    if (isNowPaid) {
+                        const settings = getCashRegisterSettings(db);
+                        if (settings.cashRegisterEnabled) {
+                            // Only create if it wasn't already paid/issued
+                            const wasIssued = repairRecord.Состояние === 6 || repairRecord.Состояние === '6' || repairRecord.Состояние === 'Видано';
+                            const wasPaid = repairRecord.Оплачено === 1 || wasIssued;
+
+                            if (!wasPaid) {
+                                const balances = getBalances(db);
+                                const paymentType = 'Готівка';
+                                const totalCost = repairRecord.Сумма || 0;
+                                const receiptId = repairRecord.Квитанция;
+                                const executor = repairRecord.Виконавець || 'Андрій';
+
+                                let newCash = balances.cash + totalCost;
+                                let description = `Оплата квитанції #${receiptId}. Готівка. ${executor} (через Web)`;
+
+                                // Get executor ID
+                                const executorRecord = db.prepare('SELECT ID FROM Executors WHERE Name = ?').get(executor) as any;
+
+                                createTransaction(db, {
+                                    category: 'Прибуток',
+                                    description: description,
+                                    amount: totalCost,
+                                    cash: newCash,
+                                    card: balances.card,
+                                    executorId: executorRecord?.ID,
+                                    executorName: executor,
+                                    receiptId: id,
+                                    paymentType: paymentType
+                                });
+                            }
+                        }
+                    }
+                })();
+
+                // Notify main window about the change for instant refresh
+                notifyMainWindow('repair-updated', { repairId: id });
 
                 res.json({ success: true });
             } catch (error: any) {

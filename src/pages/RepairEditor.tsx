@@ -475,20 +475,34 @@ export const RepairEditor: React.FC = () => {
                             Клієнт та Статус
                         </h3>
                         <div className="space-y-3">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-1.5">Ім'я клієнта</label>
-                                <input
-                                    ref={clientNameInputRef}
-                                    type="text"
-                                    value={formData.clientName}
-                                    onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
-                                    className="w-full bg-slate-800 border-2 border-slate-600 rounded-lg px-4 py-2.5 text-base focus:outline-none focus:border-blue-500 shadow-sm"
-                                    tabIndex={1}
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-1.5">Телефон</label>
-                                <div className="flex items-center gap-2">
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <div className="flex items-center h-6 mb-1.5">
+                                        <label className="block text-sm font-medium text-slate-300">Ім'я клієнта</label>
+                                    </div>
+                                    <input
+                                        ref={clientNameInputRef}
+                                        type="text"
+                                        value={formData.clientName}
+                                        onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
+                                        className="w-full bg-slate-800 border-2 border-slate-600 rounded-lg px-4 py-2.5 text-base focus:outline-none focus:border-blue-500 shadow-sm"
+                                        tabIndex={1}
+                                    />
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2 h-6 mb-1.5">
+                                        <label className="block text-sm font-medium text-slate-300">Телефон</label>
+                                        {formData.clientPhone && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsQRModalOpen(true)}
+                                                className="p-1 rounded bg-slate-800/50 hover:bg-blue-600/30 text-slate-400 hover:text-blue-400 transition-all"
+                                                title="Показати QR-код для дзвінка"
+                                            >
+                                                <Smartphone className="w-4 h-4" />
+                                            </button>
+                                        )}
+                                    </div>
                                     <input
                                         type="text"
                                         value={formData.clientPhone}
@@ -497,15 +511,6 @@ export const RepairEditor: React.FC = () => {
                                         tabIndex={2}
                                         placeholder="+38 (0XX) XXX-XX-XX"
                                     />
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsQRModalOpen(true)}
-                                        disabled={!formData.clientPhone}
-                                        className="p-2.5 rounded-lg bg-slate-800 border-2 border-slate-600 text-slate-400 hover:text-blue-400 hover:border-blue-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                                        title="Показати QR-код для дзвінка"
-                                    >
-                                        <Smartphone className="w-6 h-6" />
-                                    </button>
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-2">
@@ -543,9 +548,11 @@ export const RepairEditor: React.FC = () => {
                                             className="w-full bg-slate-800 border-2 border-slate-600 rounded-lg px-4 py-2.5 text-base focus:outline-none focus:border-blue-500 shadow-sm"
                                             tabIndex={6}
                                         >
-                                            {executors.map((executor: any) => (
-                                                <option key={executor.ID} value={executor.Name}>{executor.Name}</option>
-                                            ))}
+                                            {executors
+                                                .filter((executor: any) => !(executor.SalaryPercent === 0 && executor.ProductsPercent === 0))
+                                                .map((executor: any) => (
+                                                    <option key={executor.ID} value={executor.Name}>{executor.Name}</option>
+                                                ))}
                                         </select>
                                     </div>
                                 </div>
@@ -579,6 +586,76 @@ export const RepairEditor: React.FC = () => {
                                     </div>
                                 </label>
                             </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-emerald-900/20 rounded-lg p-5 border-2 border-emerald-700/50 rainbow-groupbox">
+                        <h3 className="text-xl font-bold text-slate-100 mb-4 flex items-center gap-2">
+                            <DollarSign className={`w-5 h-5 ${emeraldColor}`} />
+                            Вартість
+                        </h3>
+                        <div className="space-y-3">
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-300 mb-1.5">Робота (₴)</label>
+                                    <input
+                                        type="text"
+                                        value={formData.costLabor ?? ''}
+                                        onChange={(e) => {
+                                            const normalized = normalizeMoneyInput(e.target.value);
+                                            const parsed = parseMoneyValue(normalized);
+                                            setFormData({ ...formData, costLabor: parsed });
+                                        }}
+                                        className="w-full bg-slate-800 border-2 border-slate-600 rounded-lg px-4 py-2.5 text-base focus:outline-none focus:border-blue-500 shadow-sm"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-300 mb-1.5">Всього (₴)</label>
+                                    <input
+                                        type="number"
+                                        value={grandTotal}
+                                        readOnly
+                                        className="w-full bg-slate-800 border-2 border-slate-600 rounded-lg px-4 py-2.5 text-base text-slate-400"
+                                    />
+                                </div>
+                            </div>
+
+                            {!!formData.isPaid && (
+                                <div className="pt-1 flex items-center gap-4 border-t border-slate-700">
+                                    <span className="text-xs text-slate-400">Тип:</span>
+                                    <div className="flex gap-4">
+                                        {['Готівка', 'Картка'].map(type => (
+                                            <label key={type} className="flex items-center gap-1.5 cursor-pointer">
+                                                <input
+                                                    type="radio"
+                                                    name="paymentType"
+                                                    value={type}
+                                                    checked={formData.paymentType === type}
+                                                    onChange={(e) => setFormData({ ...formData, paymentType: e.target.value })}
+                                                />
+                                                <span className="text-xs text-slate-300">{type}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {!isNew && partsTotal > 0 && (
+                                <div className="mt-2 pt-2 border-t border-slate-700 text-xs space-y-1">
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-400">Робота:</span>
+                                        <span className="text-slate-200">{formData.costLabor} ₴</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-400">Товари:</span>
+                                        <span className="text-slate-200">{partsTotal} ₴</span>
+                                    </div>
+                                    <div className="flex justify-between font-bold text-slate-100 pt-1 border-t border-slate-700">
+                                        <span>Всього:</span>
+                                        <span>{grandTotal} ₴</span>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -673,75 +750,7 @@ export const RepairEditor: React.FC = () => {
 
                 {/* Column 3: Parts & Pricing */}
                 <div className="space-y-4">
-                    <div className="bg-emerald-900/20 rounded-lg p-5 border-2 border-emerald-700/50 rainbow-groupbox">
-                        <h3 className="text-xl font-bold text-slate-100 mb-4 flex items-center gap-2">
-                            <DollarSign className={`w-5 h-5 ${emeraldColor}`} />
-                            Вартість
-                        </h3>
-                        <div className="space-y-3">
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-300 mb-1.5">Робота (₴)</label>
-                                    <input
-                                        type="text"
-                                        value={formData.costLabor ?? ''}
-                                        onChange={(e) => {
-                                            const normalized = normalizeMoneyInput(e.target.value);
-                                            const parsed = parseMoneyValue(normalized);
-                                            setFormData({ ...formData, costLabor: parsed });
-                                        }}
-                                        className="w-full bg-slate-800 border-2 border-slate-600 rounded-lg px-4 py-2.5 text-base focus:outline-none focus:border-blue-500 shadow-sm"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-300 mb-1.5">Всього (₴)</label>
-                                    <input
-                                        type="number"
-                                        value={grandTotal}
-                                        readOnly
-                                        className="w-full bg-slate-800 border-2 border-slate-600 rounded-lg px-4 py-2.5 text-base text-slate-400"
-                                    />
-                                </div>
-                            </div>
 
-                            {!!formData.isPaid && (
-                                <div className="pt-1 flex items-center gap-4 border-t border-slate-700">
-                                    <span className="text-xs text-slate-400">Тип:</span>
-                                    <div className="flex gap-4">
-                                        {['Готівка', 'Картка'].map(type => (
-                                            <label key={type} className="flex items-center gap-1.5 cursor-pointer">
-                                                <input
-                                                    type="radio"
-                                                    name="paymentType"
-                                                    value={type}
-                                                    checked={formData.paymentType === type}
-                                                    onChange={(e) => setFormData({ ...formData, paymentType: e.target.value })}
-                                                />
-                                                <span className="text-xs text-slate-300">{type}</span>
-                                            </label>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {!isNew && partsTotal > 0 && (
-                                <div className="mt-2 pt-2 border-t border-slate-700 text-xs space-y-1">
-                                    <div className="flex justify-between">
-                                        <span className="text-slate-400">Робота:</span>
-                                        <span className="text-slate-200">{formData.costLabor} ₴</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-slate-400">Товари:</span>
-                                        <span className="text-slate-200">{partsTotal} ₴</span>
-                                    </div>
-                                    <div className="flex justify-between font-bold text-slate-100 pt-1 border-t border-slate-700">
-                                        <span>Всього:</span>
-                                        <span>{grandTotal} ₴</span>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
 
                     <div className="bg-cyan-900/20 rounded-lg border-2 border-cyan-700/50 overflow-hidden rainbow-groupbox">
                         <div className="p-3 border-b-2 border-cyan-700/50">
@@ -777,6 +786,7 @@ export const RepairEditor: React.FC = () => {
                 onClose={() => setIsQRModalOpen(false)}
                 phoneNumber={formData.clientPhone}
                 clientName={formData.clientName}
+                workDone={formData.workDone}
             />
 
             <ConfirmationModal

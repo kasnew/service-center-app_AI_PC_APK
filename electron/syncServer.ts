@@ -1122,6 +1122,70 @@ export async function startSyncServer(port: number = 3000): Promise<{ success: b
       }
     });
 
+    // ========== LOCKS ENDPOINTS ==========
+
+    // GET /api/locks/:id - Check lock status for a repair
+    app.get('/api/locks/:id', (req: any, res: any) => {
+      try {
+        const db = getDb();
+        const id = parseInt(req.params.id, 10);
+        const lock = db.prepare('SELECT * FROM SyncLocks WHERE RecordID = ?').get(id) as any;
+
+        if (lock) {
+          res.json({ locked: true, device: lock.DeviceName, time: lock.LockTime });
+        } else {
+          res.json({ locked: false });
+        }
+      } catch (error: any) {
+        console.error('Error checking lock:', error);
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    // POST /api/locks/:id - Set lock for a repair
+    app.post('/api/locks/:id', (req: any, res: any) => {
+      try {
+        const db = getDb();
+        const id = parseInt(req.params.id, 10);
+        const { device } = req.body;
+
+        // Check if already locked by another device
+        const existingLock = db.prepare('SELECT * FROM SyncLocks WHERE RecordID = ?').get(id) as any;
+        if (existingLock && existingLock.DeviceName !== device) {
+          return res.status(409).json({
+            success: false,
+            error: 'Already locked',
+            device: existingLock.DeviceName,
+            time: existingLock.LockTime
+          });
+        }
+
+        // Delete existing lock and create new one
+        db.prepare('DELETE FROM SyncLocks WHERE RecordID = ?').run(id);
+        db.prepare('INSERT INTO SyncLocks (RecordID, DeviceName) VALUES (?, ?)').run(id, device || 'Android');
+
+        res.json({ success: true });
+      } catch (error: any) {
+        console.error('Error setting lock:', error);
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    // DELETE /api/locks/:id - Release lock for a repair
+    app.delete('/api/locks/:id', (req: any, res: any) => {
+      try {
+        const db = getDb();
+        const id = parseInt(req.params.id, 10);
+
+        db.prepare('DELETE FROM SyncLocks WHERE RecordID = ?').run(id);
+
+        res.json({ success: true });
+      } catch (error: any) {
+        console.error('Error releasing lock:', error);
+        res.status(500).json({ error: error.message });
+      }
+    });
+
     // Configure Express to trust proxy (for accurate IP detection)
     app.set('trust proxy', true);
 
