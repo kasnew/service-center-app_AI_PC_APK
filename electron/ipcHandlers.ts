@@ -3208,6 +3208,46 @@ export function registerIpcHandlers() {
     return { addresses: getLocalIPAddresses() };
   });
 
+  // ========== EXECUTOR WEB SERVER HANDLERS ==========
+
+  ipcMain.handle('executor-web-server-start', async (_event, port: number = 3001) => {
+    const { startExecutorWebServer } = await import('./executorWebServer');
+    return startExecutorWebServer(port);
+  });
+
+  ipcMain.handle('executor-web-server-stop', async () => {
+    const { stopExecutorWebServer } = await import('./executorWebServer');
+    return stopExecutorWebServer();
+  });
+
+  ipcMain.handle('executor-web-server-status', async () => {
+    const { getExecutorWebServerStatus } = await import('./executorWebServer');
+    return getExecutorWebServerStatus();
+  });
+
+  // Set executor password
+  ipcMain.handle('set-executor-password', async (_event, { executorId, password }: { executorId: number; password: string }) => {
+    const db = getDb();
+    const crypto = await import('crypto');
+    const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
+    db.prepare('UPDATE Executors SET Password = ? WHERE ID = ?').run(hashedPassword, executorId);
+    return { success: true };
+  });
+
+  // Reset executor password
+  ipcMain.handle('reset-executor-password', async (_event, executorId: number) => {
+    const db = getDb();
+    db.prepare('UPDATE Executors SET Password = NULL WHERE ID = ?').run(executorId);
+    return { success: true };
+  });
+
+  // Set executor role
+  ipcMain.handle('set-executor-role', async (_event, { executorId, role }: { executorId: number; role: 'admin' | 'worker' }) => {
+    const db = getDb();
+    db.prepare('UPDATE Executors SET Role = ? WHERE ID = ?').run(role, executorId);
+    return { success: true };
+  });
+
   // ========== SYSTEM STATS ==========
   ipcMain.handle('get-system-stats', async () => {
     try {

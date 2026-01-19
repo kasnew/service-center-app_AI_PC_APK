@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="uk">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Service Center - Виконавець</title>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --surface-light: #334155;
+            --text: #f1f5f9;
+            --text-muted: #94a3b8;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0;
+            padding: 16px;
+        }
+
+        .container-centered {
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 16px;
+        }
+
+        .repairs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 12px;
+        }
+
+        .card {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        h1,
+        h2 {
+            margin-bottom: 16px;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            text-align: center;
+        }
+
+        h2 {
+            font-size: 1.2rem;
+            color: var(--text-muted);
+        }
+
+        input,
+        select,
+        button {
+            width: 100%;
+            padding: 12px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            margin-bottom: 12px;
+        }
+
+        input,
+        select {
+            background: var(--surface-light);
+            color: var(--text);
+        }
+
+        button {
+            background: var(--primary);
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        button:hover {
+            background: var(--primary-dark);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-logout {
+            background: var(--danger);
+            padding: 8px 16px;
+            width: auto;
+            font-size: 0.9rem;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .user-info {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .repair-card {
+            background: var(--surface-light);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .repair-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .receipt-id {
+            font-weight: 700;
+            color: var(--primary);
+            font-size: 1.1rem;
+        }
+
+        .status-badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .status-1 {
+            background: #fbbf24;
+            color: #000;
+        }
+
+        /* У черзі */
+        .status-2 {
+            background: #3b82f6;
+            color: #fff;
+        }
+
+        /* У роботі */
+        .status-3 {
+            background: #f97316;
+            color: #fff;
+        }
+
+        /* Очікування */
+        .status-4 {
+            background: #22c55e;
+            color: #fff;
+        }
+
+        /* Готовий */
+        .status-5 {
+            background: #ef4444;
+            color: #fff;
+        }
+
+        /* Не додзвонились */
+        .status-6 {
+            background: #64748b;
+            color: #fff;
+        }
+
+        /* Видано */
+        .device-name {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .client-info {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .repair-details {
+            margin-top: 12px;
+            font-size: 0.9rem;
+        }
+
+        .repair-actions {
+            margin-top: 12px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .repair-actions select,
+        .repair-actions button {
+            margin-bottom: 0;
+            width: auto;
+            flex: 1;
+        }
+
+        .salary-card {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .salary-item {
+            background: var(--surface-light);
+            padding: 16px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .salary-item .value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--success);
+        }
+
+        .salary-item .label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px;
+            background: var(--surface);
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .tab.active {
+            background: var(--primary);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
+        }
+
+        .error {
+            background: var(--danger);
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--surface);
+            padding: 24px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Login Screen -->
+    <div id="login-screen" class="container-centered">
+        <div class="card">
+            <h1>🔧 Service Center</h1>
+            <h2 style="text-align: center; margin-bottom: 24px;">Вхід для виконавця</h2>
+            <div id="login-error" class="error hidden"></div>
+            <select id="executor-select">
+                <option value="">Оберіть виконавця...</option>
+            </select>
+            <input type="password" id="password-input" placeholder="Пароль">
+            <button id="login-btn">Увійти</button>
+            <p style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin-top: 12px;">
+                Перший вхід? Введіть будь-який пароль — він стане вашим паролем.
+            </p>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="app-screen" class="container hidden">
+        <div class="header">
+            <div class="user-info"><span id="user-name"></span></div>
+            <div style="display: flex; gap: 8px;">
+                <button class="btn-logout" id="change-pass-btn"
+                    style="background: var(--surface-light); color: var(--text);">Пароль</button>
+                <button class="btn-logout" id="logout-btn">Вийти</button>
+            </div>
+        </div>
+
+        <!-- Password Change Modal -->
+        <div id="password-modal" class="modal">
+            <div class="modal-content">
+                <h3>Змінити пароль</h3>
+                <div style="margin-top: 16px;">
+                    <label style="display: block; margin-bottom: 4px; font-size: 0.9rem;">Старий пароль</label>
+                    <input type="password" id="old-pass-input" style="width: 100%; margin-bottom: 12px;">
+
+                    <label style="display: block; margin-bottom: 4px; font-size: 0.9rem;">Новий пароль</label>
+                    <input type="password" id="new-pass-input" style="width: 100%; margin-bottom: 12px;">
+
+                    <label style="display: block; margin-bottom: 4px; font-size: 0.9rem;">Підтвердіть пароль</label>
+                    <input type="password" id="confirm-pass-input" style="width: 100%; margin-bottom: 20px;">
+
+                    <div style="display: flex; gap: 12px;">
+                        <button id="save-pass-btn" style="flex: 1;">Зберегти</button>
+                        <button id="cancel-pass-btn"
+                            style="flex: 1; background: var(--surface-light);">Скасувати</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Repairs Tab -->
+        <div id="tab-repairs">
+            <!-- Search Filters (visible for 0/0 users) -->
+            <div id="search-filters" class="card hidden" style="margin-bottom: 24px;">
+                <div
+                    style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center; justify-content: flex-start;">
+                    <input type="text" id="filter-search" placeholder="Пошук (Enter)..."
+                        style="width: 240px; flex: 0 0 auto;">
+                    <select id="filter-status" style="width: 180px; flex: 0 0 auto;">
+                        <option value="">Статус</option>
+                        <option value="1">У черзі</option>
+                        <option value="2">У роботі</option>
+                        <option value="3">Очікування</option>
+                        <option value="4">Готовий</option>
+                        <option value="5">Не додзвонилися</option>
+                        <option value="6">Видано</option>
+                    </select>
+                    <button id="filter-clear-btn"
+                        style="display: none; width: 240px; background: var(--surface-light); flex: 0 0 auto;">✕
+                        Очистити фільтри</button>
+                </div>
+            </div>
+            <div id="repairs-loading" class="loading">Завантаження...</div>
+            <div id="repairs-list" class="repairs-grid"></div>
+            <div id="repairs-empty" class="empty hidden">Немає замовлень</div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '';
+        let token = localStorage.getItem('executor_token');
+        let user = null;
+        let isLimitedWorker = false;
+        let isFullAccess = false;
+
+        const statusNames = {
+            1: 'У черзі',
+            2: 'У роботі',
+            3: 'Очікування',
+            4: 'Готовий',
+            5: 'Не додзвонились',
+            6: 'Видано',
+            7: 'Одеса'
+        };
+
+        async function api(endpoint, options = {}) {
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+
+            const res = await fetch(`${API_BASE}${endpoint}`, { ...options, headers });
+            const data = await res.json();
+
+            if (res.status === 401) {
+                logout();
+                throw new Error('Unauthorized');
+            }
+            if (!res.ok) throw new Error(data.error || 'Error');
+            return data;
+        }
+
+        async function loadExecutors() {
+            try {
+                const { data } = await api('/api/executors/list');
+                const select = document.getElementById('executor-select');
+                data.forEach(e => {
+                    const opt = document.createElement('option');
+                    opt.value = e.name;
+                    opt.textContent = e.name;
+                    select.appendChild(opt);
+                });
+            } catch (e) {
+                console.error('Failed to load executors:', e);
+            }
+        }
+
+        async function login() {
+            const name = document.getElementById('executor-select').value;
+            const password = document.getElementById('password-input').value;
+            const errorEl = document.getElementById('login-error');
+
+            if (!name || !password) {
+                errorEl.textContent = 'Виберіть виконавця та введіть пароль';
+                errorEl.classList.remove('hidden');
+                return;
+            }
+
+            try {
+                const res = await api('/api/auth/login', {
+                    method: 'POST',
+                    body: JSON.stringify({ name, password })
+                });
+
+                token = res.token;
+                user = res.user;
+                localStorage.setItem('executor_token', token);
+
+                showApp();
+            } catch (e) {
+                errorEl.textContent = 'Невірний пароль';
+                errorEl.classList.remove('hidden');
+            }
+        }
+
+        function logout() {
+            token = null;
+            user = null;
+            localStorage.removeItem('executor_token');
+            document.getElementById('login-screen').classList.remove('hidden');
+            document.getElementById('app-screen').classList.add('hidden');
+        }
+
+        async function showApp() {
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('app-screen').classList.remove('hidden');
+
+            try {
+                const { user: userData } = await api('/api/auth/me');
+                user = userData;
+                document.getElementById('user-name').textContent = user.executorName;
+
+                // Check if limited worker (salary > 0)
+                const salaryPercent = user.salaryPercent || 0;
+                const productsPercent = user.productsPercent || 0;
+                isLimitedWorker = salaryPercent > 0;
+                isFullAccess = salaryPercent === 0 && productsPercent === 0;
+
+                // Show search filters for fullAccess users
+                const searchFilters = document.getElementById('search-filters');
+                if (isFullAccess && searchFilters) {
+                    searchFilters.classList.remove('hidden');
+                }
+            } catch (e) {
+                logout();
+                return;
+            }
+
+            loadRepairs();
+        }
+
+        async function loadRepairs() {
+            const listEl = document.getElementById('repairs-list');
+            const loadingEl = document.getElementById('repairs-loading');
+            const emptyEl = document.getElementById('repairs-empty');
+
+            loadingEl.classList.remove('hidden');
+            listEl.innerHTML = '';
+            emptyEl.classList.add('hidden');
+
+            try {
+                // Build query params
+                let queryParams = 'limit=100';
+                if (isFullAccess) {
+                    const search = document.getElementById('filter-search')?.value;
+                    const filterStatus = document.getElementById('filter-status')?.value;
+
+                    if (search) queryParams += `&search=${encodeURIComponent(search)}`;
+                    if (filterStatus) queryParams += `&filterStatus=${filterStatus}`;
+                }
+
+                const response = await api(`/api/my/repairs?${queryParams}`);
+                const { data } = response;
+                // Update global flags from response
+                if (response.isLimitedWorker !== undefined) {
+                    isLimitedWorker = response.isLimitedWorker;
+                }
+                if (response.isFullAccess !== undefined) {
+                    isFullAccess = response.isFullAccess;
+                }
+
+                loadingEl.classList.add('hidden');
+
+                if (data.length === 0) {
+                    emptyEl.classList.remove('hidden');
+                    return;
+                }
+
+                data.forEach(repair => {
+                    listEl.appendChild(createRepairCard(repair, isLimitedWorker));
+                });
+            } catch (e) {
+                loadingEl.textContent = 'Помилка завантаження';
+            }
+        }
+
+        function createRepairCard(repair, limited = false) {
+            const div = document.createElement('div');
+            div.className = 'repair-card';
+
+            if (limited) {
+                // Limited worker view - only device, fault, notes (read-only), workDone (editable)
+                div.innerHTML = `
+                    <div class="repair-header">
+                        <span class="receipt-id">#${repair.receiptId || repair.id}</span>
+                        <span class="status-badge status-${repair.status}">${statusNames[repair.status] || 'Невідомо'}</span>
+                    </div>
+                    <div class="device-name">${repair.deviceName || 'Без назви'}</div>
+                    <div class="repair-details">
+                        <strong>Несправність:</strong> ${repair.faultDesc || '—'}<br>
+                        <strong>Примітки:</strong> ${repair.note || '—'}
+                    </div>
+                    <div style="margin-top: 12px;">
+                        <label style="font-size: 0.9rem; color: var(--text-muted);">Виконання роботи:</label>
+                        <textarea 
+                            id="workDone-${repair.id}" 
+                            style="width: 100%; min-height: 80px; background: var(--surface); color: var(--text); border: 1px solid var(--surface-light); border-radius: 8px; padding: 8px; margin-top: 4px; resize: vertical;"
+                        >${repair.workDone || ''}</textarea>
+                        <button onclick="saveWorkDone(${repair.id})" style="margin-top: 8px;">Зберегти</button>
+                    </div>
+                `;
+            } else {
+                // Full view (0/0 users) - can only edit isPaid
+                const workDoneText = repair.workDone || '—';
+                const faultText = repair.faultDesc || '—';
+                const hasWorkDone = repair.workDone && repair.workDone.length > 30;
+                const hasFault = repair.faultDesc && repair.faultDesc.length > 30;
+
+                div.style.display = 'flex';
+                div.style.flexDirection = 'column';
+                div.style.height = '100%';
+
+                div.innerHTML = `
+                    <div class="repair-header">
+                        <span class="receipt-id">#${repair.receiptId || repair.id}</span>
+                        <span class="status-badge status-${repair.status}">${statusNames[repair.status] || 'Невідомо'}</span>
+                    </div>
+                    <div class="device-name" style="color: var(--primary);">${repair.deviceName || 'Без назви'}</div>
+                    <div class="client-info" style="color: #60a5fa;">${repair.clientName || ''} • ${repair.clientPhone || ''}</div>
+                    <div class="repair-details" style="flex: 1;">
+                        ${hasFault ? `
+                            <details style="margin-bottom: 4px;">
+                                <summary style="color: var(--warning); cursor: pointer;"><strong>Несправність</strong></summary>
+                                <div style="margin-top: 4px; padding-left: 8px;">${faultText}</div>
+                            </details>
+                        ` : `
+                            <div style="margin-bottom: 4px;"><span style="color: var(--warning);"><strong>Несправність:</strong></span> ${faultText}</div>
+                        `}
+                        ${hasWorkDone ? `
+                            <details style="margin-bottom: 4px;">
+                                <summary style="color: #a78bfa; cursor: pointer;"><strong>Виконано</strong></summary>
+                                <div style="margin-top: 4px; padding-left: 8px;">${workDoneText}</div>
+                            </details>
+                        ` : `
+                            <div style="margin-bottom: 4px;"><span style="color: #a78bfa;"><strong>Виконано:</strong></span> ${workDoneText}</div>
+                        `}
+                        <div><span style="color: var(--success);"><strong>Сума:</strong> ${repair.totalCost || 0} грн</span></div>
+                    </div>
+                    <div style="margin-top: auto; padding-top: 8px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" 
+                                id="isPaid-${repair.id}" 
+                                ${repair.isPaid ? 'checked' : ''} 
+                                onchange="updateIsPaid(${repair.id}, this.checked)"
+                                style="width: 18px; height: 18px; cursor: pointer;">
+                            <span style="color: ${repair.isPaid ? 'var(--success)' : 'var(--danger)'}; font-weight: 600; font-size: 0.9rem;">
+                                ${repair.isPaid ? 'Оплачено' : 'Не оплачено'}
+                            </span>
+                        </label>
+                    </div>
+                `;
+            }
+            return div;
+        }
+
+        async function updateIsPaid(id, isPaid) {
+            try {
+                await api(`/api/my/repairs/${id}/status`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ isPaid })
+                });
+                loadRepairs();
+            } catch (e) {
+                alert('Помилка: ' + e.message);
+            }
+        }
+
+        async function saveWorkDone(id) {
+            const textarea = document.getElementById(`workDone-${id}`);
+            const workDone = textarea.value;
+
+            try {
+                await api(`/api/my/repairs/${id}/status`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ workDone })
+                });
+                alert('Збережено!');
+            } catch (e) {
+                alert('Помилка: ' + e.message);
+            }
+        }
+
+        async function updateStatus(id) {
+            const select = document.querySelector(`.status-select[data-id="${id}"]`);
+            const status = parseInt(select.value);
+
+            try {
+                await api(`/api/my/repairs/${id}/status`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ status })
+                });
+                loadRepairs();
+            } catch (e) {
+                alert('Помилка: ' + e.message);
+            }
+        }
+
+        // Event listeners
+        document.getElementById('login-btn').addEventListener('click', login);
+        document.getElementById('logout-btn').addEventListener('click', logout);
+        document.getElementById('password-input').addEventListener('keypress', e => {
+            if (e.key === 'Enter') login();
+        });
+
+        // Password change logic
+        const passModal = document.getElementById('password-modal');
+        document.getElementById('change-pass-btn').addEventListener('click', () => {
+            passModal.classList.add('active');
+            document.getElementById('old-pass-input').value = '';
+            document.getElementById('new-pass-input').value = '';
+            document.getElementById('confirm-pass-input').value = '';
+        });
+
+        document.getElementById('cancel-pass-btn').addEventListener('click', () => {
+            passModal.classList.remove('active');
+        });
+
+        document.getElementById('save-pass-btn').addEventListener('click', async () => {
+            const oldPassword = document.getElementById('old-pass-input').value;
+            const newPassword = document.getElementById('new-pass-input').value;
+            const confirmPassword = document.getElementById('confirm-pass-input').value;
+
+            if (!oldPassword || !newPassword) {
+                alert('Будь ласка, заповніть всі поля');
+                return;
+            }
+
+            if (newPassword !== confirmPassword) {
+                alert('Паролі не співпадають');
+                return;
+            }
+
+            try {
+                const response = await api('/api/auth/change-password', {
+                    method: 'POST',
+                    body: JSON.stringify({ oldPassword, newPassword })
+                });
+
+                alert(response.message || 'Пароль змінено');
+                passModal.classList.remove('active');
+            } catch (e) {
+                alert('Помилка: ' + e.message);
+            }
+        });
+
+        // Search filter event listeners
+        const searchInput = document.getElementById('filter-search');
+        const statusSelect = document.getElementById('filter-status');
+        const clearBtn = document.getElementById('filter-clear-btn');
+
+        function updateClearBtnVisibility() {
+            if (clearBtn) {
+                const hasFilters = searchInput.value || statusSelect.value;
+                clearBtn.style.display = hasFilters ? 'block' : 'none';
+            }
+        }
+
+        searchInput?.addEventListener('input', updateClearBtnVisibility);
+        statusSelect?.addEventListener('change', () => {
+            updateClearBtnVisibility();
+            loadRepairs();
+        });
+
+        searchInput?.addEventListener('keypress', e => {
+            if (e.key === 'Enter') loadRepairs();
+        });
+
+        clearBtn?.addEventListener('click', () => {
+            searchInput.value = '';
+            statusSelect.value = '';
+            updateClearBtnVisibility();
+            loadRepairs();
+        });
+
+        // Init
+        loadExecutors();
+        if (token) {
+            showApp();
+        }
+    </script>
+</body>
+
+</html>

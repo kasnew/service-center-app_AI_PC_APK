@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu } from 'electron'
+import { app, BrowserWindow, Menu, dialog } from 'electron'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import { initDatabase } from './database'
@@ -25,6 +25,24 @@ export const RENDERER_DIST = path.join(process.env.APP_ROOT, 'dist')
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 'public') : RENDERER_DIST
 
 export let win: BrowserWindow | null
+
+// Single instance lock
+const gotTheLock = app.requestSingleInstanceLock()
+
+if (!gotTheLock) {
+  dialog.showErrorBox(
+    'Програма вже запущена',
+    'Інший екземпляр програми вже працює. Будь ласка, використовуйте вже відкрите вікно.'
+  )
+  app.quit()
+} else {
+  app.on('second-instance', () => {
+    if (win) {
+      if (win.isMinimized()) win.restore()
+      win.focus()
+    }
+  })
+}
 
 
 
@@ -78,6 +96,13 @@ app.whenReady().then(() => {
   import('./syncServer').then(({ startSyncServer }) => {
     startSyncServer(3000).catch(err => {
       console.error('Failed to start sync server automatically:', err);
+    });
+  });
+
+  // Start executor web server automatically
+  import('./executorWebServer').then(({ startExecutorWebServer }) => {
+    startExecutorWebServer(3001).catch(err => {
+      console.error('Failed to start executor web server:', err);
     });
   });
 

@@ -31,8 +31,18 @@ export const Layout: React.FC = () => {
         refetchInterval: 2000, // Check every 2 seconds
     });
 
+    // Check executor web server status
+    const { data: executorWebStatus } = useQuery({
+        queryKey: ['executor-web-server-status'],
+        queryFn: () => window.ipcRenderer.invoke('executor-web-server-status'),
+        refetchInterval: 5000,
+    });
+
     const isServerRunning = syncStatus?.running ?? false;
     const activeConnections = syncStatus?.activeConnections ?? 0;
+    const executorWebRunning = executorWebStatus?.running ?? false;
+    const executorWebPort = executorWebStatus?.port ?? 3001;
+    const executorWebIp = executorWebStatus?.ipAddresses?.[0] ?? 'localhost';
 
     // Mutation for starting server
     const startMutation = useMutation({
@@ -215,6 +225,25 @@ export const Layout: React.FC = () => {
                                 </span>
                             )}
                         </button>
+
+                        {/* Executor Web Link */}
+                        {executorWebRunning && (
+                            <button
+                                onClick={() => {
+                                    const url = `http://${executorWebIp}:${executorWebPort}`;
+                                    navigator.clipboard.writeText(url);
+                                }}
+                                className="flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors cursor-pointer"
+                                style={{
+                                    color: '#818cf8',
+                                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                                    border: '1px solid rgba(99, 102, 241, 0.3)',
+                                }}
+                                title="Натисніть щоб скопіювати адресу"
+                            >
+                                🌐 {executorWebIp}:{executorWebPort}
+                            </button>
+                        )}
 
                         <div className="h-6 w-px bg-slate-700 mx-2" />
 

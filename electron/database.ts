@@ -120,6 +120,26 @@ export function initDatabase() {
             console.error('Error adding ProductsPercent column:', error);
         }
 
+        // Add Password and Role columns for web authentication (migration)
+        try {
+            const executorTableInfo = db.prepare('PRAGMA table_info(Executors)').all() as Array<{ name: string }>;
+            const hasPassword = executorTableInfo.some(col => col.name === 'Password');
+            const hasRole = executorTableInfo.some(col => col.name === 'Role');
+
+            if (!hasPassword) {
+                db.prepare('ALTER TABLE Executors ADD COLUMN Password TEXT').run();
+                console.log('Added Password column to Executors table');
+            }
+            if (!hasRole) {
+                db.prepare("ALTER TABLE Executors ADD COLUMN Role TEXT DEFAULT 'worker'").run();
+                // Set first executor as admin
+                db.prepare("UPDATE Executors SET Role = 'admin' WHERE ID = (SELECT MIN(ID) FROM Executors)").run();
+                console.log('Added Role column to Executors table');
+            }
+        } catch (error) {
+            console.error('Error adding auth columns to Executors:', error);
+        }
+
         // Add Виконавець column to Ремонт table if it doesn't exist
         try {
             // Check if column exists
