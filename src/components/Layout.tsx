@@ -120,7 +120,7 @@ export const Layout: React.FC = () => {
                         <div className="flex items-center gap-2">
                             <Wrench className="w-6 h-6" style={{ color: 'var(--theme-accent)' }} />
                             <h1 className="text-xl font-bold hidden md:block" style={{ color: 'var(--theme-accent)' }}>
-                                Service Center
+                                Service Center Chipzone
                             </h1>
                         </div>
                         <nav className="flex items-center gap-1">
@@ -265,7 +265,15 @@ export const Layout: React.FC = () => {
 
                         <div className="flex items-center gap-3">
                             <span className="text-xs text-slate-500 font-mono">
-                                v{import.meta.env.VITE_APP_VERSION || '1.0.0'}
+                                {(() => {
+                                    const now = new Date();
+                                    const start = new Date(now.getFullYear(), 0, 0);
+                                    const diff = (now.getTime() - start.getTime()) + ((start.getTimezoneOffset() - now.getTimezoneOffset()) * 60 * 1000);
+                                    const oneDay = 1000 * 60 * 60 * 24;
+                                    const dayOfYear = Math.floor(diff / oneDay);
+                                    const minute = now.getMinutes();
+                                    return `v.${now.getFullYear()}.${dayOfYear}.${minute}`;
+                                })()}
                             </span>
                             <button
                                 onClick={() => window.close()}

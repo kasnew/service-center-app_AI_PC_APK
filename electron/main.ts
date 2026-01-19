@@ -48,15 +48,20 @@ if (!gotTheLock) {
 
 function createWindow() {
   win = new BrowserWindow({
+    title: 'Service Center Chipzone',
     icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
     },
-    show: false // Don't show until maximized
+    show: false
   })
 
   win.maximize();
   win.show();
+
+  win.on('page-title-updated', (e) => {
+    e.preventDefault();
+  });
 
   // Test active push message to Renderer-process.
   win.webContents.on('did-finish-load', () => {
@@ -106,30 +111,7 @@ app.whenReady().then(() => {
     });
   });
 
-  // Create application menu with developer tools
-  const template: any = [
-    {
-      label: 'Вигляд',
-      submenu: [
-        {
-          label: 'Перезавантажити',
-          accelerator: 'CmdOrCtrl+R',
-          click: () => {
-            BrowserWindow.getFocusedWindow()?.reload();
-          }
-        },
-        {
-          label: 'Інструменти розробника',
-          accelerator: 'F12',
-          click: () => {
-            BrowserWindow.getFocusedWindow()?.webContents.toggleDevTools();
-          }
-        }
-      ]
-    }
-  ];
-
-  const menu = Menu.buildFromTemplate(template);
-  Menu.setApplicationMenu(menu);
+  // Remove application menu entirely as requested (including 'Вигляд')
+  Menu.setApplicationMenu(null);
   createWindow()
 })
