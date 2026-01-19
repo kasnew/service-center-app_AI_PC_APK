@@ -38,6 +38,8 @@ build
 *.db
 *.shm
 *.wal
+*.sqlite-shm
+*.sqlite-wal
 1.sqlite
 
 # Backups
