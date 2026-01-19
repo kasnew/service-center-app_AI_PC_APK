@@ -13,6 +13,7 @@ export interface BackupInfo {
 export interface BackupSettings {
     autoBackupEnabled: boolean;
     backupOnExit: boolean;
+    autoBackupLimit: number;
 }
 
 export const settingsApi = {

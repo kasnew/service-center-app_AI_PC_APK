@@ -3,6 +3,8 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { settingsApi, BackupInfo } from '../api/settings';
 import { executorsApi, Executor } from '../api/executors';
+import { expenseCategoriesApi, incomeCategoriesApi } from '../api/cashRegister';
+import { ExpenseCategory, IncomeCategory } from '../types/db';
 import { Database, Download, Trash2, RotateCcw, AlertTriangle, HardDrive, Users, Plus, UserCog, Wifi, WifiOff, Copy, ChevronDown, ChevronRight, Check, X, Edit2 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { ConfirmationModal } from '../components/ConfirmationModal';
@@ -42,6 +44,15 @@ export default function Settings() {
     const [showRestoreConfirm, setShowRestoreConfirm] = useState<{ name: string, type: 'manual' | 'auto' } | null>(null);
     const [manualBackupsExpanded, setManualBackupsExpanded] = useState(false);
     const [autoBackupsExpanded, setAutoBackupsExpanded] = useState(false);
+
+    // Categories State
+    const [newCategoryName, setNewCategoryName] = useState('');
+    const [editingCategory, setEditingCategory] = useState<ExpenseCategory | null>(null);
+    const [categoryToDelete, setCategoryToDelete] = useState<{ id: number; name: string } | null>(null);
+
+    const [newIncomeCategoryName, setNewIncomeCategoryName] = useState('');
+    const [editingIncomeCategory, setEditingIncomeCategory] = useState<IncomeCategory | null>(null);
+    const [incomeCategoryToDelete, setIncomeCategoryToDelete] = useState<{ id: number; name: string } | null>(null);
 
     // Fetch backups list
     const { data: backups = [], isLoading: isLoadingBackups } = useQuery({
@@ -159,7 +170,7 @@ export default function Settings() {
     });
 
     const updateBackupSettingsMutation = useMutation({
-        mutationFn: (updates: Partial<{ autoBackupEnabled: boolean; backupOnExit: boolean }>) =>
+        mutationFn: (updates: Partial<{ autoBackupEnabled: boolean; backupOnExit: boolean; autoBackupLimit: number }>) =>
             settingsApi.updateBackupSettings(updates),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['backup-settings'] });
@@ -252,6 +263,108 @@ export default function Settings() {
             console.error('Stop sync server error:', error);
         },
     });
+
+    // --- Category Mutations ---
+
+    const { data: categories = [], isLoading: isLoadingCategories } = useQuery({
+        queryKey: ['expense-categories'],
+        queryFn: () => expenseCategoriesApi.getCategories(),
+    });
+
+    const { data: incomeCategories = [], isLoading: isLoadingIncomeCategories } = useQuery({
+        queryKey: ['income-categories'],
+        queryFn: () => incomeCategoriesApi.getCategories(),
+    });
+
+    const addCategoryMutation = useMutation({
+        mutationFn: (name: string) => expenseCategoriesApi.addCategory(name),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['expense-categories'] });
+            setNewCategoryName('');
+        },
+    });
+
+    const updateCategoryMutation = useMutation({
+        mutationFn: (data: { id: number; name: string }) => expenseCategoriesApi.updateCategory(data.id, data.name),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['expense-categories'] });
+            setEditingCategory(null);
+        },
+    });
+
+    const toggleCategoryMutation = useMutation({
+        mutationFn: (data: { id: number; active: boolean }) => expenseCategoriesApi.toggleCategory(data.id, data.active),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['expense-categories'] });
+        },
+    });
+
+    const deleteCategoryMutation = useMutation({
+        mutationFn: (id: number) => expenseCategoriesApi.deleteCategory(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['expense-categories'] });
+            setCategoryToDelete(null);
+        },
+    });
+
+    const addIncomeCategoryMutation = useMutation({
+        mutationFn: (name: string) => incomeCategoriesApi.addCategory(name),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['income-categories'] });
+            setNewIncomeCategoryName('');
+        },
+    });
+
+    const updateIncomeCategoryMutation = useMutation({
+        mutationFn: (data: { id: number; name: string }) => incomeCategoriesApi.updateCategory(data.id, data.name),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['income-categories'] });
+            setEditingIncomeCategory(null);
+        },
+    });
+
+    const toggleIncomeCategoryMutation = useMutation({
+        mutationFn: (data: { id: number; active: boolean }) => incomeCategoriesApi.toggleCategory(data.id, data.active),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['income-categories'] });
+        },
+    });
+
+    const deleteIncomeCategoryMutation = useMutation({
+        mutationFn: (id: number) => incomeCategoriesApi.deleteCategory(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['income-categories'] });
+            setIncomeCategoryToDelete(null);
+        },
+    });
+
+    // --- Category Handlers ---
+
+    const handleAddCategory = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (newCategoryName.trim()) {
+            addCategoryMutation.mutate(newCategoryName.trim());
+        }
+    };
+
+    const handleAddIncomeCategory = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (newIncomeCategoryName.trim()) {
+            addIncomeCategoryMutation.mutate(newIncomeCategoryName.trim());
+        }
+    };
+
+    const handleSaveCategory = (category: ExpenseCategory) => {
+        if (editingCategory) {
+            updateCategoryMutation.mutate({ id: category.id, name: editingCategory.name });
+        }
+    };
+
+    const handleSaveIncomeCategory = (category: IncomeCategory) => {
+        if (editingIncomeCategory) {
+            updateIncomeCategoryMutation.mutate({ id: category.id, name: editingIncomeCategory.name });
+        }
+    };
 
     const handleAddSupplier = (e: React.FormEvent) => {
         e.preventDefault();
@@ -474,7 +587,7 @@ export default function Settings() {
                     </div>
 
                     {/* Backup Preferences */}
-                    <div className="flex flex-wrap gap-6 mb-6 p-4 bg-slate-800/40 rounded-lg border border-slate-600/50">
+                    <div className="flex flex-wrap items-center gap-6 mb-6 p-4 bg-slate-800/40 rounded-lg border border-slate-600/50">
                         <label className="flex items-center gap-3 cursor-pointer group">
                             <div className="relative">
                                 <input
@@ -490,6 +603,18 @@ export default function Settings() {
                                 Автоматичне створення копій при змінах
                             </span>
                         </label>
+
+                        <div className="flex items-center gap-3 border-l border-slate-600 pl-6">
+                            <span className="text-sm font-medium text-slate-400">Ліміт копій:</span>
+                            <input
+                                type="number"
+                                min="1"
+                                max="100"
+                                value={backupSettings?.autoBackupLimit ?? 30}
+                                onChange={(e) => updateBackupSettingsMutation.mutate({ autoBackupLimit: parseInt(e.target.value) || 30 })}
+                                className="w-16 bg-slate-800 border border-slate-600 rounded px-2 py-1 text-sm text-slate-100 focus:outline-none focus:border-blue-500"
+                            />
+                        </div>
 
                         <label className="flex items-center gap-3 cursor-pointer group border-l border-slate-600 pl-6">
                             <div className="relative">
@@ -559,42 +684,166 @@ export default function Settings() {
                     {/* Cash Register Status and Commission - Top Row */}
                     <CashRegisterSettings />
 
-                    {/* Grid for Suppliers, Executors, Income and Expense Categories */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+                    {/* Grid for Categories, Suppliers, Executors */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6 items-start">
+                        {/* Income Categories */}
+                        <div className="bg-slate-700 rounded-lg p-4 border border-slate-600 h-full flex flex-col">
+                            <h3 className="text-lg font-semibold text-slate-100 mb-3 text-center">Категорії прибутків</h3>
+                            <form onSubmit={handleAddIncomeCategory} className="mb-3 flex gap-2">
+                                <input
+                                    type="text"
+                                    value={newIncomeCategoryName}
+                                    onChange={(e) => setNewIncomeCategoryName(e.target.value)}
+                                    placeholder="Нова категорія"
+                                    className="flex-1 bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500 w-full"
+                                />
+                                <button
+                                    type="submit"
+                                    disabled={!newIncomeCategoryName.trim() || addIncomeCategoryMutation.isPending}
+                                    className="px-2 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:opacity-50"
+                                >
+                                    <Plus className="w-4 h-4" />
+                                </button>
+                            </form>
+                            <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar min-h-[200px] max-h-[400px]">
+                                {isLoadingIncomeCategories ? (
+                                    <div className="text-center py-4 text-slate-400 text-sm">Завантаження...</div>
+                                ) : incomeCategories.length === 0 ? (
+                                    <div className="text-center py-4 text-slate-500 text-xs">Немає категорій</div>
+                                ) : (
+                                    incomeCategories.map((category: IncomeCategory) => (
+                                        <div key={category.id} className="bg-slate-800/50 rounded p-2 border border-slate-600">
+                                            {editingIncomeCategory?.id === category.id ? (
+                                                <div className="flex items-center gap-1.5">
+                                                    <input
+                                                        type="text"
+                                                        value={editingIncomeCategory.name}
+                                                        onChange={(e) => setEditingIncomeCategory({ ...editingIncomeCategory, name: e.target.value })}
+                                                        className="flex-1 bg-slate-700 border border-slate-600 rounded px-2 py-1 text-xs text-slate-100 min-w-0"
+                                                        autoFocus
+                                                    />
+                                                    <button onClick={() => handleSaveIncomeCategory(category)} className="p-1 text-green-400 flex-shrink-0"><Check className="w-3.5 h-3.5" /></button>
+                                                    <button onClick={() => setEditingIncomeCategory(null)} className="p-1 text-slate-400 flex-shrink-0"><X className="w-3.5 h-3.5" /></button>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center justify-between group gap-2">
+                                                    <div className="flex items-center gap-2 min-w-0">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={category.active}
+                                                            onChange={(e) => toggleIncomeCategoryMutation.mutate({ id: category.id, active: e.target.checked })}
+                                                            className="w-3.5 h-3.5 flex-shrink-0 cursor-pointer"
+                                                        />
+                                                        <span className={clsx("text-sm truncate", category.active ? "text-slate-200" : "text-slate-500")}>{category.name}</span>
+                                                    </div>
+                                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                                                        <button onClick={() => setEditingIncomeCategory(category)} className="p-1 text-slate-400 hover:text-blue-400"><Edit2 className="w-3.5 h-3.5" /></button>
+                                                        <button onClick={() => setIncomeCategoryToDelete({ id: category.id, name: category.name })} className="p-1 text-slate-400 hover:text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Expense Categories */}
+                        <div className="bg-slate-700 rounded-lg p-4 border border-slate-600 h-full flex flex-col">
+                            <h3 className="text-lg font-semibold text-slate-100 mb-3 text-center">Категорії витрат</h3>
+                            <form onSubmit={handleAddCategory} className="mb-3 flex gap-2">
+                                <input
+                                    type="text"
+                                    value={newCategoryName}
+                                    onChange={(e) => setNewCategoryName(e.target.value)}
+                                    placeholder="Нова категорія"
+                                    className="flex-1 bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500 w-full"
+                                />
+                                <button
+                                    type="submit"
+                                    disabled={!newCategoryName.trim() || addCategoryMutation.isPending}
+                                    className="px-2 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:opacity-50"
+                                >
+                                    <Plus className="w-4 h-4" />
+                                </button>
+                            </form>
+                            <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar min-h-[200px] max-h-[400px]">
+                                {isLoadingCategories ? (
+                                    <div className="text-center py-4 text-slate-400 text-sm">Завантаження...</div>
+                                ) : categories.length === 0 ? (
+                                    <div className="text-center py-4 text-slate-500 text-xs">Немає категорій</div>
+                                ) : (
+                                    categories.map((category: ExpenseCategory) => (
+                                        <div key={category.id} className="bg-slate-800/50 rounded p-2 border border-slate-600">
+                                            {editingCategory?.id === category.id ? (
+                                                <div className="flex items-center gap-1.5">
+                                                    <input
+                                                        type="text"
+                                                        value={editingCategory.name}
+                                                        onChange={(e) => setEditingCategory({ ...editingCategory, name: e.target.value })}
+                                                        className="flex-1 bg-slate-700 border border-slate-600 rounded px-2 py-1 text-xs text-slate-100 min-w-0"
+                                                        autoFocus
+                                                    />
+                                                    <button onClick={() => handleSaveCategory(category)} className="p-1 text-green-400 flex-shrink-0"><Check className="w-3.5 h-3.5" /></button>
+                                                    <button onClick={() => setEditingCategory(null)} className="p-1 text-slate-400 flex-shrink-0"><X className="w-3.5 h-3.5" /></button>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center justify-between group gap-2">
+                                                    <div className="flex items-center gap-2 min-w-0">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={category.active}
+                                                            onChange={(e) => toggleCategoryMutation.mutate({ id: category.id, active: e.target.checked })}
+                                                            className="w-3.5 h-3.5 flex-shrink-0 cursor-pointer"
+                                                        />
+                                                        <span className={clsx("text-sm truncate", category.active ? "text-slate-200" : "text-slate-500")}>{category.name}</span>
+                                                    </div>
+                                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                                                        <button onClick={() => setEditingCategory(category)} className="p-1 text-slate-400 hover:text-blue-400"><Edit2 className="w-3.5 h-3.5" /></button>
+                                                        <button onClick={() => setCategoryToDelete({ id: category.id, name: category.name })} className="p-1 text-slate-400 hover:text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+
                         {/* Suppliers */}
-                        <div className="bg-slate-700 rounded-lg p-4 border border-slate-600">
-                            <h3 className="text-lg font-semibold text-slate-100 mb-3 flex items-center gap-2">
-                                <Users className="w-5 h-5" />
-                                Контрагенти
+                        <div className="bg-slate-700 rounded-lg p-4 border border-slate-600 h-full flex flex-col">
+                            <h3 className="text-lg font-semibold text-slate-100 mb-3 flex items-center gap-2 justify-center">
+                                <Users className="w-5 h-5 flex-shrink-0" />
+                                <span className="truncate">Контрагенти</span>
                             </h3>
                             <form onSubmit={handleAddSupplier} className="mb-3 flex gap-2">
                                 <input
                                     type="text"
                                     value={newSupplierName}
                                     onChange={(e) => setNewSupplierName(e.target.value)}
-                                    placeholder="Новий контрагент"
-                                    className="flex-1 bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500"
+                                    placeholder="Новий"
+                                    className="flex-1 bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500 w-full"
                                 />
                                 <button
                                     type="submit"
                                     disabled={!newSupplierName.trim() || addSupplierMutation.isPending}
-                                    className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:opacity-50"
+                                    className="px-2 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:opacity-50"
                                 >
                                     <Plus className="w-4 h-4" />
                                 </button>
                             </form>
-                            <div className="max-h-60 overflow-y-auto space-y-1.5">
+                            <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar min-h-[200px] max-h-[400px]">
                                 {isLoadingSuppliers ? (
-                                    <div className="text-center py-4 text-slate-400 text-sm">Завантаження...</div>
+                                    <div className="text-center py-4 text-slate-400 text-sm">Зав...</div>
                                 ) : suppliers.length === 0 ? (
-                                    <div className="text-center py-4 text-slate-500 text-xs">Немає контрагентів</div>
+                                    <div className="text-center py-4 text-slate-500 text-xs">Немає</div>
                                 ) : (
                                     suppliers.map((supplier: { ID: number; Name: string }) => (
-                                        <div key={supplier.ID} className="bg-slate-800/50 rounded p-2 border border-slate-600 flex items-center justify-between group">
-                                            <span className="text-sm text-slate-200">{supplier.Name}</span>
+                                        <div key={supplier.ID} className="bg-slate-800/50 rounded p-2 border border-slate-600 flex items-center justify-between group gap-2">
+                                            <span className="text-sm text-slate-200 truncate">{supplier.Name}</span>
                                             <button
                                                 onClick={() => setSupplierToDelete({ id: supplier.ID, name: supplier.Name })}
-                                                className="p-1 text-slate-400 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                className="p-1 text-slate-400 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
                                             >
                                                 <Trash2 className="w-3.5 h-3.5" />
                                             </button>
@@ -605,58 +854,62 @@ export default function Settings() {
                         </div>
 
                         {/* Executors */}
-                        <div className="bg-slate-700 rounded-lg p-4 border border-slate-600">
-                            <h3 className="text-lg font-semibold text-slate-100 mb-3 flex items-center gap-2">
-                                <UserCog className="w-5 h-5" />
-                                Виконавці
+                        <div className="bg-slate-700 rounded-lg p-4 border border-slate-600 h-full flex flex-col">
+                            <h3 className="text-lg font-semibold text-slate-100 mb-3 flex items-center gap-2 justify-center">
+                                <UserCog className="w-5 h-5 flex-shrink-0" />
+                                <span className="truncate">Виконавці</span>
                             </h3>
-                            <form onSubmit={handleAddExecutor} className="mb-3 grid grid-cols-[1fr_60px_60px_auto] gap-2">
-                                <input
-                                    type="text"
-                                    value={newExecutorName}
-                                    onChange={(e) => setNewExecutorName(e.target.value)}
-                                    placeholder="Ім'я"
-                                    className="bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500"
-                                />
-                                <input
-                                    type="text"
-                                    inputMode="decimal"
-                                    value={newExecutorPercent || ''}
-                                    onChange={(e) => {
-                                        const normalized = normalizeMoneyInput(e.target.value);
-                                        const parsed = parseMoneyValue(normalized);
-                                        setNewExecutorPercent(parsed);
-                                    }}
-                                    placeholder="% поcл"
-                                    title="Відсоток від послуг"
-                                    className="bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500"
-                                />
-                                <input
-                                    type="text"
-                                    inputMode="decimal"
-                                    value={newExecutorProductsPercent || ''}
-                                    onChange={(e) => {
-                                        const normalized = normalizeMoneyInput(e.target.value);
-                                        const parsed = parseMoneyValue(normalized);
-                                        setNewExecutorProductsPercent(parsed);
-                                    }}
-                                    placeholder="% тов"
-                                    title="Відсоток від товарів"
-                                    className="bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500"
-                                />
-                                <button
-                                    type="submit"
-                                    disabled={!newExecutorName.trim() || addExecutorMutation.isPending}
-                                    className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:opacity-50"
-                                >
-                                    <Plus className="w-4 h-4" />
-                                </button>
+                            <form onSubmit={handleAddExecutor} className="mb-3 grid grid-cols-[1fr_auto] gap-2">
+                                <div className="grid grid-cols-2 gap-1.5">
+                                    <input
+                                        type="text"
+                                        value={newExecutorName}
+                                        onChange={(e) => setNewExecutorName(e.target.value)}
+                                        placeholder="Ім'я"
+                                        className="bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500 min-w-0 col-span-2"
+                                    />
+                                    <input
+                                        type="text"
+                                        inputMode="decimal"
+                                        value={newExecutorPercent || ''}
+                                        onChange={(e) => {
+                                            const normalized = normalizeMoneyInput(e.target.value);
+                                            const parsed = parseMoneyValue(normalized);
+                                            setNewExecutorPercent(parsed);
+                                        }}
+                                        placeholder="%п"
+                                        title="% послуг"
+                                        className="bg-slate-800 border border-slate-600 rounded px-1 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-blue-500 text-center"
+                                    />
+                                    <input
+                                        type="text"
+                                        inputMode="decimal"
+                                        value={newExecutorProductsPercent || ''}
+                                        onChange={(e) => {
+                                            const normalized = normalizeMoneyInput(e.target.value);
+                                            const parsed = parseMoneyValue(normalized);
+                                            setNewExecutorProductsPercent(parsed);
+                                        }}
+                                        placeholder="%т"
+                                        title="% товарів"
+                                        className="bg-slate-800 border border-slate-600 rounded px-1 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-blue-500 text-center"
+                                    />
+                                </div>
+                                <div className="flex items-center">
+                                    <button
+                                        type="submit"
+                                        disabled={!newExecutorName.trim() || addExecutorMutation.isPending}
+                                        className="px-2 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:opacity-50 h-full"
+                                    >
+                                        <Plus className="w-4 h-4" />
+                                    </button>
+                                </div>
                             </form>
-                            <div className="max-h-60 overflow-y-auto space-y-1.5">
+                            <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar min-h-[200px] max-h-[400px]">
                                 {isLoadingExecutors ? (
-                                    <div className="text-center py-4 text-slate-400 text-sm">Завантаження...</div>
+                                    <div className="text-center py-4 text-slate-400 text-sm">Зав...</div>
                                 ) : executors.length === 0 ? (
-                                    <div className="text-center py-4 text-slate-500 text-xs">Немає виконавців</div>
+                                    <div className="text-center py-4 text-slate-500 text-xs">Немає</div>
                                 ) : (
                                     executors.map((executor: Executor) => (
                                         <div key={executor.ID} className="bg-slate-800/50 rounded p-2 border border-slate-600">
@@ -666,7 +919,7 @@ export default function Settings() {
                                                         type="text"
                                                         value={editingExecutor.Name}
                                                         onChange={(e) => setEditingExecutor({ ...editingExecutor, Name: e.target.value })}
-                                                        className="flex-1 bg-slate-700 border border-slate-600 rounded px-2 py-1 text-xs text-slate-100"
+                                                        className="flex-1 bg-slate-700 border border-slate-600 rounded px-1 py-1 text-xs text-slate-100 min-w-0"
                                                     />
                                                     <input
                                                         type="text"
@@ -677,8 +930,8 @@ export default function Settings() {
                                                             const parsed = parseMoneyValue(normalized);
                                                             setEditingExecutor({ ...editingExecutor, SalaryPercent: parsed });
                                                         }}
-                                                        className="w-14 bg-slate-700 border border-slate-600 rounded px-2 py-1 text-xs text-slate-100"
-                                                        placeholder="Посл"
+                                                        className="w-8 bg-slate-700 border border-slate-600 rounded px-1 py-1 text-xs text-slate-100 text-center"
+                                                        placeholder="П"
                                                     />
                                                     <input
                                                         type="text"
@@ -689,20 +942,22 @@ export default function Settings() {
                                                             const parsed = parseMoneyValue(normalized);
                                                             setEditingExecutor({ ...editingExecutor, ProductsPercent: parsed });
                                                         }}
-                                                        className="w-14 bg-slate-700 border border-slate-600 rounded px-2 py-1 text-xs text-slate-100"
-                                                        placeholder="Тов"
+                                                        className="w-8 bg-slate-700 border border-slate-600 rounded px-1 py-1 text-xs text-slate-100 text-center"
+                                                        placeholder="Т"
                                                     />
-                                                    <button onClick={() => handleUpdateExecutor(executor)} className="p-1 text-green-400"><Check className="w-3.5 h-3.5" /></button>
-                                                    <button onClick={() => setEditingExecutor(null)} className="p-1 text-slate-400"><X className="w-3.5 h-3.5" /></button>
+                                                    <button onClick={() => handleUpdateExecutor(executor)} className="p-0.5 text-green-400 flex-shrink-0"><Check className="w-3 h-3" /></button>
+                                                    <button onClick={() => setEditingExecutor(null)} className="p-0.5 text-slate-400 flex-shrink-0"><X className="w-3 h-3" /></button>
                                                 </div>
                                             ) : (
-                                                <div className="flex items-center justify-between group">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-sm text-slate-200">{executor.Name}</span>
-                                                        <span className="text-xs text-slate-400" title="Відсоток від послуг">{executor.SalaryPercent}%п</span>
-                                                        <span className="text-xs text-slate-400" title="Відсоток від товарів">{executor.ProductsPercent}%т</span>
+                                                <div className="flex items-center justify-between group gap-2">
+                                                    <div className="flex flex-col min-w-0">
+                                                        <span className="text-sm text-slate-200 truncate font-medium">{executor.Name}</span>
+                                                        <div className="flex gap-2">
+                                                            <span className="text-[10px] text-slate-400" title="Відсоток від послуг">{executor.SalaryPercent}%п</span>
+                                                            <span className="text-[10px] text-slate-400" title="Відсоток від товарів">{executor.ProductsPercent}%т</span>
+                                                        </div>
                                                     </div>
-                                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 items-center">
                                                         <button onClick={() => setEditingExecutor(executor)} className="p-1 text-slate-400 hover:text-blue-400"><Edit2 className="w-3.5 h-3.5" /></button>
                                                         <button onClick={() => setExecutorToDelete({ id: executor.ID, name: executor.Name })} className="p-1 text-slate-400 hover:text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
                                                     </div>
@@ -771,149 +1026,161 @@ export default function Settings() {
 
 
             {activeCategory === 'sync' && (
-                <div className="bg-slate-700 rounded-lg shadow-sm p-6 mb-6 border border-slate-600">
-                    <h2 className="text-xl font-semibold text-slate-100 mb-4 flex items-center gap-2">
+                <div className="bg-white dark:bg-slate-700 rounded-lg shadow-sm p-6 mb-6 border border-slate-200 dark:border-slate-600 rainbow-groupbox">
+                    <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100 mb-6 flex items-center gap-2">
                         <Wifi className="w-6 h-6" />
                         Синхронізація з мобільним додатком
                     </h2>
 
-                    <div className="bg-slate-800 rounded-lg p-4 border border-slate-600">
-                        {/* Status and Controls Combined */}
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-3">
-                                {syncStatus?.running ? (
-                                    <>
-                                        <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                                        <span className="text-green-400 font-semibold">Сервер запущено</span>
-                                        {syncStatus.port && (
-                                            <span className="text-slate-400 text-sm">| Порт: {syncStatus.port}</span>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Left Column: Controls & Status */}
+                        <div className="space-y-6">
+                            {/* Server Control Card */}
+                            <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-5 border border-slate-200 dark:border-slate-600">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-3">
+                                        {syncStatus?.running ? (
+                                            <div className="flex items-center gap-2">
+                                                <div className="relative flex h-3 w-3">
+                                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                                                </div>
+                                                <span className="text-green-600 dark:text-green-400 font-medium">Сервер працює</span>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                                                <span className="text-slate-500 dark:text-slate-400 font-medium">Сервер зупинено</span>
+                                            </div>
                                         )}
-                                    </>
-                                ) : (
-                                    <>
-                                        <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                                        <span className="text-red-400 font-semibold">Сервер зупинено</span>
-                                    </>
+                                    </div>
+
+                                    {/* Control Button & Port */}
+                                    <div className="flex items-center gap-2">
+                                        {!syncStatus?.running && (
+                                            <input
+                                                type="number"
+                                                value={syncPort}
+                                                onChange={(e) => setSyncPort(parseInt(e.target.value, 10) || 3000)}
+                                                min="1024"
+                                                max="65535"
+                                                placeholder="Порт"
+                                                className="w-20 px-2 py-1.5 text-sm bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500 text-center"
+                                            />
+                                        )}
+                                        {syncStatus?.running ? (
+                                            <button
+                                                onClick={() => stopSyncServerMutation.mutate()}
+                                                disabled={stopSyncServerMutation.isPending}
+                                                className="flex items-center gap-2 px-4 py-1.5 text-sm font-medium bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-500/50 rounded hover:bg-red-200 dark:hover:bg-red-500/20 transition-all disabled:opacity-50"
+                                            >
+                                                <WifiOff className="w-4 h-4" />
+                                                {stopSyncServerMutation.isPending ? 'Зупинка...' : 'Зупинити'}
+                                            </button>
+                                        ) : (
+                                            <button
+                                                onClick={() => startSyncServerMutation.mutate(syncPort)}
+                                                disabled={startSyncServerMutation.isPending}
+                                                className="flex items-center gap-2 px-4 py-1.5 text-sm font-medium bg-green-100 dark:bg-green-500/10 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-500/50 rounded hover:bg-green-200 dark:hover:bg-green-500/20 transition-all disabled:opacity-50"
+                                            >
+                                                <Wifi className="w-4 h-4" />
+                                                {startSyncServerMutation.isPending ? 'Запуск...' : 'Запустити'}
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Connection Info */}
+                                {syncStatus?.running && syncStatus.ipAddresses && (
+                                    <div className="mt-4 p-3 bg-white dark:bg-slate-900/50 rounded border border-slate-200 dark:border-slate-700">
+                                        <p className="text-xs text-slate-500 mb-2 uppercase tracking-wider font-semibold">Адреси для підключення</p>
+                                        <div className="space-y-2">
+                                            {syncStatus.ipAddresses.map((ip, index) => (
+                                                <div key={index} className="flex items-center justify-between group">
+                                                    <code className="text-blue-600 dark:text-blue-400 font-mono text-sm">
+                                                        http://{ip}:{syncStatus.port}
+                                                    </code>
+                                                    <button
+                                                        onClick={() => navigator.clipboard.writeText(`http://${ip}:${syncStatus.port}`)}
+                                                        className="p-1 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors opacity-0 group-hover:opacity-100"
+                                                        title="Копіювати адресу"
+                                                    >
+                                                        <Copy className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
                                 )}
                             </div>
 
-                            {/* Control Button */}
-                            {!syncStatus?.running ? (
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="number"
-                                        value={syncPort}
-                                        onChange={(e) => setSyncPort(parseInt(e.target.value, 10) || 3000)}
-                                        min="1024"
-                                        max="65535"
-                                        placeholder="Порт"
-                                        className="w-24 px-2 py-1 text-sm bg-slate-900 border border-slate-600 rounded text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    />
-                                    <button
-                                        onClick={() => startSyncServerMutation.mutate(syncPort)}
-                                        disabled={startSyncServerMutation.isPending}
-                                        className="flex items-center gap-2 px-3 py-1 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
-                                    >
-                                        <Wifi className="w-4 h-4" />
-                                        {startSyncServerMutation.isPending ? 'Запуск...' : 'Запустити'}
-                                    </button>
-                                </div>
-                            ) : (
-                                <button
-                                    onClick={() => stopSyncServerMutation.mutate()}
-                                    disabled={stopSyncServerMutation.isPending}
-                                    className="flex items-center gap-2 px-3 py-1 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
-                                >
-                                    <WifiOff className="w-4 h-4" />
-                                    {stopSyncServerMutation.isPending ? 'Зупинка...' : 'Зупинити'}
-                                </button>
-                            )}
-                        </div>
-
-                        {/* IP Addresses */}
-                        {syncStatus?.running && syncStatus.ipAddresses && syncStatus.ipAddresses.length > 0 && (
-                            <div className="border-t border-slate-700 pt-3">
-                                <p className="text-xs text-slate-400 mb-2">IP адреси для підключення:</p>
-                                <div className="flex flex-wrap gap-2">
-                                    {syncStatus.ipAddresses.map((ip, index) => (
-                                        <div
-                                            key={index}
-                                            className="flex items-center gap-2 bg-slate-900 rounded px-2 py-1 border border-slate-600"
-                                        >
-                                            <code className="text-blue-400 font-mono text-xs">
-                                                http://{ip}:{syncStatus.port}
-                                            </code>
-                                            <button
-                                                onClick={() => {
-                                                    navigator.clipboard.writeText(`http://${ip}:${syncStatus.port}`);
-                                                }}
-                                                className="text-slate-400 hover:text-slate-200 transition-colors"
-                                                title="Копіювати"
-                                            >
-                                                <Copy className="w-3 h-3" />
-                                            </button>
-                                        </div>
-                                    ))}
+                            {/* Info Alert */}
+                            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-lg p-4">
+                                <div className="flex gap-3">
+                                    <AlertTriangle className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                                    <div className="text-sm text-blue-800 dark:text-blue-300/80 space-y-1">
+                                        <p className="font-medium text-blue-900 dark:text-blue-300">Важливо</p>
+                                        <ul className="list-disc list-inside space-y-0.5 text-xs opacity-90">
+                                            <li>Пристрої мають бути в одній WiFi мережі</li>
+                                            <li>Брандмауер не повинен блокувати порт {syncPort}</li>
+                                        </ul>
+                                    </div>
                                 </div>
                             </div>
-                        )}
-                    </div>
-
-                    {/* API Documentation */}
-                    <div className="bg-slate-800 rounded-lg p-4 border border-slate-600">
-                        <h3 className="text-lg font-semibold text-slate-200 mb-4">Доступні API endpoints</h3>
-                        <div className="space-y-2 text-sm font-mono">
-                            <div className="text-slate-400">
-                                <span className="text-green-400">GET</span> /api/health
-                            </div>
-                            <div className="text-slate-400">
-                                <span className="text-blue-400">GET</span> /api/repairs
-                            </div>
-                            <div className="text-slate-400">
-                                <span className="text-blue-400">GET</span> /api/repairs/:id
-                            </div>
-                            <div className="text-slate-400">
-                                <span className="text-yellow-400">POST</span> /api/repairs
-                            </div>
-                            <div className="text-slate-400">
-                                <span className="text-purple-400">PUT</span> /api/repairs/:id
-                            </div>
-                            <div className="text-slate-400">
-                                <span className="text-red-400">DELETE</span> /api/repairs/:id
-                            </div>
-                            <div className="text-slate-400">
-                                <span className="text-blue-400">GET</span> /api/warehouse
-                            </div>
-                            <div className="text-slate-400">
-                                <span className="text-blue-400">GET</span> /api/transactions
-                            </div>
-                            <div className="text-slate-400">
-                                <span className="text-blue-400">GET</span> /api/executors
-                            </div>
-                            <div className="text-slate-400">
-                                <span className="text-blue-400">GET</span> /api/suppliers
-                            </div>
-                            <div className="text-slate-400">
-                                <span className="text-blue-400">GET</span> /api/status-counts
-                            </div>
-                            <div className="text-slate-400">
-                                <span className="text-blue-400">GET</span> /api/balances
-                            </div>
                         </div>
-                    </div>
 
-                    {/* Info */}
-                    <div className="bg-blue-900/30 border border-blue-700 rounded-lg p-4">
-                        <div className="flex items-start gap-3">
-                            <AlertTriangle className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
-                            <div className="text-sm text-blue-200">
-                                <p className="font-semibold mb-1">Важливо!</p>
-                                <ul className="list-disc list-inside space-y-1">
-                                    <li>Сервер працює тільки в локальній мережі (WiFi)</li>
-                                    <li>Комп'ютер та мобільний пристрій мають бути в одній мережі</li>
-                                    <li>Переконайтеся, що брандмауер дозволяє з'єднання на вибраному порту</li>
-                                    <li>Для безпеки рекомендується додати автентифікацію в майбутньому</li>
-                                </ul>
+                        {/* Right Column: API Documentation */}
+                        <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-5 border border-slate-200 dark:border-slate-600 h-full">
+                            <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4">API Endpoints</h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-xs font-mono">
+                                <div className="flex items-center gap-2 py-1 border-b border-slate-200 dark:border-slate-700/50">
+                                    <span className="text-green-600 dark:text-green-400 font-bold w-12">GET</span>
+                                    <span className="text-slate-600 dark:text-slate-300">/api/health</span>
+                                </div>
+                                <div className="flex items-center gap-2 py-1 border-b border-slate-200 dark:border-slate-700/50">
+                                    <span className="text-blue-600 dark:text-blue-400 font-bold w-12">GET</span>
+                                    <span className="text-slate-600 dark:text-slate-300">/api/repairs</span>
+                                </div>
+                                <div className="flex items-center gap-2 py-1 border-b border-slate-200 dark:border-slate-700/50">
+                                    <span className="text-blue-600 dark:text-blue-400 font-bold w-12">GET</span>
+                                    <span className="text-slate-600 dark:text-slate-300">/api/repairs/:id</span>
+                                </div>
+                                <div className="flex items-center gap-2 py-1 border-b border-slate-200 dark:border-slate-700/50">
+                                    <span className="text-yellow-600 dark:text-yellow-400 font-bold w-12">POST</span>
+                                    <span className="text-slate-600 dark:text-slate-300">/api/repairs</span>
+                                </div>
+                                <div className="flex items-center gap-2 py-1 border-b border-slate-200 dark:border-slate-700/50">
+                                    <span className="text-purple-600 dark:text-purple-400 font-bold w-12">PUT</span>
+                                    <span className="text-slate-600 dark:text-slate-300">/api/repairs/:id</span>
+                                </div>
+                                <div className="flex items-center gap-2 py-1 border-b border-slate-200 dark:border-slate-700/50">
+                                    <span className="text-red-600 dark:text-red-400 font-bold w-12">DEL</span>
+                                    <span className="text-slate-600 dark:text-slate-300">/api/repairs/:id</span>
+                                </div>
+                                <div className="flex items-center gap-2 py-1 border-b border-slate-200 dark:border-slate-700/50">
+                                    <span className="text-blue-600 dark:text-blue-400 font-bold w-12">GET</span>
+                                    <span className="text-slate-600 dark:text-slate-300">/api/warehouse</span>
+                                </div>
+                                <div className="flex items-center gap-2 py-1 border-b border-slate-200 dark:border-slate-700/50">
+                                    <span className="text-blue-600 dark:text-blue-400 font-bold w-12">GET</span>
+                                    <span className="text-slate-600 dark:text-slate-300">/api/transactions</span>
+                                </div>
+                                <div className="flex items-center gap-2 py-1 border-b border-slate-200 dark:border-slate-700/50">
+                                    <span className="text-blue-600 dark:text-blue-400 font-bold w-12">GET</span>
+                                    <span className="text-slate-600 dark:text-slate-300">/api/executors</span>
+                                </div>
+                                <div className="flex items-center gap-2 py-1 border-b border-slate-200 dark:border-slate-700/50">
+                                    <span className="text-blue-600 dark:text-blue-400 font-bold w-12">GET</span>
+                                    <span className="text-slate-600 dark:text-slate-300">/api/suppliers</span>
+                                </div>
+                                <div className="flex items-center gap-2 py-1 border-b border-slate-200 dark:border-slate-700/50">
+                                    <span className="text-blue-600 dark:text-blue-400 font-bold w-12">GET</span>
+                                    <span className="text-slate-600 dark:text-slate-300">/api/status-counts</span>
+                                </div>
+                                <div className="flex items-center gap-2 py-1 border-b border-slate-200 dark:border-slate-700/50">
+                                    <span className="text-blue-600 dark:text-blue-400 font-bold w-12">GET</span>
+                                    <span className="text-slate-600 dark:text-slate-300">/api/balances</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -953,6 +1220,26 @@ export default function Settings() {
                 confirmLabel="Видалити"
                 isDestructive={true}
                 isLoading={deleteSupplierMutation.isPending}
+            />
+
+            <ConfirmationModal
+                isOpen={!!categoryToDelete}
+                onClose={() => setCategoryToDelete(null)}
+                onConfirm={() => categoryToDelete && deleteCategoryMutation.mutate(categoryToDelete.id)}
+                title="Видалення категорії"
+                message={`Ви впевнені, що хочете видалити категорію витрат "${categoryToDelete?.name}"?`}
+                isDestructive={true}
+                isLoading={deleteCategoryMutation.isPending}
+            />
+
+            <ConfirmationModal
+                isOpen={!!incomeCategoryToDelete}
+                onClose={() => setIncomeCategoryToDelete(null)}
+                onConfirm={() => incomeCategoryToDelete && deleteIncomeCategoryMutation.mutate(incomeCategoryToDelete.id)}
+                title="Видалення категорії"
+                message={`Ви впевнені, що хочете видалити категорію прибутків "${incomeCategoryToDelete?.name}"?`}
+                isDestructive={true}
+                isLoading={deleteIncomeCategoryMutation.isPending}
             />
 
             <ConfirmationModal

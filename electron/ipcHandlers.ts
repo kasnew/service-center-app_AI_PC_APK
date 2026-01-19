@@ -49,7 +49,7 @@ function toDelphiDate(isoDate: string | Date | null): number | null {
 }
 
 
-async function createBackupHelper(encrypt: boolean = true, type: 'manual' | 'auto' = 'manual') {
+async function createBackupHelper(encrypt: boolean = true, type: 'manual' | 'auto' = 'manual', tag?: string) {
   const dbPath = getDbPath();
   const dbDir = path.dirname(dbPath);
   const typeDir = path.join(dbDir, 'backups', type);
@@ -68,7 +68,8 @@ async function createBackupHelper(encrypt: boolean = true, type: 'manual' | 'aut
 
   // Use .gz for compressed backups
   const extension = encrypt ? '.encrypted.gz' : '.sqlite.gz';
-  const backupFileName = `${type}_${timestamp}${extension}`;
+  const tagPrefix = tag ? `${tag}_` : '';
+  const backupFileName = `${tagPrefix}${type}_${timestamp}${extension}`;
   const backupPath = path.join(typeDir, backupFileName);
 
   // Close database connection before copying
@@ -110,9 +111,14 @@ async function createBackupHelper(encrypt: boolean = true, type: 'manual' | 'aut
 }
 
 let autoBackupTimer: NodeJS.Timeout | null = null;
-function triggerAutoBackup() {
+let pendingAutoBackupTags = new Set<string>();
+
+function triggerAutoBackup(tag?: string) {
+  if (tag) pendingAutoBackupTags.add(tag);
   if (autoBackupTimer) clearTimeout(autoBackupTimer);
   autoBackupTimer = setTimeout(async () => {
+    const tagsToUse = Array.from(pendingAutoBackupTags).join('-');
+    pendingAutoBackupTags.clear();
     try {
       const db = getDb();
       const enabledVal = db.prepare('SELECT value FROM settings WHERE key = ?').get('auto_backup_enabled') as any;
@@ -121,21 +127,23 @@ function triggerAutoBackup() {
         return;
       }
 
-      console.log('Running scheduled auto-backup...');
-      await createBackupHelper(true, 'auto');
+      console.log(`Running scheduled auto-backup with tags: ${tagsToUse || 'none'}...`);
+      await createBackupHelper(true, 'auto', tagsToUse);
 
-      // Keep only last 30 auto-backups
       const dbPath = getDbPath();
       const dbDir = path.dirname(dbPath);
       const autoDir = path.join(dbDir, 'backups', 'auto');
       if (fs.existsSync(autoDir)) {
+        const limitVal = db.prepare('SELECT value FROM settings WHERE key = ?').get('auto_backup_limit') as any;
+        const limit = limitVal ? parseInt(limitVal.value) : 30;
+
         const files = fs.readdirSync(autoDir)
-          .filter(f => f.startsWith('auto_backup_'))
+          .filter(f => f.includes('_auto_'))
           .map(f => ({ name: f, time: fs.statSync(path.join(autoDir, f)).mtime.getTime() }))
           .sort((a, b) => b.time - a.time);
 
-        if (files.length > 30) {
-          files.slice(30).forEach(f => {
+        if (files.length > limit) {
+          files.slice(limit).forEach(f => {
             fs.unlinkSync(path.join(autoDir, f.name));
           });
         }
@@ -1011,7 +1019,7 @@ export function registerIpcHandlers() {
     try {
       transaction();
 
-      triggerAutoBackup();
+      triggerAutoBackup('repair-save');
       return { success: true, id: resultId };
     } catch (error) {
       console.error('Error in save-repair transaction:', error);
@@ -1130,7 +1138,7 @@ export function registerIpcHandlers() {
     });
 
     deleteTransaction();
-    triggerAutoBackup();
+    triggerAutoBackup('repair-delete');
 
     return { success: true };
   });
@@ -1325,7 +1333,7 @@ export function registerIpcHandlers() {
     });
 
     insertTransaction();
-    triggerAutoBackup();
+    triggerAutoBackup('warehouse-add-bulk');
 
     return { success: true, ids };
   });
@@ -1361,7 +1369,7 @@ export function registerIpcHandlers() {
       item.receiptId || null,
       item.id
     );
-    triggerAutoBackup();
+    triggerAutoBackup('warehouse-update');
 
     return { success: true };
   });
@@ -1424,7 +1432,7 @@ export function registerIpcHandlers() {
         }
       }
     }
-    triggerAutoBackup();
+    triggerAutoBackup('warehouse-delete');
 
     return { success: true };
   });
@@ -1492,7 +1500,7 @@ export function registerIpcHandlers() {
         isPaid ? toDelphiDate(dateEnd) : null,
         partId
       );
-      triggerAutoBackup();
+      triggerAutoBackup('repair-add-part');
       return { success: true, id: partId };
     } else {
       // Manual entry (ЧипЗона/Послуга)
@@ -1514,7 +1522,7 @@ export function registerIpcHandlers() {
         isPaid ? toDelphiDate(dateEnd) : null,
         repairId
       );
-      triggerAutoBackup();
+      triggerAutoBackup('repair-add-part-manual');
       return { success: true, id: result.lastInsertRowid };
     }
   });
@@ -1597,7 +1605,7 @@ export function registerIpcHandlers() {
         );
       }
     }
-    triggerAutoBackup();
+    triggerAutoBackup('repair-update-part');
 
     return { success: true };
   });
@@ -1634,7 +1642,7 @@ export function registerIpcHandlers() {
         WHERE ID = ?
       `).run(partId);
     }
-    triggerAutoBackup();
+    triggerAutoBackup('repair-remove-part');
 
     return { success: true };
   });
@@ -1802,7 +1810,7 @@ export function registerIpcHandlers() {
       }
     }
 
-    triggerAutoBackup();
+    triggerAutoBackup('barcode-delete');
 
     return { success: true };
   });
@@ -1828,7 +1836,7 @@ export function registerIpcHandlers() {
 
     // Remove barcode
     db.prepare('UPDATE Расходники SET ШтрихКод = NULL WHERE ID = ?').run(itemId);
-    triggerAutoBackup();
+    triggerAutoBackup('barcode-delete');
 
     return { success: true };
   });
@@ -1846,7 +1854,7 @@ export function registerIpcHandlers() {
 
     // Update barcode
     db.prepare('UPDATE Расходники SET ШтрихКод = ? WHERE ID = ?').run(barcode, itemId);
-    triggerAutoBackup();
+    triggerAutoBackup('barcode-update');
 
     return { success: true };
   });
@@ -1861,7 +1869,7 @@ export function registerIpcHandlers() {
     const db = getDb();
     try {
       const result = db.prepare('INSERT INTO Suppliers (Name) VALUES (?)').run(name);
-      triggerAutoBackup();
+      triggerAutoBackup('supplier-add');
       return { success: true, id: result.lastInsertRowid };
     } catch (error: any) {
       if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
@@ -1874,7 +1882,7 @@ export function registerIpcHandlers() {
   ipcMain.handle('delete-supplier', async (_event, id: number) => {
     const db = getDb();
     db.prepare('DELETE FROM Suppliers WHERE ID = ?').run(id);
-    triggerAutoBackup();
+    triggerAutoBackup('supplier-delete');
     return { success: true };
   });
 
@@ -1891,7 +1899,7 @@ export function registerIpcHandlers() {
     const db = getDb();
     try {
       const result = db.prepare('INSERT INTO Executors (Name, SalaryPercent, ProductsPercent) VALUES (?, ?, ?)').run(data.name, data.salaryPercent, data.productsPercent);
-      triggerAutoBackup();
+      triggerAutoBackup('executor-add');
       return { success: true, id: result.lastInsertRowid };
     } catch (error: any) {
       if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
@@ -1906,7 +1914,7 @@ export function registerIpcHandlers() {
     const db = getDb();
     try {
       db.prepare('UPDATE Executors SET Name = ?, SalaryPercent = ?, ProductsPercent = ? WHERE ID = ?').run(data.name, data.salaryPercent, data.productsPercent, data.id);
-      triggerAutoBackup();
+      triggerAutoBackup('executor-update');
       return { success: true };
     } catch (error: any) {
       if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
@@ -1920,7 +1928,7 @@ export function registerIpcHandlers() {
   ipcMain.handle('delete-executor', async (_event, id: number) => {
     const db = getDb();
     db.prepare('DELETE FROM Executors WHERE ID = ?').run(id);
-    triggerAutoBackup();
+    triggerAutoBackup('executor-delete');
     return { success: true };
   });
 
@@ -2162,13 +2170,16 @@ export function registerIpcHandlers() {
     const settings = {
       autoBackupEnabled: true,
       backupOnExit: false,
+      autoBackupLimit: 30,
     };
 
     const enabled = db.prepare('SELECT value FROM settings WHERE key = ?').get('auto_backup_enabled') as any;
     const onExit = db.prepare('SELECT value FROM settings WHERE key = ?').get('backup_on_exit') as any;
+    const limit = db.prepare('SELECT value FROM settings WHERE key = ?').get('auto_backup_limit') as any;
 
     if (enabled) settings.autoBackupEnabled = enabled.value !== 'false';
     if (onExit) settings.backupOnExit = onExit.value === 'true';
+    if (limit) settings.autoBackupLimit = parseInt(limit.value);
 
     return settings;
   });
@@ -2187,6 +2198,13 @@ export function registerIpcHandlers() {
       db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(
         'backup_on_exit',
         updates.backupOnExit ? 'true' : 'false'
+      );
+    }
+
+    if (updates.autoBackupLimit !== undefined) {
+      db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(
+        'auto_backup_limit',
+        updates.autoBackupLimit.toString()
       );
     }
 
@@ -2361,7 +2379,7 @@ export function registerIpcHandlers() {
     const db = getDb();
     try {
       const result = db.prepare('INSERT INTO КатегоріїВитрат (Назва) VALUES (?)').run(name);
-      triggerAutoBackup();
+      triggerAutoBackup('expense-category-add');
       return { success: true, id: result.lastInsertRowid };
     } catch (error: any) {
       if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
@@ -2376,6 +2394,7 @@ export function registerIpcHandlers() {
     const db = getDb();
     try {
       db.prepare('UPDATE КатегоріїВитрат SET Назва = ? WHERE ID = ?').run(data.name, data.id);
+      triggerAutoBackup('expense-category-update');
       return { success: true };
     } catch (error: any) {
       if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
@@ -2396,6 +2415,7 @@ export function registerIpcHandlers() {
   ipcMain.handle('delete-expense-category', async (_event, id: number) => {
     const db = getDb();
     db.prepare('DELETE FROM КатегоріїВитрат WHERE ID = ?').run(id);
+    triggerAutoBackup('expense-category-delete');
     return { success: true };
   });
 
@@ -2413,7 +2433,7 @@ export function registerIpcHandlers() {
     const db = getDb();
     try {
       const result = db.prepare('INSERT INTO КатегоріїПрибутків (Назва) VALUES (?)').run(name);
-      triggerAutoBackup();
+      triggerAutoBackup('income-category-add');
       return { success: true, id: result.lastInsertRowid };
     } catch (error: any) {
       if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
@@ -2428,6 +2448,7 @@ export function registerIpcHandlers() {
     const db = getDb();
     try {
       db.prepare('UPDATE КатегоріїПрибутків SET Назва = ? WHERE ID = ?').run(data.name, data.id);
+      triggerAutoBackup('income-category-update');
       return { success: true };
     } catch (error: any) {
       if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
@@ -2448,6 +2469,7 @@ export function registerIpcHandlers() {
   ipcMain.handle('delete-income-category', async (_event, id: number) => {
     const db = getDb();
     db.prepare('DELETE FROM КатегоріїПрибутків WHERE ID = ?').run(id);
+    triggerAutoBackup('income-category-delete');
     return { success: true };
   });
 
@@ -2553,6 +2575,7 @@ export function registerIpcHandlers() {
       dateExecuted: processedDateExecuted
     });
 
+    triggerAutoBackup('transaction-add');
     return { success: true };
   });
 
@@ -2622,7 +2645,7 @@ export function registerIpcHandlers() {
     });
 
     transaction();
-    triggerAutoBackup();
+    triggerAutoBackup('transaction-delete');
     return { success: true };
   });
 

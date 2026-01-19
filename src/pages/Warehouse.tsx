@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useHotkeys } from '../hooks/useHotkeys';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { warehouseApi } from '../api/warehouse';
 import { settingsApi } from '../api/settings';
@@ -13,7 +15,19 @@ import { useTheme } from '../contexts/ThemeContext';
 export default function Warehouse() {
     const { currentTheme } = useTheme();
     const isLightGray = currentTheme.id === 'light-gray';
+    const navigate = useNavigate();
     const queryClient = useQueryClient();
+
+    useHotkeys('escape', () => {
+        if (showAddForm) {
+            setShowAddForm(false);
+            setSmartImportMode(false);
+            setImportText('');
+            setParsedItems([]);
+        } else {
+            navigate('/');
+        }
+    });
     const [search, setSearch] = useState('');
     const [searchInput, setSearchInput] = useState('');
     const [selectedSupplier, setSelectedSupplier] = useState<string>('');
@@ -400,8 +414,8 @@ export default function Warehouse() {
                     {showAddForm && (
                         <div className={`rounded-lg shadow-sm p-6 mb-6 border rainbow-groupbox ${isLightGray ? 'bg-gray-100 border-gray-300' : 'bg-slate-700 border-slate-600'}`}>
                             <h2 className={`text-lg font-semibold mb-4 ${isLightGray ? 'text-gray-900' : 'text-slate-100'}`}>Додати новий товар</h2>
-                            <form onSubmit={handleAddItem} className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <div>
+                            <form onSubmit={handleAddItem} className="grid grid-cols-1 md:grid-cols-8 gap-4">
+                                <div className="md:col-span-1">
                                     <label className={`block text-sm font-medium mb-1 ${isLightGray ? 'text-gray-700' : 'text-slate-300'}`}>
                                         Постачальник *
                                     </label>
@@ -429,7 +443,7 @@ export default function Warehouse() {
                                     </select>
                                 </div>
 
-                                <div>
+                                <div className="md:col-span-1">
                                     <label className={`block text-sm font-medium mb-1 ${isLightGray ? 'text-gray-700' : 'text-slate-300'}`}>
                                         Накладна
                                     </label>
@@ -441,7 +455,7 @@ export default function Warehouse() {
                                     />
                                 </div>
 
-                                <div>
+                                <div className="md:col-span-1">
                                     <label className={`block text-sm font-medium mb-1 ${isLightGray ? 'text-gray-700' : 'text-slate-300'}`}>
                                         Курс *
                                     </label>
@@ -481,7 +495,7 @@ export default function Warehouse() {
                                     />
                                 </div>
 
-                                <div className="md:col-span-1">
+                                <div className="md:col-span-2">
                                     <label className={`block text-sm font-medium mb-1 ${isLightGray ? 'text-gray-700' : 'text-slate-300'}`}>
                                         Назва товару *
                                     </label>
@@ -495,7 +509,7 @@ export default function Warehouse() {
                                     />
                                 </div>
 
-                                <div>
+                                <div className="md:col-span-1">
                                     <label className={`block text-sm font-medium mb-1 ${isLightGray ? 'text-gray-700' : 'text-slate-300'}`}>
                                         Ціна, $
                                     </label>
@@ -531,7 +545,7 @@ export default function Warehouse() {
                                     />
                                 </div>
 
-                                <div>
+                                <div className="md:col-span-1">
                                     <label className={`block text-sm font-medium mb-1 ${isLightGray ? 'text-gray-700' : 'text-slate-300'}`}>
                                         Вхід, грн
                                     </label>
@@ -558,7 +572,7 @@ export default function Warehouse() {
                                     />
                                 </div>
 
-                                <div>
+                                <div className="md:col-span-2">
                                     <label className={`block text-sm font-medium mb-1 ${isLightGray ? 'text-gray-700' : 'text-slate-300'}`}>
                                         Тип оплати
                                     </label>
@@ -588,7 +602,7 @@ export default function Warehouse() {
                                     </div>
                                 </div>
 
-                                <div>
+                                <div className="md:col-span-1">
                                     <label className={`block text-sm font-medium mb-1 ${isLightGray ? 'text-gray-700' : 'text-slate-300'}`}>
                                         Дата приходу
                                     </label>
@@ -600,7 +614,7 @@ export default function Warehouse() {
                                     />
                                 </div>
 
-                                <div>
+                                <div className="md:col-span-1">
                                     <label className={`block text-sm font-medium mb-1 ${isLightGray ? 'text-gray-700' : 'text-slate-300'}`}>
                                         Код товару
                                     </label>
@@ -613,7 +627,7 @@ export default function Warehouse() {
                                     />
                                 </div>
 
-                                <div>
+                                <div className="md:col-span-1">
                                     <label className={`block text-sm font-medium mb-1 ${isLightGray ? 'text-gray-700' : 'text-slate-300'}`}>
                                         Кількість
                                     </label>
@@ -629,7 +643,7 @@ export default function Warehouse() {
 
                                 {/* Smart import mode toggle */}
                                 {['DFI', 'ИНТЕХ', 'ARC'].some(s => formData.supplier.toUpperCase().includes(s)) && (
-                                    <div className="md:col-span-2 flex flex-col gap-3">
+                                    <div className="md:col-span-4 flex flex-col gap-3">
                                         <div className={`space-y-4 p-4 rounded-lg border rainbow-groupbox ${isLightGray ? 'bg-gray-200 border-gray-300' : 'bg-slate-700 border-slate-600'}`}>
                                             <div className="flex items-center gap-2">
                                                 <input
@@ -712,7 +726,7 @@ export default function Warehouse() {
                                     </div>
                                 )}
 
-                                <div className="md:col-span-2 flex gap-2 justify-end">
+                                <div className="md:col-span-4 flex gap-2 justify-end">
                                     <button
                                         type="button"
                                         onClick={() => {
