@@ -1,0 +1,129 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* Theme variables - will be set by ThemeContext */
+  --theme-bg: #0f172a;
+  --theme-surface: #1e293b;
+  --theme-surface-secondary: #334155;
+  --theme-border: #475569;
+  --theme-text: #f1f5f9;
+  --theme-text-secondary: #cbd5e1;
+  --theme-primary: #3b82f6;
+  --theme-primary-hover: #2563eb;
+  --theme-accent: #60a5fa;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background-color: var(--theme-bg);
+  color: var(--theme-text);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Background image overlay */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: var(--bg-image-opacity, 0);
+  z-index: -1;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+body.has-bg-image::before {
+  background-image: var(--bg-image-url, none);
+}
+
+/* Global theme-aware utility classes */
+.bg-theme {
+  background-color: var(--theme-bg) !important;
+}
+
+.bg-theme-surface {
+  background-color: var(--theme-surface) !important;
+}
+
+.bg-theme-surface-secondary {
+  background-color: var(--theme-surface-secondary) !important;
+}
+
+.text-theme {
+  color: var(--theme-text) !important;
+}
+
+.text-theme-secondary {
+  color: var(--theme-text-secondary) !important;
+}
+
+.border-theme {
+  border-color: var(--theme-border) !important;
+}
+
+.text-theme-primary {
+  color: var(--theme-primary) !important;
+}
+
+.bg-theme-primary {
+  background-color: var(--theme-primary) !important;
+}
+
+/* Override common Tailwind classes to use theme variables */
+.bg-slate-800 {
+  background-color: var(--theme-bg) !important;
+}
+
+.bg-slate-700 {
+  background-color: var(--theme-surface) !important;
+}
+
+.bg-slate-600 {
+  background-color: var(--theme-surface-secondary) !important;
+}
+
+.text-slate-100,
+.text-slate-200,
+.text-slate-300 {
+  color: var(--theme-text) !important;
+}
+
+.text-slate-400,
+.text-slate-500 {
+  color: var(--theme-text-secondary) !important;
+}
+
+.border-slate-600 {
+  border-color: var(--theme-border) !important;
+}
+
+.text-blue-400,
+.text-blue-500 {
+  color: var(--theme-accent) !important;
+}
+
+.bg-blue-600 {
+  background-color: var(--theme-primary) !important;
+}
+
+.bg-blue-500 {
+  background-color: var(--theme-primary-hover) !important;
+}
