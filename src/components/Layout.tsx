@@ -9,9 +9,12 @@ import { SystemStats } from './SystemStats';
 import { ShutdownTimer } from './ShutdownTimer';
 import { useHotkeys } from '../hooks/useHotkeys';
 import { UpdateNotification } from './UpdateNotification';
+import { useUpdate } from '../contexts/UpdateContext';
+import { RefreshCw, AlertCircle } from 'lucide-react';
 
 export const Layout: React.FC = () => {
     const { currentTheme } = useTheme();
+    const { updateResult, isChecking, checkUpdates } = useUpdate();
     const queryClient = useQueryClient();
     const navigate = useNavigate();
     const [isToggling, setIsToggling] = useState(false);
@@ -300,17 +303,36 @@ export const Layout: React.FC = () => {
                         <div className="h-6 w-px bg-slate-700 mx-2" />
 
                         <div className="flex items-center gap-3">
-                            <span className="text-xs text-slate-500 font-mono">
-                                {(() => {
-                                    const now = new Date();
-                                    const start = new Date(now.getFullYear(), 0, 0);
-                                    const diff = (now.getTime() - start.getTime()) + ((start.getTimezoneOffset() - now.getTimezoneOffset()) * 60 * 1000);
-                                    const oneDay = 1000 * 60 * 60 * 24;
-                                    const dayOfYear = Math.floor(diff / oneDay);
-                                    const minutesSinceStartOfDay = now.getHours() * 60 + now.getMinutes();
-                                    return `v.${now.getFullYear()}.${dayOfYear}.${minutesSinceStartOfDay}`;
-                                })()}
-                            </span>
+                            <button
+                                onClick={() => checkUpdates()}
+                                disabled={isChecking}
+                                className={`group relative flex items-center gap-2 px-2 py-1 rounded-md transition-all
+                                    ${updateResult?.hasUpdate
+                                        ? 'bg-orange-500/10 text-orange-400 hover:bg-orange-500/20'
+                                        : 'text-slate-500 hover:bg-slate-700/50 hover:text-slate-300'}`}
+                                title={updateResult?.hasUpdate ? `Доступна версія ${updateResult.latestVersion}! Натисніть для перевірки.` : "Перевірити оновлення"}
+                            >
+                                <span className="text-[10px] font-mono leading-none">
+                                    {(() => {
+                                        const now = new Date();
+                                        const start = new Date(now.getFullYear(), 0, 0);
+                                        const diff = (now.getTime() - start.getTime()) + ((start.getTimezoneOffset() - now.getTimezoneOffset()) * 60 * 1000);
+                                        const oneDay = 1000 * 60 * 60 * 24;
+                                        const dayOfYear = Math.floor(diff / oneDay);
+                                        const minutesSinceStartOfDay = now.getHours() * 60 + now.getMinutes();
+                                        return `v.${now.getFullYear()}.${dayOfYear}.${minutesSinceStartOfDay}`;
+                                    })()}
+                                </span>
+
+                                {isChecking ? (
+                                    <RefreshCw className="w-3 h-3 animate-spin opacity-50" />
+                                ) : updateResult?.hasUpdate ? (
+                                    <div className="relative">
+                                        <AlertCircle className="w-3 h-3 text-orange-400 animate-pulse" />
+                                        <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border border-slate-900 shadow-sm shadow-red-500/50" />
+                                    </div>
+                                ) : null}
+                            </button>
                             <button
                                 onClick={() => window.close()}
                                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm font-medium"

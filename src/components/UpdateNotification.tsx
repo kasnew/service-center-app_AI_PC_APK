@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Download, X, ExternalLink, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react';
-import { checkForUpdates, UpdateCheckResult, getDownloadUrlForPlatform, formatFileSize } from '../utils/updateChecker';
+import { getDownloadUrlForPlatform, formatFileSize } from '../utils/updateChecker';
 import { useTheme } from '../contexts/ThemeContext';
+import { useUpdate } from '../contexts/UpdateContext';
 
 interface UpdateNotificationProps {
     onClose?: () => void;
@@ -9,37 +10,9 @@ interface UpdateNotificationProps {
 
 export function UpdateNotification({ onClose }: UpdateNotificationProps) {
     const { currentTheme } = useTheme();
+    const { updateResult } = useUpdate();
     const isLight = currentTheme.type === 'light';
-    const [updateResult, setUpdateResult] = useState<UpdateCheckResult | null>(null);
     const [isDismissed, setIsDismissed] = useState(false);
-
-    const performCheck = async () => {
-        try {
-            const result = await checkForUpdates();
-            setUpdateResult(result);
-
-            // Store in localStorage to avoid checking too frequently
-            localStorage.setItem('lastUpdateCheck', new Date().toISOString());
-            if (!result.hasUpdate) {
-                localStorage.setItem('lastKnownVersion', result.latestVersion || result.currentVersion);
-            }
-        } catch (error) {
-            console.error('Update check failed:', error);
-        }
-    };
-
-    useEffect(() => {
-        // Check if we should run an update check
-        const lastCheck = localStorage.getItem('lastUpdateCheck');
-        const hoursSinceLastCheck = lastCheck
-            ? (Date.now() - new Date(lastCheck).getTime()) / (1000 * 60 * 60)
-            : 24;
-
-        // Only check once every 6 hours
-        if (hoursSinceLastCheck >= 6) {
-            performCheck();
-        }
-    }, []);
 
     const handleDismiss = () => {
         setIsDismissed(true);
@@ -164,21 +137,11 @@ export function UpdateNotification({ onClose }: UpdateNotificationProps) {
 // Compact version for settings page
 export function UpdateChecker() {
     const { currentTheme } = useTheme();
+    const { updateResult, isChecking, checkUpdates } = useUpdate();
     const isLight = currentTheme.type === 'light';
-    const [updateResult, setUpdateResult] = useState<UpdateCheckResult | null>(null);
-    const [isChecking, setIsChecking] = useState(false);
 
     const performCheck = async () => {
-        setIsChecking(true);
-        try {
-            const result = await checkForUpdates();
-            setUpdateResult(result);
-            localStorage.setItem('lastUpdateCheck', new Date().toISOString());
-        } catch (error) {
-            console.error('Update check failed:', error);
-        } finally {
-            setIsChecking(false);
-        }
+        await checkUpdates();
     };
 
     return (
