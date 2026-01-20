@@ -61,7 +61,7 @@ export const RepairEditor: React.FC = () => {
     const loadedIdRef = useRef<string | null>(null);
 
     // Load existing repair
-    const { data: repair, isLoading } = useQuery({
+    const { data: repair, isLoading, refetch } = useQuery({
         queryKey: ['repair', id],
         queryFn: () => repairApi.getRepairDetails(Number(id)),
         enabled: !isNew
