@@ -1,12 +1,15 @@
 {
   "name": "service-center-app",
   "private": true,
-  "version": "1.0.0",
+  "version": "2026.20.1004",
   "description": "Service Center Management Application",
   "author": "Service Center Team",
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "version-update": "node scripts/update-version.js",
+    "prebuild": "npm run version-update",
+    "prebuild:linux": "npm run version-update",
     "build": "cross-env NODE_OPTIONS=--max-old-space-size=2048 npm run build:linux",
     "build:all": "cross-env NODE_OPTIONS=--max-old-space-size=2048 tsc && vite build && electron-builder",
     "build:gentle": "cross-env NODE_OPTIONS=--max-old-space-size=1536 tsc && vite build && electron-builder --linux AppImage",

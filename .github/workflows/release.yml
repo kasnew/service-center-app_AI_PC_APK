@@ -28,7 +28,16 @@ jobs:
         run: npm ci
 
       - name: Build Linux AppImage
-        run: npm run build:linux
+        run: |
+          # Extract version from tag if present, otherwise use script
+          if [[ $GITHUB_REF == refs/tags/v* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+            echo "Using tag version: $VERSION"
+            npm version $VERSION --no-git-tag-version
+          else
+            npm run version-update
+          fi
+          npm run build:linux
 
       - name: Upload Linux artifact
         uses: actions/upload-artifact@v4
@@ -51,11 +60,22 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Get version
+        id: vars
+        run: |
+          if [[ $GITHUB_REF == refs/tags/v* ]]; then
+            echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          else
+            echo "version=1.0.0" >> $GITHUB_OUTPUT
+          fi
+
       - name: Build Android APK
         working-directory: android-app
         run: |
           chmod +x gradlew
           ./gradlew assembleRelease
+          # Rename APK to include version
+          find app/build/outputs/apk/release/ -name "*.apk" -exec mv {} app/build/outputs/apk/release/ServiceCenterApp-Android-${{ steps.vars.outputs.version }}.apk \;
 
       - name: Upload Android artifact
         uses: actions/upload-artifact@v4
@@ -102,15 +122,15 @@ jobs:
             
             ### Завантаження
             
-            - **Linux**: Завантажте `.AppImage` файл
-            - **Android**: Завантажте `.apk` файл
+            - **Linux**: Завантажте `ServiceCenterApp-Linux-${{ steps.version.outputs.VERSION }}.AppImage`
+            - **Android**: Завантажте `ServiceCenterApp-Android-${{ steps.version.outputs.VERSION }}.apk`
             
             ### Встановлення
             
             **Linux:**
             ```bash
-            chmod +x ServiceCenterApp-Linux-*.AppImage
-            ./ServiceCenterApp-Linux-*.AppImage
+            chmod +x ServiceCenterApp-Linux-${{ steps.version.outputs.VERSION }}.AppImage
+            ./ServiceCenterApp-Linux-${{ steps.version.outputs.VERSION }}.AppImage
             ```
             
             **Android:**
