@@ -16,6 +16,11 @@ export interface BackupSettings {
     autoBackupLimit: number;
 }
 
+export interface ShutdownSettings {
+    enabled: boolean;
+    time: string; // HH:mm format
+}
+
 export const settingsApi = {
     /**
      * Create a new backup of the database
@@ -107,5 +112,26 @@ export const settingsApi = {
      */
     updateBackupSettings: async (updates: Partial<BackupSettings>): Promise<{ success: boolean }> => {
         return window.ipcRenderer.invoke('update-backup-settings', updates);
+    },
+
+    /**
+     * Get scheduled shutdown settings
+     */
+    getShutdownSettings: async (): Promise<ShutdownSettings> => {
+        return window.ipcRenderer.invoke('get-shutdown-settings');
+    },
+
+    /**
+     * Update scheduled shutdown settings
+     */
+    updateShutdownSettings: async (updates: Partial<ShutdownSettings>): Promise<{ success: boolean }> => {
+        return window.ipcRenderer.invoke('update-shutdown-settings', updates);
+    },
+
+    /**
+     * Manually trigger shutdown with backup
+     */
+    performShutdown: async (): Promise<{ success: boolean }> => {
+        return window.ipcRenderer.invoke('perform-shutdown');
     },
 };

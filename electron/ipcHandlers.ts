@@ -2211,6 +2211,76 @@ export function registerIpcHandlers() {
     return { success: true };
   });
 
+  // ========== SHUTDOWN SETTINGS ==========
+
+  ipcMain.handle('get-shutdown-settings', async () => {
+    const db = getDb();
+    const settings = {
+      enabled: false,
+      time: '21:00',
+    };
+
+    const enabled = db.prepare('SELECT value FROM settings WHERE key = ?').get('shutdown_enabled') as any;
+    const time = db.prepare('SELECT value FROM settings WHERE key = ?').get('shutdown_time') as any;
+
+    if (enabled) settings.enabled = enabled.value === 'true';
+    if (time) settings.time = time.value;
+
+    return settings;
+  });
+
+  ipcMain.handle('update-shutdown-settings', async (_event, updates: any) => {
+    const db = getDb();
+
+    if (updates.enabled !== undefined) {
+      db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(
+        'shutdown_enabled',
+        updates.enabled ? 'true' : 'false'
+      );
+    }
+
+    if (updates.time !== undefined) {
+      db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(
+        'shutdown_time',
+        updates.time
+      );
+    }
+
+    return { success: true };
+  });
+
+  ipcMain.handle('perform-shutdown', async () => {
+    try {
+      console.log('Performing scheduled shutdown sequence...');
+
+      // 1. Create a backup first (to ensure everything is saved)
+      try {
+        await createBackupHelper(true, 'auto', 'before_shutdown');
+        console.log('Shutdown backup created successfully');
+      } catch (backupError) {
+        console.error('Failed to create shutdown backup, continuing with shutdown:', backupError);
+      }
+
+      // 2. Close database
+      closeDb();
+      console.log('Database closed');
+
+      // 3. Execute shutdown command
+      // For Linux: shutdown -h now or poweroff
+      // For Windows: shutdown /s /f /t 0
+      const isWindows = process.platform === 'win32';
+      const command = isWindows ? 'shutdown /s /f /t 0' : 'shutdown -h now';
+
+      console.log(`Executing shutdown command: ${command}`);
+      execSync(command);
+
+      return { success: true };
+    } catch (error: any) {
+      console.error('Shutdown failed:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
   // ========== LEGACY DATABASE IMPORT ==========
 
   // Validate legacy database

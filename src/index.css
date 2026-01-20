@@ -55,10 +55,33 @@ body {
   background: var(--theme-border);
 }
 
-/* For Firefox */
+/* Global drag and drop prevention */
 * {
-  scrollbar-width: thin;
-  scrollbar-color: var(--theme-surface-secondary) var(--theme-bg);
+  -webkit-user-drag: none !important;
+  user-drag: none !important;
+}
+
+[draggable="true"],
+[draggable="true"] *,
+.can-drag,
+.can-drag * {
+  -webkit-user-drag: element !important;
+  user-drag: element !important;
+}
+
+/* Also disable standard link/image dragging behaviors */
+a,
+img {
+  -webkit-user-drag: none;
+  user-drag: none;
+}
+
+/* Disable selection for UI elements to feel more native */
+nav,
+button,
+.no-select {
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* Global theme-aware utility classes */

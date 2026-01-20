@@ -37,6 +37,13 @@ export default function PartsManager({
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [partSearch, setPartSearch] = useState('');
 
+    // Sync repairId prop with internal state
+    React.useEffect(() => {
+        if (repairId !== 0 && repairId !== currentRepairId) {
+            setCurrentRepairId(repairId);
+        }
+    }, [repairId, currentRepairId]);
+
     // Form state
     const [formData, setFormData] = useState({
         partId: 0,

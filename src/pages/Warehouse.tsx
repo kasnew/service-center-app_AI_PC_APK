@@ -5,11 +5,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { warehouseApi } from '../api/warehouse';
 import { settingsApi } from '../api/settings';
 import { Part } from '../types/db';
-import { Package, Plus, Trash2, Search, Filter, X, ChevronDown, ChevronRight, Edit3, Check, RotateCcw } from 'lucide-react';
+import { Package, Plus, Trash2, Search, Filter, ChevronDown, ChevronRight, Edit3, Check, RotateCcw, Save } from 'lucide-react';
 import { parseDFI, parseARC } from '../utils/parsers';
 import { ConfirmationModal } from '../components/ConfirmationModal';
 import { DeleteItemModal } from '../components/DeleteItemModal';
-import { normalizeMoneyInput, parseMoneyValue, limitDecimalPlaces } from '../utils/formatters';
+import { parseMoneyValue, limitDecimalPlaces } from '../utils/formatters';
 import { useTheme } from '../contexts/ThemeContext';
 
 export default function Warehouse() {
@@ -325,437 +325,329 @@ export default function Warehouse() {
                     </div>
 
                     {/* Filters */}
-                    <div className={`rounded-lg shadow-sm p-4 mb-4 border rainbow-groupbox ${isLightGray ? 'bg-gray-100 border-gray-300' : 'bg-slate-700 border-slate-600'}`}>
-                        <div className="flex flex-wrap items-center gap-4">
-                            {/* Search - reduced width */}
-                            <div className="relative w-[180px]">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <div className={`rounded-xl shadow-lg p-3 mb-4 border transition-all duration-300 ${isLightGray ? 'bg-gray-100 border-gray-300' : 'bg-slate-700/50 border-slate-600/50'} rainbow-groupbox`}>
+                        <div className="flex flex-wrap items-center gap-3">
+                            {/* Search */}
+                            <div className="relative min-w-[200px] flex-1 max-w-[300px]">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                                 <input
                                     type="text"
                                     placeholder="Пошук... (Enter)"
                                     value={searchInput}
                                     onChange={(e) => setSearchInput(e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter') {
-                                            setSearch(searchInput);
-                                        }
-                                    }}
-                                    className={`w-full pl-10 pr-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm border ${isLightGray ? 'bg-white border-gray-300 text-gray-900' : 'bg-slate-800 border-slate-600 text-slate-100 placeholder-slate-400'}`}
+                                    onKeyDown={(e) => e.key === 'Enter' && setSearch(searchInput)}
+                                    className={`w-full pl-10 pr-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all border ${isLightGray ? 'bg-white border-gray-300 text-gray-900' : 'bg-slate-800/50 border-slate-600 text-slate-100'}`}
                                 />
                             </div>
 
-                            {/* Supplier filter - reduced width */}
-                            <div className="relative w-[198px]">
-                                <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            {/* Supplier filter */}
+                            <div className="relative w-[210px]">
+                                <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                                 <select
                                     value={selectedSupplier}
                                     onChange={(e) => setSelectedSupplier(e.target.value)}
-                                    className={`w-full pl-10 pr-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none text-sm border ${isLightGray ? 'bg-white border-gray-300 text-gray-900' : 'bg-slate-800 border-slate-600 text-slate-100'}`}
+                                    className={`w-full pl-10 pr-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none appearance-none text-sm border ${isLightGray ? 'bg-white border-gray-300 text-gray-900' : 'bg-slate-800/50 border-slate-600 text-slate-100'}`}
                                 >
-                                    <option value="" className={isLightGray ? '' : 'bg-slate-800'}>Всі постачальники</option>
-                                    {existingSuppliers.map((supplier) => (
-                                        <option key={supplier} value={supplier} className={isLightGray ? '' : 'bg-slate-800'}>
-                                            {supplier}
-                                        </option>
-                                    ))}
+                                    <option value="">Всі постачальники</option>
+                                    {existingSuppliers.map((s) => <option key={s} value={s}>{s}</option>)}
                                 </select>
                             </div>
 
                             {/* Stock filter */}
-                            <div className="flex items-center gap-2">
-                                <label htmlFor="stockFilter" className={`text-sm font-medium ${isLightGray ? 'text-gray-700' : 'text-slate-300'}`}>
-                                    Стан:
-                                </label>
+                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-600/50 bg-slate-800/30">
+                                <span className="text-xs font-semibold text-slate-400 uppercase tracking-tight">Стан:</span>
                                 <select
-                                    id="stockFilter"
                                     value={stockFilter}
-                                    onChange={(e) => setStockFilter(e.target.value as 'inStock' | 'sold' | 'all')}
-                                    className={`px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm border ${isLightGray ? 'bg-white border-gray-300 text-gray-900' : 'bg-slate-800 border-slate-600 text-slate-100'}`}
+                                    onChange={(e) => setStockFilter(e.target.value as any)}
+                                    className="bg-transparent text-sm font-medium outline-none text-slate-100 cursor-pointer"
                                 >
-                                    <option value="inStock" className={isLightGray ? '' : 'bg-slate-800'}>В наявності</option>
-                                    <option value="sold" className={isLightGray ? '' : 'bg-slate-800'}>Продано</option>
-                                    <option value="all" className={isLightGray ? '' : 'bg-slate-800'}>Усі</option>
+                                    <option value="inStock">В наявності</option>
+                                    <option value="sold">Продано</option>
+                                    <option value="all">Усі</option>
                                 </select>
                             </div>
 
-                            {/* Date arrival filters */}
-                            <div className="flex items-center gap-2">
-                                <label className="text-sm text-slate-400">Дата приходу:</label>
+                            {/* Date filters */}
+                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-600/50 bg-slate-800/30">
+                                <span className="text-xs font-semibold text-slate-400 uppercase tracking-tight">Прихід:</span>
                                 <input
                                     type="date"
                                     value={dateArrivalStart}
                                     onChange={(e) => setDateArrivalStart(e.target.value)}
-                                    className={`border rounded px-2 py-1 text-sm ${isLightGray ? 'bg-white border-gray-300 text-gray-900' : 'bg-slate-800 border-slate-600 text-slate-100'}`}
+                                    className="bg-transparent text-sm outline-none text-slate-100 cursor-pointer w-[120px]"
                                 />
-                                <span className="text-slate-400">-</span>
+                                <span className="text-slate-600">—</span>
                                 <input
                                     type="date"
                                     value={dateArrivalEnd}
                                     onChange={(e) => setDateArrivalEnd(e.target.value)}
-                                    className={`border rounded px-2 py-1 text-sm ${isLightGray ? 'bg-white border-gray-300 text-gray-900' : 'bg-slate-800 border-slate-600 text-slate-100'}`}
+                                    className="bg-transparent text-sm outline-none text-slate-100 cursor-pointer w-[120px]"
                                 />
                             </div>
-                        </div>
-                        {/* Reset filters button */}
-                        {(search || selectedSupplier || stockFilter !== 'inStock' || dateArrivalStart || dateArrivalEnd) && (
-                            <div className="mt-4 pt-4 border-t border-slate-600">
+
+                            {/* Reset button */}
+                            {(search || selectedSupplier || stockFilter !== 'inStock' || dateArrivalStart || dateArrivalEnd) && (
                                 <button
                                     onClick={handleReset}
-                                    className="px-4 py-2 rounded-lg text-sm font-semibold border-2 border-red-500/70 bg-red-500/20 text-red-400 hover:bg-red-500/30 hover:border-red-500 hover:text-red-300 transition-all flex items-center gap-2 shadow-lg shadow-red-500/20"
+                                    className="p-2 rounded-lg text-red-400 hover:bg-red-400/10 transition-colors border border-red-400/30"
+                                    title="Скинути фільтри"
                                 >
-                                    <X className="w-4 h-4" />
-                                    Скинути фільтри
+                                    <RotateCcw className="w-4 h-4" />
                                 </button>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
 
-                    {/* Add form */}
+                    {/* Add form - Optimized Compact Layout */}
                     {showAddForm && (
-                        <div className={`rounded-lg shadow-sm p-6 mb-6 border rainbow-groupbox ${isLightGray ? 'bg-gray-100 border-gray-300' : 'bg-slate-700 border-slate-600'}`}>
-                            <h2 className={`text-lg font-semibold mb-4 ${isLightGray ? 'text-gray-900' : 'text-slate-100'}`}>Додати новий товар</h2>
-                            <form onSubmit={handleAddItem} className="grid grid-cols-1 md:grid-cols-8 gap-4">
-                                <div className="md:col-span-1">
-                                    <label className={`block text-sm font-medium mb-1 ${isLightGray ? 'text-gray-700' : 'text-slate-300'}`}>
-                                        Постачальник *
-                                    </label>
-                                    <select
-                                        required
-                                        value={formData.supplier}
-                                        onChange={(e) => {
-                                            const newSupplier = e.target.value;
-                                            setFormData({ ...formData, supplier: newSupplier });
-                                            // Reset smart import mode if supplier is not supported
-                                            if (!['DFI', 'ИНТЕХ', 'ARC'].some(s => newSupplier.toUpperCase().includes(s))) {
-                                                setSmartImportMode(false);
-                                                setImportText('');
-                                                setParsedItems([]);
-                                            }
-                                        }}
-                                        className={`w-full px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent border ${isLightGray ? 'bg-white border-gray-300 text-gray-900' : 'bg-slate-800 border-slate-600 text-slate-100'}`}
-                                    >
-                                        <option value="" className={isLightGray ? '' : 'bg-slate-800'}>Оберіть постачальника</option>
-                                        {counterparties.map((supplier: { ID: number; Name: string }) => (
-                                            <option key={supplier.ID} value={supplier.Name} className={isLightGray ? '' : 'bg-slate-800'}>
-                                                {supplier.Name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
+                        <div className={`rounded-xl shadow-2xl p-5 mb-6 border-2 transition-all duration-500 animate-in fade-in slide-in-from-top-4 ${isLightGray ? 'bg-gray-100 border-gray-300' : 'bg-slate-700/80 border-blue-500/20 shadow-blue-500/5'}`}>
+                            <div className="flex items-center justify-between mb-5">
+                                <h2 className={`text-xl font-bold flex items-center gap-2 ${isLightGray ? 'text-gray-900' : 'text-slate-100'}`}>
+                                    <Plus className="w-5 h-5 text-blue-500" />
+                                    Додати новий захід
+                                </h2>
 
-                                <div className="md:col-span-1">
-                                    <label className={`block text-sm font-medium mb-1 ${isLightGray ? 'text-gray-700' : 'text-slate-300'}`}>
-                                        Накладна
+                                {['DFI', 'ИНТЕХ', 'ARC'].some(s => formData.supplier.toUpperCase().includes(s)) && (
+                                    <label className="flex items-center gap-2 cursor-pointer group bg-purple-500/10 px-3 py-1.5 rounded-lg border border-purple-500/30">
+                                        <input
+                                            type="checkbox"
+                                            checked={smartImportMode}
+                                            onChange={(e) => {
+                                                setSmartImportMode(e.target.checked);
+                                                if (!e.target.checked) {
+                                                    setImportText('');
+                                                    setParsedItems([]);
+                                                }
+                                            }}
+                                            className="w-4 h-4 text-purple-500 rounded border-purple-500/50 bg-slate-800"
+                                        />
+                                        <span className="text-sm font-semibold text-purple-400">Розумний імпорт</span>
                                     </label>
-                                    <input
-                                        type="text"
-                                        value={formData.invoice}
-                                        onChange={(e) => setFormData({ ...formData, invoice: e.target.value })}
-                                        className={`w-full px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent border ${isLightGray ? 'bg-white border-gray-300 text-gray-900' : 'bg-slate-800 border-slate-600 text-slate-100'}`}
-                                    />
-                                </div>
+                                )}
+                            </div>
 
-                                <div className="md:col-span-1">
-                                    <label className={`block text-sm font-medium mb-1 ${isLightGray ? 'text-gray-700' : 'text-slate-300'}`}>
-                                        Курс *
-                                    </label>
-                                    <input
-                                        type="text"
-                                        inputMode="decimal"
-                                        required
-                                        value={exchangeRateDisplay}
-                                        onChange={(e) => {
-                                            // Фільтруємо введення - тільки цифри, крапка та кома
-                                            const filtered = limitDecimalPlaces(e.target.value, 2);
-                                            setExchangeRateDisplay(filtered);
-                                            const rate = parseMoneyValue(filtered);
-                                            const newCostUah = formData.priceUsd * rate;
-                                            setFormData({
-                                                ...formData,
-                                                exchangeRate: rate,
-                                                costUah: newCostUah,
-                                            });
-                                            setCostUahDisplay(newCostUah > 0 ? newCostUah.toFixed(2) : '');
-                                        }}
-                                        onBlur={(e) => {
-                                            // Round to 2 decimal places on blur
-                                            const normalized = normalizeMoneyInput(e.target.value);
-                                            const rate = parseMoneyValue(normalized);
-                                            const rounded = Math.round(rate * 100) / 100;
-                                            const newCostUah = formData.priceUsd * rounded;
-                                            setFormData({
-                                                ...formData,
-                                                exchangeRate: rounded,
-                                                costUah: newCostUah,
-                                            });
-                                            setExchangeRateDisplay(rounded > 0 ? rounded.toFixed(2) : '');
-                                            setCostUahDisplay(newCostUah > 0 ? newCostUah.toFixed(2) : '');
-                                        }}
-                                        className={`w-full px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent border ${isLightGray ? 'bg-white border-gray-300 text-gray-900' : 'bg-slate-800 border-slate-600 text-slate-100 font-medium'}`}
-                                    />
-                                </div>
+                            <form onSubmit={handleAddItem} className="space-y-6">
+                                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-10 gap-x-4 gap-y-3">
+                                    <div className="lg:col-span-2">
+                                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Постачальник *</label>
+                                        <select
+                                            required
+                                            value={formData.supplier}
+                                            onChange={(e) => setFormData({ ...formData, supplier: e.target.value })}
+                                            className={`w-full px-3 py-2 rounded-lg border outline-none text-sm font-medium ${isLightGray ? 'bg-white border-gray-300 text-gray-900' : 'bg-slate-800 border-slate-600 text-slate-100 focus:border-blue-500'}`}
+                                        >
+                                            <option value="">Оберіть...</option>
+                                            {counterparties.map((s: any) => <option key={s.ID} value={s.Name}>{s.Name}</option>)}
+                                        </select>
+                                    </div>
 
-                                <div className="md:col-span-2">
-                                    <label className={`block text-sm font-medium mb-1 ${isLightGray ? 'text-gray-700' : 'text-slate-300'}`}>
-                                        Назва товару *
-                                    </label>
-                                    <input
-                                        type="text"
-                                        required={!smartImportMode}
-                                        value={formData.name}
-                                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                        disabled={smartImportMode}
-                                        className={`w-full px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent border ${isLightGray ? 'bg-white border-gray-300 text-gray-900' : 'bg-slate-800 border-slate-600 text-slate-100'} disabled:opacity-50`}
-                                    />
-                                </div>
+                                    <div className="lg:col-span-1">
+                                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Накладна</label>
+                                        <input
+                                            type="text"
+                                            value={formData.invoice}
+                                            onChange={(e) => setFormData({ ...formData, invoice: e.target.value })}
+                                            className={`w-full px-3 py-2 rounded-lg border outline-none text-sm ${isLightGray ? 'bg-white border-gray-300 text-gray-900' : 'bg-slate-800 border-slate-600 text-slate-100 focus:border-blue-500'}`}
+                                        />
+                                    </div>
 
-                                <div className="md:col-span-1">
-                                    <label className={`block text-sm font-medium mb-1 ${isLightGray ? 'text-gray-700' : 'text-slate-300'}`}>
-                                        Ціна, $
-                                    </label>
-                                    <input
-                                        type="text"
-                                        inputMode="decimal"
-                                        value={priceUsdDisplay}
-                                        onChange={(e) => {
-                                            // Фільтруємо введення - тільки цифри, крапка та кома
-                                            const filtered = limitDecimalPlaces(e.target.value, 2);
-                                            setPriceUsdDisplay(filtered);
-                                            const parsed = parseMoneyValue(filtered);
-                                            setFormData({
-                                                ...formData,
-                                                priceUsd: parsed,
-                                                costUah: parsed * formData.exchangeRate
-                                            });
-                                        }}
-                                        onBlur={(e) => {
-                                            // Round to 2 decimal places on blur
-                                            const normalized = normalizeMoneyInput(e.target.value);
-                                            const parsed = parseMoneyValue(normalized);
-                                            const rounded = Math.round(parsed * 100) / 100;
-                                            setFormData({
-                                                ...formData,
-                                                priceUsd: rounded,
-                                                costUah: rounded * formData.exchangeRate
-                                            });
-                                            setPriceUsdDisplay(rounded > 0 ? rounded.toFixed(2) : '');
-                                        }}
-                                        disabled={smartImportMode}
-                                        className={`w-full px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent border ${isLightGray ? 'bg-white border-gray-300 text-gray-900' : 'bg-slate-800 border-slate-600 text-slate-100'} disabled:opacity-50`}
-                                    />
-                                </div>
+                                    <div className="lg:col-span-1">
+                                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Курс *</label>
+                                        <input
+                                            type="text"
+                                            inputMode="decimal"
+                                            required
+                                            value={exchangeRateDisplay}
+                                            onChange={(e) => {
+                                                const filtered = limitDecimalPlaces(e.target.value, 2);
+                                                setExchangeRateDisplay(filtered);
+                                                const rate = parseMoneyValue(filtered);
+                                                const newCostUah = formData.priceUsd * rate;
+                                                setFormData({ ...formData, exchangeRate: rate, costUah: newCostUah });
+                                                setCostUahDisplay(newCostUah > 0 ? newCostUah.toFixed(2) : '');
+                                            }}
+                                            className={`w-full px-3 py-2 rounded-lg border outline-none text-sm font-bold ${isLightGray ? 'bg-white border-gray-300 text-gray-900' : 'bg-slate-800 border-slate-600 text-blue-400 focus:border-blue-500'}`}
+                                        />
+                                    </div>
 
-                                <div className="md:col-span-1">
-                                    <label className={`block text-sm font-medium mb-1 ${isLightGray ? 'text-gray-700' : 'text-slate-300'}`}>
-                                        Вхід, грн
-                                    </label>
-                                    <input
-                                        type="text"
-                                        inputMode="decimal"
-                                        value={costUahDisplay}
-                                        onChange={(e) => {
-                                            // Фільтруємо введення - тільки цифри, крапка та кома
-                                            const filtered = limitDecimalPlaces(e.target.value, 2);
-                                            setCostUahDisplay(filtered);
-                                            const parsed = parseMoneyValue(filtered);
-                                            setFormData({ ...formData, costUah: parsed });
-                                        }}
-                                        onBlur={(e) => {
-                                            // Round to 2 decimal places on blur
-                                            const normalized = normalizeMoneyInput(e.target.value);
-                                            const parsed = parseMoneyValue(normalized);
-                                            const rounded = Math.round(parsed * 100) / 100;
-                                            setFormData({ ...formData, costUah: rounded });
-                                            setCostUahDisplay(rounded > 0 ? rounded.toFixed(2) : '');
-                                        }}
-                                        className={`w-full px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent border ${isLightGray ? 'bg-white border-gray-300 text-gray-900' : 'bg-slate-800 border-slate-600 text-slate-100 font-bold'}`}
-                                    />
-                                </div>
+                                    <div className="lg:col-span-3">
+                                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Назва товару *</label>
+                                        <input
+                                            type="text"
+                                            required={!smartImportMode}
+                                            value={formData.name}
+                                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                            disabled={smartImportMode}
+                                            className={`w-full px-3 py-2 rounded-lg border outline-none text-sm ${isLightGray ? 'bg-white border-gray-300 text-gray-900' : 'bg-slate-800 border-slate-600 text-slate-100 focus:border-blue-500 disabled:opacity-40'}`}
+                                        />
+                                    </div>
 
-                                <div className="md:col-span-2">
-                                    <label className={`block text-sm font-medium mb-1 ${isLightGray ? 'text-gray-700' : 'text-slate-300'}`}>
-                                        Тип оплати
-                                    </label>
-                                    <div className="flex gap-4 h-[42px] items-center">
-                                        <label className="flex items-center gap-2 cursor-pointer">
-                                            <input
-                                                type="radio"
-                                                name="paymentType"
-                                                value="Готівка"
-                                                checked={formData.paymentType === 'Готівка'}
-                                                onChange={(e) => setFormData({ ...formData, paymentType: e.target.value })}
-                                                className={`w-4 h-4 border-slate-600 text-blue-600 focus:ring-blue-500 ${isLightGray ? 'bg-white' : 'bg-slate-800'}`}
-                                            />
-                                            <span className={`text-sm ${isLightGray ? 'text-gray-700' : 'text-slate-300'}`}>Готівка</span>
-                                        </label>
-                                        <label className="flex items-center gap-2 cursor-pointer">
-                                            <input
-                                                type="radio"
-                                                name="paymentType"
-                                                value="Картка"
-                                                checked={formData.paymentType === 'Картка'}
-                                                onChange={(e) => setFormData({ ...formData, paymentType: e.target.value })}
-                                                className={`w-4 h-4 border-slate-600 text-blue-600 focus:ring-blue-500 ${isLightGray ? 'bg-white' : 'bg-slate-800'}`}
-                                            />
-                                            <span className={`text-sm ${isLightGray ? 'text-gray-700' : 'text-slate-300'}`}>Картка</span>
-                                        </label>
+                                    <div className="lg:col-span-1">
+                                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Ціна, $</label>
+                                        <input
+                                            type="text"
+                                            inputMode="decimal"
+                                            value={priceUsdDisplay}
+                                            onChange={(e) => {
+                                                const filtered = limitDecimalPlaces(e.target.value, 2);
+                                                setPriceUsdDisplay(filtered);
+                                                const parsed = parseMoneyValue(filtered);
+                                                setFormData({ ...formData, priceUsd: parsed, costUah: parsed * formData.exchangeRate });
+                                            }}
+                                            disabled={smartImportMode}
+                                            className={`w-full px-3 py-2 rounded-lg border outline-none text-sm ${isLightGray ? 'bg-white border-gray-300 text-gray-900' : 'bg-slate-800 border-slate-600 text-slate-100 focus:border-blue-500 disabled:opacity-40'}`}
+                                        />
+                                    </div>
+
+                                    <div className="lg:col-span-1">
+                                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Вхід, грн</label>
+                                        <input
+                                            type="text"
+                                            inputMode="decimal"
+                                            value={costUahDisplay}
+                                            onChange={(e) => {
+                                                const filtered = limitDecimalPlaces(e.target.value, 2);
+                                                setCostUahDisplay(filtered);
+                                                const parsed = parseMoneyValue(filtered);
+                                                setFormData({ ...formData, costUah: parsed });
+                                            }}
+                                            className={`w-full px-3 py-2 rounded-lg border outline-none text-sm font-bold ${isLightGray ? 'bg-white border-gray-300 text-gray-900' : 'bg-slate-800 border-slate-600 text-green-400 focus:border-blue-500'}`}
+                                        />
+                                    </div>
+
+                                    <div className="lg:col-span-1">
+                                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">К-сть</label>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            value={formData.quantity}
+                                            onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 1 })}
+                                            disabled={smartImportMode}
+                                            className={`w-full px-3 py-2 rounded-lg border outline-none text-sm ${isLightGray ? 'bg-white border-gray-300 text-gray-900' : 'bg-slate-800 border-slate-600 text-slate-100 focus:border-blue-500 disabled:opacity-40'}`}
+                                        />
                                     </div>
                                 </div>
 
-                                <div className="md:col-span-1">
-                                    <label className={`block text-sm font-medium mb-1 ${isLightGray ? 'text-gray-700' : 'text-slate-300'}`}>
-                                        Дата приходу
-                                    </label>
-                                    <input
-                                        type="date"
-                                        value={formData.dateArrival}
-                                        onChange={(e) => setFormData({ ...formData, dateArrival: e.target.value })}
-                                        className={`w-full px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent border ${isLightGray ? 'bg-white border-gray-300 text-gray-900' : 'bg-slate-800 border-slate-600 text-slate-100'}`}
-                                    />
-                                </div>
-
-                                <div className="md:col-span-1">
-                                    <label className={`block text-sm font-medium mb-1 ${isLightGray ? 'text-gray-700' : 'text-slate-300'}`}>
-                                        Код товару
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={formData.productCode}
-                                        onChange={(e) => setFormData({ ...formData, productCode: e.target.value })}
-                                        disabled={smartImportMode}
-                                        className={`w-full px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent border ${isLightGray ? 'bg-white border-gray-300 text-gray-900' : 'bg-slate-800 border-slate-600 text-slate-100'} disabled:opacity-50`}
-                                    />
-                                </div>
-
-                                <div className="md:col-span-1">
-                                    <label className={`block text-sm font-medium mb-1 ${isLightGray ? 'text-gray-700' : 'text-slate-300'}`}>
-                                        Кількість
-                                    </label>
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        value={formData.quantity}
-                                        onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 1 })}
-                                        disabled={smartImportMode}
-                                        className={`w-full px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent border ${isLightGray ? 'bg-white border-gray-300 text-gray-900' : 'bg-slate-800 border-slate-600 text-slate-100'} disabled:opacity-50`}
-                                    />
-                                </div>
-
-                                {/* Smart import mode toggle */}
-                                {['DFI', 'ИНТЕХ', 'ARC'].some(s => formData.supplier.toUpperCase().includes(s)) && (
-                                    <div className="md:col-span-4 flex flex-col gap-3">
-                                        <div className={`space-y-4 p-4 rounded-lg border rainbow-groupbox ${isLightGray ? 'bg-gray-200 border-gray-300' : 'bg-slate-700 border-slate-600'}`}>
-                                            <div className="flex items-center gap-2">
-                                                <input
-                                                    type="checkbox"
-                                                    id="smartImport"
-                                                    checked={smartImportMode}
-                                                    onChange={(e) => {
-                                                        setSmartImportMode(e.target.checked);
-                                                        if (!e.target.checked) {
-                                                            setImportText('');
-                                                            setParsedItems([]);
-                                                        }
-                                                    }}
-                                                    className={`w-4 h-4 text-blue-600 rounded border-slate-600 focus:ring-2 focus:ring-blue-500 ${isLightGray ? 'bg-white' : 'bg-slate-800'}`}
-                                                />
-                                                <label htmlFor="smartImport" className={`text-sm font-medium cursor-pointer ${isLightGray ? 'text-gray-700' : 'text-slate-300'}`}>
-                                                    Розумний імпорт
-                                                </label>
-                                            </div>
-                                            <p className={`text-xs ml-6 ${isLightGray ? 'text-gray-500' : 'text-slate-400'}`}>
-                                                Підтримується для постачальників: DFI (Интех) та ARC
-                                            </p>
+                                {smartImportMode && (
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-4 rounded-xl border-2 border-purple-500/20 bg-purple-500/5">
+                                        <div className="space-y-3">
+                                            <label className="block text-[11px] font-bold text-purple-400 uppercase tracking-widest">Текст для імпорту</label>
+                                            <textarea
+                                                value={importText}
+                                                onChange={(e) => setImportText(e.target.value)}
+                                                placeholder="Вставте дані з накладної тут..."
+                                                className="w-full h-48 bg-slate-800/80 border border-purple-500/30 rounded-lg p-3 text-sm font-mono text-slate-200 outline-none focus:border-purple-500/50"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={handleParseImportText}
+                                                className="w-full py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg font-bold shadow-lg shadow-purple-900/40 transition-all flex items-center justify-center gap-2"
+                                            >
+                                                Розпізнати вміст
+                                            </button>
                                         </div>
 
-                                        {smartImportMode && (
-                                            <div className="flex flex-col gap-3">
-                                                <div>
-                                                    <label className={`block text-sm font-medium mb-1 ${isLightGray ? 'text-gray-700' : 'text-slate-300'}`}>
-                                                        Дані для імпорту
-                                                    </label>
-                                                    <textarea
-                                                        value={importText}
-                                                        onChange={(e) => setImportText(e.target.value)}
-                                                        placeholder="Вставте дані з накладної..."
-                                                        rows={6}
-                                                        className={`w-full px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm border ${isLightGray ? 'bg-white border-gray-300 text-gray-900 placeholder-gray-400' : 'bg-slate-800 border-slate-600 text-slate-100 placeholder-slate-400'}`}
-                                                    />
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={handleParseImportText}
-                                                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-                                                >
-                                                    Розпізнати
-                                                </button>
-
-                                                {parsedItems.length > 0 && (
-                                                    <div className={`border rounded-lg overflow-hidden ${isLightGray ? 'border-gray-300' : 'border-slate-600'}`}>
-                                                        <div className={`px-3 py-2 border-b ${isLightGray ? 'bg-gray-200 border-gray-300' : 'bg-slate-800/50 border-slate-600'}`}>
-                                                            <p className={`text-sm font-medium ${isLightGray ? 'text-gray-700' : 'text-slate-300'}`}>
-                                                                Знайдено товарів: {parsedItems.length}
-                                                            </p>
-                                                        </div>
-                                                        <div className="max-h-64 overflow-y-auto">
-                                                            <table className="w-full text-sm">
-                                                                <thead className={`sticky top-0 ${isLightGray ? 'bg-gray-200' : 'bg-slate-800/30'}`}>
-                                                                    <tr>
-                                                                        <th className="px-3 py-2 text-left text-xs font-medium text-slate-400">Код</th>
-                                                                        <th className="px-3 py-2 text-left text-xs font-medium text-slate-400">Назва</th>
-                                                                        <th className="px-3 py-2 text-center text-xs font-medium text-slate-400">Кількість</th>
-                                                                        <th className="px-3 py-2 text-right text-xs font-medium text-slate-400">Ціна, $</th>
+                                        <div className="flex flex-col h-full">
+                                            <label className="block text-[11px] font-bold text-purple-400 uppercase tracking-widest mb-3">Результати парсингу</label>
+                                            <div className="flex-1 min-h-[240px] border border-purple-500/30 rounded-lg bg-slate-800/80 overflow-hidden flex flex-col">
+                                                {parsedItems.length > 0 ? (
+                                                    <div className="overflow-auto flex-1 text-xs">
+                                                        <table className="w-full text-left">
+                                                            <thead className="sticky top-0 bg-slate-900 text-slate-400 shadow-sm">
+                                                                <tr>
+                                                                    <th className="p-2 border-b border-white/5">Код</th>
+                                                                    <th className="p-2 border-b border-white/5">Назва</th>
+                                                                    <th className="p-2 border-b border-white/5 text-center">К-сть</th>
+                                                                    <th className="p-2 border-b border-white/5 text-right">Ціна $</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody className="divide-y divide-white/5">
+                                                                {parsedItems.map((item, i) => (
+                                                                    <tr key={i} className="hover:bg-white/5 text-slate-300">
+                                                                        <td className="p-2">{item.productCode}</td>
+                                                                        <td className="p-2 truncate max-w-[200px]">{item.name}</td>
+                                                                        <td className="p-2 text-center font-bold">{item.quantity}</td>
+                                                                        <td className="p-2 text-right text-blue-400">{item.priceUsd.toFixed(2)}</td>
                                                                     </tr>
-                                                                </thead>
-                                                                <tbody className={`divide-y ${isLightGray ? 'divide-gray-300' : 'divide-slate-600'}`}>
-                                                                    {parsedItems.map((item, index) => (
-                                                                        <tr key={index} className={`hover:bg-slate-800/30 ${isLightGray ? 'text-gray-900 px-3 py-2' : 'text-slate-300 px-3 py-2'}`}>
-                                                                            <td className="px-3 py-2">{item.productCode}</td>
-                                                                            <td className="px-3 py-2">{item.name}</td>
-                                                                            <td className="px-3 py-2 text-center">{item.quantity}</td>
-                                                                            <td className="px-3 py-2 text-right">{item.priceUsd.toFixed(2)}</td>
-                                                                        </tr>
-                                                                    ))}
-                                                                </tbody>
-                                                            </table>
-                                                        </div>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex-1 flex flex-col items-center justify-center text-slate-500 italic p-4 text-center">
+                                                        Вставте текст зліва та натисніть "Розпізнати", щоб побачити список товарів тут
                                                     </div>
                                                 )}
                                             </div>
-                                        )}
+                                        </div>
                                     </div>
                                 )}
 
-                                <div className="md:col-span-4 flex gap-2 justify-end">
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setShowAddForm(false);
-                                            setSmartImportMode(false);
-                                            setImportText('');
-                                            setParsedItems([]);
-                                        }}
-                                        className={`px-4 py-2 border rounded-lg transition-colors ${isLightGray ? 'border-gray-300 hover:bg-gray-200 text-gray-700' : 'border-slate-600 hover:bg-slate-600 text-slate-300'}`}
-                                    >
-                                        Скасувати
-                                    </button>
-                                    {smartImportMode && parsedItems.length > 0 ? (
+                                <div className="flex items-center justify-between pt-4 border-t border-slate-600/30">
+                                    <div className="flex items-center gap-6">
+                                        <div className="flex items-center gap-4 bg-slate-800/40 px-4 py-2 rounded-xl border border-slate-600/50">
+                                            <span className="text-xs font-bold text-slate-400 uppercase tracking-tight">Оплата:</span>
+                                            <div className="flex gap-4">
+                                                {['Готівка', 'Картка'].map(type => (
+                                                    <label key={type} className="flex items-center gap-2 cursor-pointer group">
+                                                        <input
+                                                            type="radio"
+                                                            name="paymentType"
+                                                            value={type}
+                                                            checked={formData.paymentType === type}
+                                                            onChange={(e) => setFormData({ ...formData, paymentType: e.target.value })}
+                                                            className="w-4 h-4 text-blue-500 border-slate-600 bg-slate-800"
+                                                        />
+                                                        <span className={`text-sm font-medium ${formData.paymentType === type ? 'text-slate-100' : 'text-slate-400 group-hover:text-slate-200'} transition-all`}>{type}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-3 bg-slate-800/40 px-4 py-2 rounded-xl border border-slate-600/50">
+                                            <span className="text-xs font-bold text-slate-400 uppercase tracking-tight">Дата:</span>
+                                            <input
+                                                type="date"
+                                                value={formData.dateArrival}
+                                                onChange={(e) => setFormData({ ...formData, dateArrival: e.target.value })}
+                                                className="bg-transparent text-sm outline-none text-slate-100 font-medium cursor-pointer"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="flex gap-3">
                                         <button
                                             type="button"
-                                            onClick={handleAddParsedItems}
-                                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                                            onClick={() => {
+                                                setShowAddForm(false);
+                                                setSmartImportMode(false);
+                                                setImportText('');
+                                                setParsedItems([]);
+                                            }}
+                                            className={`px-6 py-2.5 rounded-xl font-bold transition-all border-2 ${isLightGray ? 'border-gray-300 hover:bg-gray-200 text-gray-700' : 'border-slate-600 hover:bg-slate-600 text-slate-300'}`}
                                         >
-                                            Додати на склад
+                                            Скасувати
                                         </button>
-                                    ) : !smartImportMode ? (
-                                        <button
-                                            type="submit"
-                                            disabled={addItemMutation.isPending}
-                                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-                                        >
-                                            {addItemMutation.isPending ? 'Додавання...' : 'Додати'}
-                                        </button>
-                                    ) : null}
+                                        {smartImportMode && parsedItems.length > 0 ? (
+                                            <button
+                                                type="button"
+                                                onClick={handleAddParsedItems}
+                                                className="px-8 py-2.5 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold shadow-lg shadow-green-900/40 transition-all flex items-center gap-2"
+                                            >
+                                                <Check className="w-5 h-5" />
+                                                Додати все на склад ({parsedItems.length})
+                                            </button>
+                                        ) : !smartImportMode ? (
+                                            <button
+                                                type="submit"
+                                                disabled={addItemMutation.isPending}
+                                                className="px-8 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold shadow-lg shadow-blue-900/40 transition-all disabled:opacity-50 flex items-center gap-2"
+                                            >
+                                                {addItemMutation.isPending ? <RotateCcw className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+                                                {addItemMutation.isPending ? 'Додавання...' : 'Додати на склад'}
+                                            </button>
+                                        ) : null}
+                                    </div>
                                 </div>
                             </form>
                         </div>

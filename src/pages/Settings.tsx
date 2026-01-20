@@ -1026,8 +1026,18 @@ export default function Settings() {
 
 
             {activeCategory === 'sync' && (
-                <div className="bg-white dark:bg-slate-700 rounded-lg shadow-sm p-6 mb-6 border border-slate-200 dark:border-slate-600 rainbow-groupbox">
-                    <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100 mb-6 flex items-center gap-2">
+                <div
+                    className="rounded-lg shadow-sm p-6 mb-6 border rainbow-groupbox"
+                    style={{
+                        backgroundColor: 'var(--theme-surface)',
+                        borderColor: 'var(--theme-border)',
+                        color: 'var(--theme-text)'
+                    }}
+                >
+                    <h2
+                        className="text-xl font-semibold mb-6 flex items-center gap-2"
+                        style={{ color: 'var(--theme-text)' }}
+                    >
                         <Wifi className="w-6 h-6" />
                         Синхронізація з мобільним додатком
                     </h2>
@@ -1036,7 +1046,13 @@ export default function Settings() {
                         {/* Left Column: Controls & Status */}
                         <div className="space-y-6">
                             {/* Server Control Card */}
-                            <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-5 border border-slate-200 dark:border-slate-600">
+                            <div
+                                className="rounded-lg p-5 border"
+                                style={{
+                                    backgroundColor: 'var(--theme-surface-secondary)',
+                                    borderColor: 'var(--theme-border)'
+                                }}
+                            >
                                 <div className="flex items-center justify-between mb-4">
                                     <div className="flex items-center gap-3">
                                         {syncStatus?.running ? (
@@ -1065,7 +1081,12 @@ export default function Settings() {
                                                 min="1024"
                                                 max="65535"
                                                 placeholder="Порт"
-                                                className="w-20 px-2 py-1.5 text-sm bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500 text-center"
+                                                className="w-20 px-2 py-1.5 text-sm rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-center border"
+                                                style={{
+                                                    backgroundColor: 'var(--theme-surface)',
+                                                    borderColor: 'var(--theme-border)',
+                                                    color: 'var(--theme-text)'
+                                                }}
                                             />
                                         )}
                                         {syncStatus?.running ? (
@@ -1092,7 +1113,13 @@ export default function Settings() {
 
                                 {/* Connection Info */}
                                 {syncStatus?.running && syncStatus.ipAddresses && (
-                                    <div className="mt-4 p-3 bg-white dark:bg-slate-900/50 rounded border border-slate-200 dark:border-slate-700">
+                                    <div
+                                        className="mt-4 p-3 rounded border"
+                                        style={{
+                                            backgroundColor: 'var(--theme-surface)',
+                                            borderColor: 'var(--theme-border)'
+                                        }}
+                                    >
                                         <p className="text-xs text-slate-500 mb-2 uppercase tracking-wider font-semibold">Адреси для підключення</p>
                                         <div className="space-y-2">
                                             {syncStatus.ipAddresses.map((ip, index) => (
@@ -1115,12 +1142,19 @@ export default function Settings() {
                             </div>
 
                             {/* Info Alert */}
-                            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-lg p-4">
+                            <div
+                                className="border rounded-lg p-4"
+                                style={{
+                                    backgroundColor: 'var(--theme-surface)',
+                                    borderColor: 'var(--theme-primary)',
+                                    opacity: 0.9
+                                }}
+                            >
                                 <div className="flex gap-3">
-                                    <AlertTriangle className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                                    <div className="text-sm text-blue-800 dark:text-blue-300/80 space-y-1">
-                                        <p className="font-medium text-blue-900 dark:text-blue-300">Важливо</p>
-                                        <ul className="list-disc list-inside space-y-0.5 text-xs opacity-90">
+                                    <AlertTriangle className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--theme-primary)' }} />
+                                    <div className="text-sm space-y-1">
+                                        <p className="font-medium" style={{ color: 'var(--theme-text)' }}>Важливо</p>
+                                        <ul className="list-disc list-inside space-y-0.5 text-xs" style={{ color: 'var(--theme-text-secondary)' }}>
                                             <li>Пристрої мають бути в одній WiFi мережі</li>
                                             <li>Брандмауер не повинен блокувати порт {syncPort}</li>
                                         </ul>
@@ -1130,57 +1164,37 @@ export default function Settings() {
                         </div>
 
                         {/* Right Column: API Documentation */}
-                        <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-5 border border-slate-200 dark:border-slate-600 h-full">
-                            <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4">API Endpoints</h3>
+                        <div
+                            className="rounded-lg p-5 border h-full"
+                            style={{
+                                backgroundColor: 'var(--theme-surface-secondary)',
+                                borderColor: 'var(--theme-border)'
+                            }}
+                        >
+                            <h3
+                                className="text-sm font-semibold uppercase tracking-wider mb-4"
+                                style={{ color: 'var(--theme-text-secondary)' }}
+                            >API Endpoints</h3>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-xs font-mono">
-                                <div className="flex items-center gap-2 py-1 border-b border-slate-200 dark:border-slate-700/50">
-                                    <span className="text-green-600 dark:text-green-400 font-bold w-12">GET</span>
-                                    <span className="text-slate-600 dark:text-slate-300">/api/health</span>
-                                </div>
-                                <div className="flex items-center gap-2 py-1 border-b border-slate-200 dark:border-slate-700/50">
-                                    <span className="text-blue-600 dark:text-blue-400 font-bold w-12">GET</span>
-                                    <span className="text-slate-600 dark:text-slate-300">/api/repairs</span>
-                                </div>
-                                <div className="flex items-center gap-2 py-1 border-b border-slate-200 dark:border-slate-700/50">
-                                    <span className="text-blue-600 dark:text-blue-400 font-bold w-12">GET</span>
-                                    <span className="text-slate-600 dark:text-slate-300">/api/repairs/:id</span>
-                                </div>
-                                <div className="flex items-center gap-2 py-1 border-b border-slate-200 dark:border-slate-700/50">
-                                    <span className="text-yellow-600 dark:text-yellow-400 font-bold w-12">POST</span>
-                                    <span className="text-slate-600 dark:text-slate-300">/api/repairs</span>
-                                </div>
-                                <div className="flex items-center gap-2 py-1 border-b border-slate-200 dark:border-slate-700/50">
-                                    <span className="text-purple-600 dark:text-purple-400 font-bold w-12">PUT</span>
-                                    <span className="text-slate-600 dark:text-slate-300">/api/repairs/:id</span>
-                                </div>
-                                <div className="flex items-center gap-2 py-1 border-b border-slate-200 dark:border-slate-700/50">
-                                    <span className="text-red-600 dark:text-red-400 font-bold w-12">DEL</span>
-                                    <span className="text-slate-600 dark:text-slate-300">/api/repairs/:id</span>
-                                </div>
-                                <div className="flex items-center gap-2 py-1 border-b border-slate-200 dark:border-slate-700/50">
-                                    <span className="text-blue-600 dark:text-blue-400 font-bold w-12">GET</span>
-                                    <span className="text-slate-600 dark:text-slate-300">/api/warehouse</span>
-                                </div>
-                                <div className="flex items-center gap-2 py-1 border-b border-slate-200 dark:border-slate-700/50">
-                                    <span className="text-blue-600 dark:text-blue-400 font-bold w-12">GET</span>
-                                    <span className="text-slate-600 dark:text-slate-300">/api/transactions</span>
-                                </div>
-                                <div className="flex items-center gap-2 py-1 border-b border-slate-200 dark:border-slate-700/50">
-                                    <span className="text-blue-600 dark:text-blue-400 font-bold w-12">GET</span>
-                                    <span className="text-slate-600 dark:text-slate-300">/api/executors</span>
-                                </div>
-                                <div className="flex items-center gap-2 py-1 border-b border-slate-200 dark:border-slate-700/50">
-                                    <span className="text-blue-600 dark:text-blue-400 font-bold w-12">GET</span>
-                                    <span className="text-slate-600 dark:text-slate-300">/api/suppliers</span>
-                                </div>
-                                <div className="flex items-center gap-2 py-1 border-b border-slate-200 dark:border-slate-700/50">
-                                    <span className="text-blue-600 dark:text-blue-400 font-bold w-12">GET</span>
-                                    <span className="text-slate-600 dark:text-slate-300">/api/status-counts</span>
-                                </div>
-                                <div className="flex items-center gap-2 py-1 border-b border-slate-200 dark:border-slate-700/50">
-                                    <span className="text-blue-600 dark:text-blue-400 font-bold w-12">GET</span>
-                                    <span className="text-slate-600 dark:text-slate-300">/api/balances</span>
-                                </div>
+                                {[
+                                    { method: 'GET', path: '/api/health', color: 'text-green-500' },
+                                    { method: 'GET', path: '/api/repairs', color: 'text-blue-400' },
+                                    { method: 'GET', path: '/api/repairs/:id', color: 'text-blue-400' },
+                                    { method: 'POST', path: '/api/repairs', color: 'text-yellow-500' },
+                                    { method: 'PUT', path: '/api/repairs/:id', color: 'text-purple-400' },
+                                    { method: 'DEL', path: '/api/repairs/:id', color: 'text-red-400' },
+                                    { method: 'GET', path: '/api/warehouse', color: 'text-blue-400' },
+                                    { method: 'GET', path: '/api/transactions', color: 'text-blue-400' },
+                                    { method: 'GET', path: '/api/executors', color: 'text-blue-400' },
+                                    { method: 'GET', path: '/api/suppliers', color: 'text-blue-400' },
+                                    { method: 'GET', path: '/api/status-counts', color: 'text-blue-400' },
+                                    { method: 'GET', path: '/api/balances', color: 'text-blue-400' },
+                                ].map((item, idx) => (
+                                    <div key={idx} className="flex items-center gap-2 py-1 border-b" style={{ borderColor: 'var(--theme-border)' }}>
+                                        <span className={`font-bold w-12 ${item.color}`}>{item.method}</span>
+                                        <span style={{ color: 'var(--theme-text)' }}>{item.path}</span>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     </div>

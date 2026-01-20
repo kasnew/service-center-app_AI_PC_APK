@@ -58,6 +58,7 @@ export const RepairEditor: React.FC = () => {
     const [hasPartsChanged, setHasPartsChanged] = useState(false);
     const [isSaveOnExitModalOpen, setIsSaveOnExitModalOpen] = useState(false);
     const [isQRModalOpen, setIsQRModalOpen] = useState(false);
+    const loadedIdRef = useRef<string | null>(null);
 
     // Load existing repair
     const { data: repair, isLoading } = useQuery({
@@ -105,12 +106,22 @@ export const RepairEditor: React.FC = () => {
         enabled: isNew
     });
 
-    // Load repair parts
-    const { data: parts = [] } = useQuery({
-        queryKey: ['repair-parts', Number(id)],
-        queryFn: () => warehouseApi.getRepairParts(Number(id)),
-        enabled: !isNew
+    // Unified Repair ID handling - ensure stable reference
+    const effectiveRepairId = React.useMemo(() => {
+        if (!id || id === 'new') return autoSavedId || 0;
+        const numId = Number(id);
+        return isNaN(numId) ? 0 : numId;
+    }, [id, autoSavedId]);
+
+    // Load repair parts with explicit dependency on effectiveRepairId
+    const { data: currentParts = [], refetch: refetchParts } = useQuery({
+        queryKey: ['repair-parts', effectiveRepairId],
+        queryFn: () => warehouseApi.getRepairParts(effectiveRepairId),
+        enabled: effectiveRepairId !== 0,
+        staleTime: 0, // Ensure we always get fresh data
     });
+
+    const parts = currentParts;
 
     // Load executors list
     const { data: executors = [] } = useQuery({
@@ -126,78 +137,89 @@ export const RepairEditor: React.FC = () => {
 
     useEffect(() => {
         if (repair) {
-            const formatDateForInput = (dateString: string | null | undefined): string => {
-                if (!dateString) return '';
-                try {
-                    const date = new Date(dateString);
-                    if (isNaN(date.getTime())) return '';
-                    const offset = date.getTimezoneOffset() * 60000;
-                    const localDate = new Date(date.getTime() - offset);
-                    return localDate.toISOString().slice(0, 16);
-                } catch {
-                    return '';
-                }
-            };
+            // Only load data if the ID has changed or if it hasn't been loaded yet for this ID
+            if (loadedIdRef.current !== id) {
+                const formatDateForInput = (dateString: string | null | undefined): string => {
+                    if (!dateString) return '';
+                    try {
+                        const date = new Date(dateString);
+                        if (isNaN(date.getTime())) return '';
+                        const offset = date.getTimezoneOffset() * 60000;
+                        const localDate = new Date(date.getTime() - offset);
+                        return localDate.toISOString().slice(0, 16);
+                    } catch {
+                        return '';
+                    }
+                };
 
-            const freshData = {
-                receiptId: repair.receiptId,
-                deviceName: repair.deviceName,
-                faultDesc: repair.faultDesc,
-                workDone: repair.workDone,
-                costLabor: repair.costLabor,
-                totalCost: repair.totalCost,
-                isPaid: repair.isPaid,
-                status: repair.status,
-                clientName: repair.clientName,
-                clientPhone: formatPhoneNumber(repair.clientPhone),
-                profit: repair.profit,
-                dateStart: formatDateForInput(repair.dateStart),
-                dateEnd: formatDateForInput(repair.dateEnd),
-                note: repair.note || '',
-                shouldCall: repair.shouldCall,
-                executor: repair.executor || 'Андрій',
-                paymentType: repair.paymentType || 'Готівка'
-            };
-            setFormData(freshData);
-            setInitialData(freshData);
-            setPreviousPaidStatus(repair.isPaid);
-        } else if (copyFrom && isNew) {
-            const mode = location.state?.copyMode || 'full';
-
-            const baseData = {
-                clientName: copyFrom.clientName,
-                clientPhone: formatPhoneNumber(copyFrom.clientPhone),
-                deviceName: '',
-                faultDesc: '',
-                workDone: '',
-                costLabor: 0,
-                totalCost: 0,
-                isPaid: false,
-                status: RepairStatus.Queue,
-                profit: 0,
-                dateStart: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
-                dateEnd: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
-                note: '',
-                shouldCall: false,
-                executor: 'Андрій',
-                paymentType: 'Готівка'
-            };
-
-            if (mode === 'client_device') {
-                baseData.deviceName = copyFrom.deviceName;
+                const freshData = {
+                    receiptId: repair.receiptId,
+                    deviceName: repair.deviceName,
+                    faultDesc: repair.faultDesc,
+                    workDone: repair.workDone,
+                    costLabor: repair.costLabor || 0,
+                    totalCost: repair.totalCost || 0,
+                    isPaid: repair.isPaid,
+                    status: repair.status,
+                    clientName: repair.clientName,
+                    clientPhone: formatPhoneNumber(repair.clientPhone),
+                    profit: repair.profit,
+                    dateStart: formatDateForInput(repair.dateStart),
+                    dateEnd: formatDateForInput(repair.dateEnd),
+                    note: repair.note || '',
+                    shouldCall: repair.shouldCall,
+                    executor: repair.executor || 'Андрій',
+                    paymentType: repair.paymentType || 'Готівка'
+                };
+                setFormData(freshData);
+                setInitialData(freshData);
+                setPreviousPaidStatus(repair.isPaid);
+                loadedIdRef.current = id || null;
             }
+        } else if (copyFrom && isNew) {
+            // Loading from copy: only if not already loaded
+            if (loadedIdRef.current !== 'new_copy') {
+                const mode = location.state?.copyMode || 'full';
 
-            const mergedData = { ...formData, ...baseData };
-            if (nextReceiptId) mergedData.receiptId = nextReceiptId;
+                const baseData = {
+                    clientName: copyFrom.clientName,
+                    clientPhone: formatPhoneNumber(copyFrom.clientPhone),
+                    deviceName: '',
+                    faultDesc: '',
+                    workDone: '',
+                    costLabor: 0,
+                    totalCost: 0,
+                    isPaid: false,
+                    status: RepairStatus.Queue,
+                    profit: 0,
+                    dateStart: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
+                    dateEnd: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
+                    note: '',
+                    shouldCall: false,
+                    executor: 'Андрій',
+                    paymentType: 'Готівка'
+                };
 
-            setFormData(mergedData);
-            setInitialData(mergedData);
+                if (mode === 'client_device') {
+                    baseData.deviceName = copyFrom.deviceName;
+                }
+
+                setFormData((prev: any) => ({ ...prev, ...baseData }));
+                setInitialData((prev: any) => ({ ...prev, ...baseData }));
+                loadedIdRef.current = 'new_copy';
+            }
         } else if (nextReceiptId && isNew) {
-            const newData = { ...formData, receiptId: nextReceiptId };
-            setFormData(newData);
-            setInitialData(newData);
+            // Updating receipt ID for new repair: only update if not already set or if it's 0
+            setFormData((prev: any) => {
+                if (prev.receiptId !== 0 && prev.receiptId !== undefined) return prev;
+                return { ...prev, receiptId: nextReceiptId };
+            });
+            setInitialData((prev: any) => {
+                if (prev?.receiptId !== 0 && prev?.receiptId !== undefined) return prev;
+                return { ...formData, receiptId: nextReceiptId };
+            });
         }
-    }, [repair, nextReceiptId, isNew, copyFrom]);
+    }, [repair, nextReceiptId, isNew, copyFrom, id]);
 
     const isDirty = initialData && (hasPartsChanged || JSON.stringify(formData) !== JSON.stringify(initialData));
 
@@ -208,17 +230,17 @@ export const RepairEditor: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        if (!isNew && formData.isPaid !== previousPaidStatus && Number(id)) {
+        if (!isNew && formData.isPaid !== previousPaidStatus && effectiveRepairId) {
             warehouseApi.updateRepairPayment({
-                repairId: Number(id),
+                repairId: effectiveRepairId,
                 receiptId: formData.receiptId,
                 isPaid: formData.isPaid,
                 dateEnd: formData.dateEnd || new Date().toISOString()
             }).then(() => {
-                queryClient.invalidateQueries({ queryKey: ['repair-parts', Number(id)] });
+                queryClient.invalidateQueries({ queryKey: ['repair-parts', effectiveRepairId] });
             });
         }
-    }, [formData.isPaid, previousPaidStatus, isNew, id, formData.receiptId, formData.dateEnd, queryClient]);
+    }, [formData.isPaid, previousPaidStatus, isNew, effectiveRepairId, formData.receiptId, formData.dateEnd, queryClient]);
 
     const deleteMutation = useMutation({
         mutationFn: (repairId: number) => repairApi.deleteRepair(repairId),
@@ -276,7 +298,7 @@ export const RepairEditor: React.FC = () => {
     });
 
     const handleSave = () => {
-        const currentParts = queryClient.getQueryData<any[]>(['repair-parts', Number(id)]) || parts;
+        const currentParts = queryClient.getQueryData<any[]>(['repair-parts', effectiveRepairId]) || parts;
         const partsTotal = currentParts.reduce((sum: number, part: any) => sum + (part.priceUah || 0), 0);
         const partsProfit = currentParts.reduce((sum: number, part: any) => sum + (part.profit || 0), 0);
 
@@ -286,7 +308,7 @@ export const RepairEditor: React.FC = () => {
         }
 
         saveMutation.mutate({
-            ...(isNew ? {} : { id: Number(id) }),
+            ...(isNew ? {} : { id: effectiveRepairId }),
             ...formData,
             status: statusToSave,
             totalCost: formData.costLabor + partsTotal,
@@ -333,8 +355,14 @@ export const RepairEditor: React.FC = () => {
     };
 
     const handlePartsChange = async () => {
-        await queryClient.invalidateQueries({ queryKey: ['repair-parts', Number(id)] });
-        await queryClient.refetchQueries({ queryKey: ['repair-parts', Number(id)] });
+        // Invalidate and refetch bits more aggressively to ensure total sum updates
+        // We refetch both the parts AND the repair itself (since it might have updated sums in DB)
+        await Promise.all([
+            queryClient.invalidateQueries({ queryKey: ['repair-parts', effectiveRepairId] }),
+            queryClient.invalidateQueries({ queryKey: ['repair', effectiveRepairId] }),
+            refetchParts(),
+            refetch() // Refetch the main repair data if it exists
+        ]);
         setHasPartsChanged(true);
     };
 
@@ -641,18 +669,21 @@ export const RepairEditor: React.FC = () => {
                             )}
 
                             {!isNew && partsTotal > 0 && (
-                                <div className="mt-2 pt-2 border-t border-slate-700 text-xs space-y-1">
-                                    <div className="flex justify-between">
-                                        <span className="text-slate-400">Робота:</span>
-                                        <span className="text-slate-200">{formData.costLabor} ₴</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-slate-400">Товари:</span>
-                                        <span className="text-slate-200">{partsTotal} ₴</span>
-                                    </div>
-                                    <div className="flex justify-between font-bold text-slate-100 pt-1 border-t border-slate-700">
-                                        <span>Всього:</span>
-                                        <span>{grandTotal} ₴</span>
+                                <div className={`mt-4 p-4 rounded-xl border-2 animate-in fade-in zoom-in duration-300 ${isLight ? 'bg-blue-50 border-blue-100' : 'bg-blue-500/5 border-blue-500/20 shadow-lg shadow-blue-500/5'}`}>
+                                    <h3 className={`text-[10px] font-bold uppercase tracking-widest mb-3 ${isLight ? 'text-blue-700' : 'text-blue-400'}`}>Деталізація вартості</h3>
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between items-center px-1">
+                                            <span className={`text-sm ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>Робота:</span>
+                                            <span className={`text-sm font-semibold ${isLight ? 'text-slate-900' : 'text-slate-100'}`}>{formData.costLabor.toFixed(2)} ₴</span>
+                                        </div>
+                                        <div className="flex justify-between items-center px-1">
+                                            <span className={`text-sm ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>Товари та запчастини:</span>
+                                            <span className={`text-sm font-semibold ${isLight ? 'text-slate-900' : 'text-slate-100'}`}>{partsTotal.toFixed(2)} ₴</span>
+                                        </div>
+                                        <div className={`mt-3 pt-3 border-t flex justify-between items-baseline px-1 ${isLight ? 'border-blue-100' : 'border-blue-500/20'}`}>
+                                            <span className={`text-base font-bold ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>Разом до оплати:</span>
+                                            <span className={`text-2xl font-black ${isLight ? 'text-blue-700' : 'text-blue-400'}`}>{grandTotal.toFixed(2)} ₴</span>
+                                        </div>
                                     </div>
                                 </div>
                             )}
@@ -760,7 +791,8 @@ export const RepairEditor: React.FC = () => {
                             </h3>
                         </div>
                         <PartsManager
-                            repairId={isNew ? 0 : Number(id)}
+                            key={effectiveRepairId}
+                            repairId={effectiveRepairId}
                             receiptId={formData.receiptId}
                             isPaid={formData.isPaid}
                             dateEnd={formData.dateEnd || new Date().toISOString()}

@@ -178,6 +178,13 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     root.setAttribute('data-theme', currentTheme.id);
     root.setAttribute('data-theme-type', currentTheme.type);
 
+    // Toggle standard tailwind 'dark' class
+    if (currentTheme.type === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+
     document.body.style.backgroundColor = colors.background;
     document.body.style.color = colors.text;
   }, [currentTheme]);

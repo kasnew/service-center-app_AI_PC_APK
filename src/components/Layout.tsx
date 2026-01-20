@@ -1,18 +1,53 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Wrench, ShoppingCart, Banknote, Settings } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, Banknote, Settings } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { syncApi } from '../api/sync';
 import { useTheme } from '../contexts/ThemeContext';
 import { SystemStats } from './SystemStats';
+import { ShutdownTimer } from './ShutdownTimer';
 import { useHotkeys } from '../hooks/useHotkeys';
+import { UpdateNotification } from './UpdateNotification';
 
 export const Layout: React.FC = () => {
     const { currentTheme } = useTheme();
     const queryClient = useQueryClient();
     const navigate = useNavigate();
     const [isToggling, setIsToggling] = useState(false);
+
+    // Global drag and drop prevention
+    useEffect(() => {
+        const preventDefault = (e: Event) => e.preventDefault();
+        const handleDragStart = (e: DragEvent) => {
+            const target = e.target as HTMLElement;
+            if (target && target.closest && !target.closest('[draggable="true"]')) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        };
+
+        window.addEventListener('dragover', preventDefault, false);
+        window.addEventListener('dragenter', preventDefault, false);
+        window.addEventListener('drop', preventDefault, false);
+        window.addEventListener('dragstart', handleDragStart, false);
+
+        // Prevent ghosting images
+        const preventImageDrag = (e: MouseEvent) => {
+            if ((e.target as HTMLElement).tagName === 'IMG') {
+                e.preventDefault();
+            }
+        };
+        window.addEventListener('mousedown', preventImageDrag, false);
+
+        return () => {
+            window.removeEventListener('dragover', preventDefault);
+            window.removeEventListener('dragenter', preventDefault);
+            window.removeEventListener('drop', preventDefault);
+            window.removeEventListener('dragstart', handleDragStart);
+            window.removeEventListener('mousedown', preventImageDrag);
+        };
+    }, []);
 
     // Listen for executor web changes for instant refresh
     useEffect(() => {
@@ -117,73 +152,74 @@ export const Layout: React.FC = () => {
                     }}
                 >
                     <div className="flex items-center gap-6">
-                        <div className="flex items-center gap-2">
-                            <Wrench className="w-6 h-6" style={{ color: 'var(--theme-accent)' }} />
-                            <h1 className="text-xl font-bold hidden md:block" style={{ color: 'var(--theme-accent)' }}>
-                                Service Center Chipzone
-                            </h1>
-                        </div>
-                        <nav className="flex items-center gap-1">
+                        <nav className="flex items-center gap-2">
                             <NavLink
                                 to="/"
+                                draggable="false"
                                 className={({ isActive }) =>
                                     clsx(
-                                        'flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-sm font-medium',
+                                        'flex items-center gap-3 px-5 py-2.5 rounded-xl transition-all duration-300 text-sm font-semibold tracking-wide',
                                         isActive
-                                            ? 'bg-blue-600 text-white'
-                                            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+                                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40 translate-y-[-1px]'
+                                            : 'text-slate-400 hover:text-slate-100 hover:bg-slate-700/40 hover:translate-y-[-1px]'
                                     )
                                 }
                             >
-                                <LayoutDashboard className="w-4 h-4" />
+                                <LayoutDashboard className="w-5 h-5" />
                                 Ремонти
                             </NavLink>
                             <NavLink
                                 to="/inventory"
+                                draggable="false"
                                 className={({ isActive }) =>
                                     clsx(
-                                        'flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-sm font-medium',
+                                        'flex items-center gap-3 px-5 py-2.5 rounded-xl transition-all duration-300 text-sm font-semibold tracking-wide',
                                         isActive
-                                            ? 'bg-blue-600 text-white'
-                                            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+                                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40 translate-y-[-1px]'
+                                            : 'text-slate-400 hover:text-slate-100 hover:bg-slate-700/40 hover:translate-y-[-1px]'
                                     )
                                 }
                             >
-                                <ShoppingCart className="w-4 h-4" />
+                                <ShoppingCart className="w-5 h-5" />
                                 Товари
                             </NavLink>
                             <NavLink
                                 to="/cash-register"
+                                draggable="false"
                                 className={({ isActive }) =>
                                     clsx(
-                                        'flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-sm font-medium',
+                                        'flex items-center gap-3 px-5 py-2.5 rounded-xl transition-all duration-300 text-sm font-semibold tracking-wide',
                                         isActive
-                                            ? 'bg-blue-600 text-white'
-                                            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+                                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40 translate-y-[-1px]'
+                                            : 'text-slate-400 hover:text-slate-100 hover:bg-slate-700/40 hover:translate-y-[-1px]'
                                     )
                                 }
                             >
-                                <Banknote className="w-4 h-4" />
+                                <Banknote className="w-5 h-5" />
                                 Каса
                             </NavLink>
                             <NavLink
                                 to="/settings"
+                                draggable="false"
                                 className={({ isActive }) =>
                                     clsx(
-                                        'flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-sm font-medium',
+                                        'flex items-center gap-3 px-5 py-2.5 rounded-xl transition-all duration-300 text-sm font-semibold tracking-wide',
                                         isActive
-                                            ? 'bg-blue-600 text-white'
-                                            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+                                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40 translate-y-[-1px]'
+                                            : 'text-slate-400 hover:text-slate-100 hover:bg-slate-700/40 hover:translate-y-[-1px]'
                                     )
                                 }
                             >
-                                <Settings className="w-4 h-4" />
+                                <Settings className="w-5 h-5" />
                                 Налаштування
                             </NavLink>
                         </nav>
                     </div>
 
                     <div className="flex items-center gap-4">
+                        {/* Shutdown Timer */}
+                        <ShutdownTimer />
+
                         {/* System Stats Indicators */}
                         <div className="hidden lg:block">
                             <SystemStats />
@@ -271,8 +307,8 @@ export const Layout: React.FC = () => {
                                     const diff = (now.getTime() - start.getTime()) + ((start.getTimezoneOffset() - now.getTimezoneOffset()) * 60 * 1000);
                                     const oneDay = 1000 * 60 * 60 * 24;
                                     const dayOfYear = Math.floor(diff / oneDay);
-                                    const minute = now.getMinutes();
-                                    return `v.${now.getFullYear()}.${dayOfYear}.${minute}`;
+                                    const minutesSinceStartOfDay = now.getHours() * 60 + now.getMinutes();
+                                    return `v.${now.getFullYear()}.${dayOfYear}.${minutesSinceStartOfDay}`;
                                 })()}
                             </span>
                             <button
@@ -300,6 +336,9 @@ export const Layout: React.FC = () => {
                     <Outlet />
                 </div>
             </main>
+
+            {/* Update notification toast */}
+            <UpdateNotification />
         </div>
     );
 };
