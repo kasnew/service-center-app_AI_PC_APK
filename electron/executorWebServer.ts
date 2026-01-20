@@ -2,6 +2,12 @@ import { getDb } from './database';
 import { networkInterfaces } from 'os';
 import type { Server } from 'http';
 import crypto from 'crypto';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import fs from 'fs';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Database date conversion functions
 const JDN_EPOCH = 2440587.5;
@@ -650,15 +656,11 @@ export async function startExecutorWebServer(port: number = 3001): Promise<{ suc
         // Serve executor web interface
         app.get('/', async (_req: any, res: any) => {
             try {
-                const fsModule = await import('fs');
-                const pathModule = await import('path');
-                const fs = fsModule.default || fsModule;
-                const path = pathModule.default || pathModule;
-
                 // Try multiple paths to find the HTML file
                 const possiblePaths = [
-                    path.join(process.cwd(), 'public', 'executor.html'),
-                    path.join(process.env.APP_ROOT || process.cwd(), 'public', 'executor.html'),
+                    join(__dirname, '..', 'dist', 'executor.html'),
+                    join(process.cwd(), 'dist', 'executor.html'),
+                    join(process.cwd(), 'public', 'executor.html'),
                 ];
 
                 for (const htmlPath of possiblePaths) {
@@ -669,7 +671,7 @@ export async function startExecutorWebServer(port: number = 3001): Promise<{ suc
                             return res.send(html);
                         }
                     } catch (e) {
-                        console.log('Path not found:', htmlPath);
+                        console.log('Path not searched or not found:', htmlPath);
                     }
                 }
 
