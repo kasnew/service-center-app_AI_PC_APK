@@ -14,7 +14,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.servicecenter.data.models.WarehouseItem
 import com.servicecenter.ui.components.ConnectionIndicator
@@ -48,24 +54,55 @@ fun WarehouseScreen(
     
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Склад") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        androidx.compose.ui.graphics.Brush.verticalGradient(
+                            colors = listOf(androidx.compose.ui.graphics.Color(0xFFE3F2FD), androidx.compose.ui.graphics.Color(0xFFF5F5F5))
+                        )
+                    )
+            ) {
+                Column {
+                    Spacer(modifier = Modifier.height(32.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            IconButton(onClick = onBack) {
+                                Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
+                            }
+                            Text(
+                                text = "Склад",
+                                style = MaterialTheme.typography.headlineMedium.copy(
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                        }
+                        
+                        ConnectionIndicator()
                     }
-                },
-                actions = {
-                    ConnectionIndicator()
                 }
-            )
+            }
         }
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
+                .background(
+                    androidx.compose.ui.graphics.Brush.verticalGradient(
+                        colors = listOf(androidx.compose.ui.graphics.Color(0xFFE3F2FD), androidx.compose.ui.graphics.Color(0xFFF5F5F5))
+                    )
+                )
                 .padding(padding)
         ) {
+            Column(
+                modifier = Modifier.fillMaxSize()
+            ) {
             // Search field
             OutlinedTextField(
                 value = searchQuery,
@@ -75,7 +112,13 @@ fun WarehouseScreen(
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 placeholder = { Text("Пошук по артикулу або назві...") },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                singleLine = true
+                singleLine = true,
+                shape = RoundedCornerShape(16.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = androidx.compose.ui.graphics.Color.White,
+                    unfocusedContainerColor = androidx.compose.ui.graphics.Color.White,
+                    disabledContainerColor = androidx.compose.ui.graphics.Color.White
+                )
             )
             
             // In Stock filter checkbox
@@ -110,12 +153,16 @@ fun WarehouseScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { 
-                            android.util.Log.d("WarehouseScreen", "Supplier field clicked, suppliers count: ${suppliers.size}")
                             showSupplierDropdown = true 
                         },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = androidx.compose.ui.graphics.Color.White,
+                        unfocusedContainerColor = androidx.compose.ui.graphics.Color.White,
+                        disabledContainerColor = androidx.compose.ui.graphics.Color.White
+                    ),
                     trailingIcon = {
                         IconButton(onClick = { 
-                            android.util.Log.d("WarehouseScreen", "Supplier dropdown icon clicked, suppliers count: ${suppliers.size}")
                             showSupplierDropdown = true 
                         }) {
                             Icon(Icons.Default.ArrowDropDown, contentDescription = null)
@@ -243,6 +290,7 @@ fun WarehouseScreen(
         }
     }
 }
+}
 
 @Composable
 fun WarehouseItemCard(
@@ -251,7 +299,9 @@ fun WarehouseItemCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        shape = RoundedCornerShape(24.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = androidx.compose.ui.graphics.Color.White)
     ) {
         Column(
             modifier = Modifier

@@ -11,10 +11,19 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.servicecenter.data.api.Executor
 import com.servicecenter.data.models.Repair
@@ -40,6 +49,7 @@ fun CreateRepairScreen(
     var costLabor by remember { mutableStateOf("") }
     var executor by remember { mutableStateOf("Андрій") }
     var status by remember { mutableStateOf("У черзі") }
+    var note by remember { mutableStateOf("") }
     var isLoadingReceiptId by remember { mutableStateOf(false) }
     var executors by remember { mutableStateOf<List<Executor>>(emptyList()) }
     var showExecutorDropdown by remember { mutableStateOf(false) }
@@ -47,6 +57,9 @@ fun CreateRepairScreen(
     var isSaving by remember { mutableStateOf(false) }
     var isCreatingRepair by remember { mutableStateOf(false) }
     var showServerNotConnectedDialog by remember { mutableStateOf(false) }
+    
+    // Focus requester for client name field
+    val clientNameFocusRequester = remember { FocusRequester() }
     
     val isLoading by viewModel.isLoading.collectAsState()
     val isConnected by settingsViewModel.isConnected.collectAsState(initial = false)
@@ -124,8 +137,8 @@ fun CreateRepairScreen(
     }
     
     // Load next receipt ID and executors when screen opens
-    // This will run every time the screen is composed (opened)
     LaunchedEffect(Unit) {
+        settingsViewModel.checkConnection()
         isLoadingReceiptId = true
         try {
             val nextId = viewModel.getNextReceiptId()
@@ -148,46 +161,93 @@ fun CreateRepairScreen(
             android.util.Log.e("CreateRepairScreen", "Error loading data: ${e.message}", e)
         } finally {
             isLoadingReceiptId = false
+            // Request focus on client name field after loading
+            clientNameFocusRequester.requestFocus()
         }
     }
     
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Новий ремонт") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        androidx.compose.ui.graphics.Brush.verticalGradient(
+                            colors = listOf(androidx.compose.ui.graphics.Color(0xFFE3F2FD), androidx.compose.ui.graphics.Color(0xFFF5F5F5))
+                        )
+                    )
+            ) {
+                Column {
+                    Spacer(modifier = Modifier.height(32.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            IconButton(onClick = onBack) {
+                                Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
+                            }
+                            Text(
+                                text = "Новий ремонт",
+                                style = MaterialTheme.typography.headlineMedium.copy(
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                        }
+                        
+                        ConnectionIndicator()
                     }
-                },
-                actions = {
-                    ConnectionIndicator()
                 }
-            )
+            }
         }
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
+                .background(
+                    androidx.compose.ui.graphics.Brush.verticalGradient(
+                        colors = listOf(androidx.compose.ui.graphics.Color(0xFFE3F2FD), androidx.compose.ui.graphics.Color(0xFFF5F5F5))
+                    )
+                )
                 .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
             OutlinedTextField(
                 value = receiptId,
                 onValueChange = { receiptId = it },
                 label = { Text("Номер квитанції") },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !isLoadingReceiptId,
-                placeholder = { Text(if (isLoadingReceiptId) "Завантаження..." else "") }
+                placeholder = { Text(if (isLoadingReceiptId) "Завантаження..." else "") },
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = androidx.compose.ui.graphics.Color.White,
+                    unfocusedContainerColor = androidx.compose.ui.graphics.Color.White,
+                    disabledContainerColor = androidx.compose.ui.graphics.Color.White
+                )
             )
             
             OutlinedTextField(
                 value = clientName,
                 onValueChange = { clientName = it },
                 label = { Text("Ім'я клієнта") },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(clientNameFocusRequester),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = androidx.compose.ui.graphics.Color.White,
+                    unfocusedContainerColor = androidx.compose.ui.graphics.Color.White
+                )
             )
             
             OutlinedTextField(
@@ -202,14 +262,24 @@ fun CreateRepairScreen(
                 label = { Text("Телефон") },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                singleLine = true
+                singleLine = true,
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = androidx.compose.ui.graphics.Color.White,
+                    unfocusedContainerColor = androidx.compose.ui.graphics.Color.White
+                )
             )
             
             OutlinedTextField(
                 value = deviceName,
                 onValueChange = { deviceName = it },
                 label = { Text("Назва техніки") },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = androidx.compose.ui.graphics.Color.White,
+                    unfocusedContainerColor = androidx.compose.ui.graphics.Color.White
+                )
             )
             
             OutlinedTextField(
@@ -217,14 +287,24 @@ fun CreateRepairScreen(
                 onValueChange = { faultDesc = it },
                 label = { Text("Опис несправності") },
                 modifier = Modifier.fillMaxWidth(),
-                maxLines = 3
+                maxLines = 3,
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = androidx.compose.ui.graphics.Color.White,
+                    unfocusedContainerColor = androidx.compose.ui.graphics.Color.White
+                )
             )
             
             OutlinedTextField(
                 value = costLabor,
                 onValueChange = { costLabor = it },
                 label = { Text("Вартість роботи (грн)") },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = androidx.compose.ui.graphics.Color.White,
+                    unfocusedContainerColor = androidx.compose.ui.graphics.Color.White
+                )
             )
             
             // Executor dropdown
@@ -235,6 +315,11 @@ fun CreateRepairScreen(
                     label = { Text("Виконавець") },
                     modifier = Modifier.fillMaxWidth(),
                     readOnly = true,
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = androidx.compose.ui.graphics.Color.White,
+                        unfocusedContainerColor = androidx.compose.ui.graphics.Color.White
+                    ),
                     trailingIcon = {
                         IconButton(onClick = { showExecutorDropdown = true }) {
                             Icon(Icons.Default.ArrowDropDown, contentDescription = "Виберіть виконавця")
@@ -246,15 +331,17 @@ fun CreateRepairScreen(
                     expanded = showExecutorDropdown,
                     onDismissRequest = { showExecutorDropdown = false }
                 ) {
-                    executors.forEach { exec ->
-                        DropdownMenuItem(
-                            text = { Text(exec.name) },
-                            onClick = {
-                                executor = exec.name
-                                showExecutorDropdown = false
-                            }
-                        )
-                    }
+                    executors
+                        .filter { it.salaryPercent != 0.0 }
+                        .forEach { exec ->
+                            DropdownMenuItem(
+                                text = { Text(exec.name) },
+                                onClick = {
+                                    executor = exec.name
+                                    showExecutorDropdown = false
+                                }
+                            )
+                        }
                     if (executors.isEmpty()) {
                         DropdownMenuItem(
                             text = { Text("Андрій") },
@@ -275,6 +362,11 @@ fun CreateRepairScreen(
                     label = { Text("Статус") },
                     modifier = Modifier.fillMaxWidth(),
                     readOnly = true,
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = androidx.compose.ui.graphics.Color.White,
+                        unfocusedContainerColor = androidx.compose.ui.graphics.Color.White
+                    ),
                     trailingIcon = {
                         IconButton(onClick = { showStatusDropdown = true }) {
                             Icon(Icons.Default.ArrowDropDown, contentDescription = "Виберіть статус")
@@ -297,6 +389,20 @@ fun CreateRepairScreen(
                     }
                 }
             }
+            
+            // Notes field
+            OutlinedTextField(
+                value = note,
+                onValueChange = { note = it },
+                label = { Text("Примітки") },
+                modifier = Modifier.fillMaxWidth(),
+                maxLines = 3,
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = androidx.compose.ui.graphics.Color.White,
+                    unfocusedContainerColor = androidx.compose.ui.graphics.Color.White
+                )
+            )
             
             Spacer(modifier = Modifier.height(16.dp))
             
@@ -362,7 +468,8 @@ fun CreateRepairScreen(
                         clientPhone = clientPhone.text,
                         executor = executor,
                         dateStart = currentDateString,
-                        dateEnd = currentDateString
+                        dateEnd = currentDateString,
+                        note = note
                     )
                     viewModel.createRepair(
                         repair = repair,
@@ -405,10 +512,12 @@ fun CreateRepairScreen(
                     TextButton(onClick = { showServerNotConnectedDialog = false }) {
                         Text("ОК")
                     }
-                }
+                },
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp)
             )
-        }
     }
+}
+}
 }
 
 

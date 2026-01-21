@@ -40,8 +40,8 @@ fun AssignBarcodeDialog(
         viewModel.setSelectedSupplier(selectedSupplier)
     }
     
-    // Filter only unpaid items (inStock = true)
-    val availableItems = items.filter { it.inStock }
+    // Filter only items in stock that don't have a barcode yet
+    val availableItems = items.filter { it.inStock && (it.barcode == null || it.barcode.isEmpty()) }
     
     var selectedItemForConfirm by remember { mutableStateOf<WarehouseItem?>(null) }
     

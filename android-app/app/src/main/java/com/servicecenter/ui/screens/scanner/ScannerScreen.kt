@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -150,6 +151,9 @@ fun ScannerScreen(
                                 // Dialog will update when item is loaded
                             }
                         },
+                        onSearchBarcode = { barcode ->
+                            viewModel.scanBarcode(barcode)
+                        },
                         onScanAgain = {
                             showResultDialog = false
                             viewModel.clearScannedData()
@@ -238,6 +242,7 @@ fun ScanResultDialog(
     onDismiss: () -> Unit,
     onAssign: (Int) -> Unit,
     onScanAgain: () -> Unit,
+    onSearchBarcode: (String) -> Unit,
     onSell: (WarehouseItem) -> Unit = {}
 ) {
     var showAssignDialog by remember { mutableStateOf(false) }
@@ -362,17 +367,38 @@ fun ScanResultDialog(
                     }
                 }
             } else if (scannedBarcode != null) {
-                // Show "not found" message with assign button
+                // Show "not found" message with editable barcode
+                var editableBarcode by remember { mutableStateOf(scannedBarcode) }
+                
                 Column(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Text(
-                        text = "Штрих-код: $scannedBarcode",
-                        style = MaterialTheme.typography.bodyLarge,
+                        text = "Товар не знайдено",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.error,
                         fontWeight = FontWeight.Bold
                     )
+                    
+                    OutlinedTextField(
+                        value = editableBarcode,
+                        onValueChange = { editableBarcode = it },
+                        label = { Text("Штрих-код (можна змінити)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        trailingIcon = {
+                            if (editableBarcode != scannedBarcode) {
+                                IconButton(onClick = { 
+                                    onSearchBarcode(editableBarcode)
+                                }) {
+                                    Icon(Icons.Default.Search, contentDescription = "Повторити пошук")
+                                }
+                            }
+                        }
+                    )
+                    
                     Text(
-                        text = "Товар з таким штрих-кодом не знайдено в базі даних.",
+                        text = "Товар з таким штрих-кодом не знайдено в базі даних. Ви можете виправити його вище або прив'язати до існуючого товару.",
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }

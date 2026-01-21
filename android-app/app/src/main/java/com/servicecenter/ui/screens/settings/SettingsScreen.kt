@@ -10,7 +10,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.size
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -79,11 +85,13 @@ fun SettingsScreen(
             // Connection status card
             item {
                 Card(
+                    shape = RoundedCornerShape(24.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = if (isConnected) 
-                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                            androidx.compose.ui.graphics.Color.White
                         else 
-                            MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                            androidx.compose.ui.graphics.Color.White
                     )
                 ) {
                     Row(
@@ -213,7 +221,8 @@ fun SettingsScreen(
                     }
                     showAddServerDialog = false
                     editingServer = null
-                }
+                },
+                viewModel = viewModel
             )
         }
     }
@@ -231,11 +240,13 @@ fun ServerItem(
     var showDeleteDialog by remember { mutableStateOf(false) }
     
     Card(
+        shape = RoundedCornerShape(24.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (isActive) 
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                androidx.compose.ui.graphics.Color(0xFFE3F2FD)
             else 
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                androidx.compose.ui.graphics.Color.White
         ),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -331,11 +342,23 @@ fun ServerItem(
 fun ServerDialog(
     server: ServerConfig?,
     onDismiss: () -> Unit,
-    onSave: (String, String) -> Unit
+    onSave: (String, String) -> Unit,
+    viewModel: SettingsViewModel
 ) {
     var name by remember { mutableStateOf(server?.name ?: "") }
     var url by remember { mutableStateOf(server?.url ?: "") }
+    val isScanning by viewModel.isScanning.collectAsState()
     
+    // Auto-fill IP prefix if empty and adding new server
+    LaunchedEffect(Unit) {
+        if (server == null && url.isEmpty()) {
+            val prefix = viewModel.getLocalIpPrefix()
+            if (prefix.isNotEmpty()) {
+                url = "http://$prefix"
+            }
+        }
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -351,6 +374,7 @@ fun ServerDialog(
                     label = { Text("Назва сервера") },
                     placeholder = { Text("Сервер 1") },
                     modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
                     leadingIcon = {
                         Icon(Icons.Default.Label, contentDescription = null)
                     }
@@ -361,16 +385,38 @@ fun ServerDialog(
                     label = { Text("URL сервера") },
                     placeholder = { Text("http://192.168.1.100:3000") },
                     modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
                     leadingIcon = {
                         Icon(Icons.Default.Cloud, contentDescription = null)
+                    },
+                    trailingIcon = {
+                        if (isScanning) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                        } else if (server == null) {
+                            IconButton(onClick = {
+                                viewModel.scanLocalNetwork { discoveredUrl ->
+                                    if (discoveredUrl != null) url = discoveredUrl
+                                }
+                            }) {
+                                Icon(Icons.Default.Search, contentDescription = "Пошук в мережі")
+                            }
+                        }
                     }
                 )
+                if (server == null) {
+                    Text(
+                        "Натисніть на іконку пошуку, щоб знайти сервер автоматично",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                }
             }
         },
         confirmButton = {
             Button(
                 onClick = { onSave(name, url) },
-                enabled = url.isNotEmpty()
+                enabled = url.isNotEmpty(),
+                shape = RoundedCornerShape(16.dp)
             ) {
                 Text("Зберегти")
             }
@@ -379,7 +425,8 @@ fun ServerDialog(
             TextButton(onClick = onDismiss) {
                 Text("Скасувати")
             }
-        }
+        },
+        shape = RoundedCornerShape(28.dp)
     )
 }
 
@@ -406,9 +453,21 @@ class SettingsViewModel @Inject constructor(
     
     private val _isChecking = MutableStateFlow<Boolean>(false)
     val isChecking: StateFlow<Boolean> = _isChecking.asStateFlow()
+
+    private val _isScanning = MutableStateFlow<Boolean>(false)
+    val isScanning: StateFlow<Boolean> = _isScanning.asStateFlow()
     
     init {
         loadServers()
+        // Periodic check in the background
+        viewModelScope.launch {
+            while(true) {
+                if (_serverUrl.value.isNotEmpty()) {
+                    checkConnection()
+                }
+                kotlinx.coroutines.delay(10000) // Every 10 seconds is enough for background
+            }
+        }
     }
     
     private fun loadServers() {
@@ -500,11 +559,6 @@ class SettingsViewModel @Inject constructor(
             val updatedServers = _servers.value.toMutableList()
             updatedServers.add(newServer)
             
-            // If this is the first server, make it active
-            if (updatedServers.size == 1) {
-                newServer.copy(isActive = true)
-            }
-            
             saveServersList(updatedServers)
             _servers.value = updatedServers
             
@@ -595,11 +649,9 @@ class SettingsViewModel @Inject constructor(
     }
     
     fun saveServerUrl(url: String) {
-        // For backward compatibility - add as new server if no servers exist
         if (_servers.value.isEmpty()) {
             addServer("Сервер 1", url)
         } else {
-            // Update active server URL
             _activeServer.value?.let { active ->
                 updateServer(active.id, active.name, url)
             }
@@ -615,32 +667,86 @@ class SettingsViewModel @Inject constructor(
         
         val cleanUrl = normalizeUrl(url)
         
-        android.util.Log.d("SettingsViewModel", "Checking connection to: $cleanUrl")
-        
         viewModelScope.launch {
             _isChecking.value = true
             try {
                 val apiService = apiClient.getApiService(cleanUrl)
-                android.util.Log.d("SettingsViewModel", "API service created, calling healthCheck...")
                 val response = apiService.healthCheck()
-                android.util.Log.d("SettingsViewModel", "Response code: ${response.code()}, isSuccessful: ${response.isSuccessful()}, body: ${response.body()}")
                 _isConnected.value = response.isSuccessful && response.body() != null
-            } catch (e: java.net.UnknownHostException) {
-                android.util.Log.e("SettingsViewModel", "Unknown host: ${e.message}", e)
-                _isConnected.value = false
-            } catch (e: java.net.ConnectException) {
-                android.util.Log.e("SettingsViewModel", "Connection refused: ${e.message}", e)
-                _isConnected.value = false
-            } catch (e: java.net.SocketTimeoutException) {
-                android.util.Log.e("SettingsViewModel", "Connection timeout: ${e.message}", e)
-                _isConnected.value = false
             } catch (e: Exception) {
-                android.util.Log.e("SettingsViewModel", "Connection check failed: ${e.javaClass.simpleName} - ${e.message}", e)
-                e.printStackTrace()
                 _isConnected.value = false
             } finally {
                 _isChecking.value = false
             }
+        }
+    }
+
+    fun getLocalIpPrefix(): String {
+        try {
+            val interfaces = java.net.NetworkInterface.getNetworkInterfaces()
+            while (interfaces.hasMoreElements()) {
+                val intf = interfaces.nextElement()
+                val addrs = intf.inetAddresses
+                while (addrs.hasMoreElements()) {
+                    val addr = addrs.nextElement()
+                    if (!addr.isLoopbackAddress && addr is java.net.Inet4Address) {
+                        val ip = addr.hostAddress ?: ""
+                        if (ip.isNotEmpty()) {
+                            val parts = ip.split(".")
+                            if (parts.size == 4) {
+                                return "${parts[0]}.${parts[1]}.${parts[2]}."
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return ""
+    }
+
+    fun scanLocalNetwork(onDiscovered: (String?) -> Unit) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            _isScanning.value = true
+            val prefix = getLocalIpPrefix()
+            if (prefix.isEmpty()) {
+                _isScanning.value = false
+                onDiscovered(null)
+                return@launch
+            }
+
+            // Try common ports and potential IPs concurrently
+            val potentialIps = (1..254).map { "$prefix$it" }
+            var discovered: String? = null
+
+            // Use Coroutines to scan multiple IPs in parallel
+            val jobs = potentialIps.map { ip ->
+                launch {
+                    val url = "http://$ip:3000"
+                    try {
+                        val apiService = apiClient.getApiService(url)
+                        val response = kotlinx.coroutines.withTimeout(800) { apiService.healthCheck() }
+                        if (response.isSuccessful) {
+                            discovered = url
+                            // Cancel other jobs if found
+                            this@launch.coroutineContext[kotlinx.coroutines.Job]?.cancel()
+                        }
+                    } catch (e: Exception) {
+                        // Ignore
+                    }
+                }
+            }
+
+            // Wait for first discovery or timeout
+            kotlinx.coroutines.withTimeoutOrNull(10000) {
+                while (discovered == null && jobs.any { it.isActive }) {
+                    kotlinx.coroutines.delay(100)
+                }
+            }
+
+            _isScanning.value = false
+            onDiscovered(discovered)
         }
     }
 }

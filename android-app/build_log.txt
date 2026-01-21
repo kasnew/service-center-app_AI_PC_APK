@@ -1,0 +1,362 @@
+Initialized native services in: /home/kasnew/.gradle/native
+Initialized jansi services in: /home/kasnew/.gradle/native
+The client will now receive all logging from the daemon (pid: 69809). The daemon log file: /home/kasnew/.gradle/daemon/8.13/daemon-69809.out.log
+Starting 8th build in daemon [uptime: 3 hrs 45 mins 13.413 secs, performance: 98%, GC rate: 0.00/s, heap usage: 0% of 2 GiB]
+Using 4 worker leases.
+Now considering [/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app] as hierarchies to watch
+Watching the file system is configured to be enabled if available
+File system watching is active
+Starting Build
+Settings evaluated using settings file '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/settings.gradle.kts'.
+Projects loaded. Root project using build file '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/build.gradle.kts'.
+Included projects: [root project 'ServiceCenterApp', project ':app']
+
+> Configure project :
+Evaluating root project 'ServiceCenterApp' using build file '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/build.gradle.kts'.
+Resolved plugin [id: 'com.android.application', version: '8.13.1', apply: false]
+Resolved plugin [id: 'org.jetbrains.kotlin.android', version: '1.9.22', apply: false]
+Resolved plugin [id: 'com.google.dagger.hilt.android', version: '2.48', apply: false]
+
+> Configure project :app
+Evaluating project ':app' using build file '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build.gradle.kts'.
+Resolved plugin [id: 'com.android.application']
+Resolved plugin [id: 'org.jetbrains.kotlin.android']
+Resolved plugin [id: 'kotlin-kapt']
+Resolved plugin [id: 'dagger.hilt.android.plugin']
+Using default execution profile
+Using Kotlin Gradle Plugin gradle82 variant
+All projects evaluated.
+Task path ':app:compileDebugKotlin' matched project ':app'
+Task name matched 'compileDebugKotlin'
+Selected primary task 'compileDebugKotlin' from project :app
+Tasks to be executed: [task ':app:checkKotlinGradlePluginConfigurationErrors', task ':app:preBuild', task ':app:preDebugBuild', task ':app:checkDebugAarMetadata', task ':app:processDebugNavigationResources', task ':app:compileDebugNavigationResources', task ':app:generateDebugResValues', task ':app:mapDebugSourceSetPaths', task ':app:generateDebugResources', task ':app:mergeDebugResources', task ':app:packageDebugResources', task ':app:parseDebugLocalResources', task ':app:createDebugCompatibleScreenManifests', task ':app:extractDeepLinksDebug', task ':app:processDebugMainManifest', task ':app:processDebugManifest', task ':app:processDebugManifestForPackage', task ':app:processDebugResources', task ':app:kaptGenerateStubsDebugKotlin', task ':app:kaptDebugKotlin', task ':app:compileDebugKotlin']
+Tasks that were excluded: []
+Resolve mutations for :app:checkKotlinGradlePluginConfigurationErrors (Thread[Execution worker,5,main]) started.
+:app:checkKotlinGradlePluginConfigurationErrors (Thread[Execution worker,5,main]) started.
+
+> Task :app:checkKotlinGradlePluginConfigurationErrors
+Caching disabled for task ':app:checkKotlinGradlePluginConfigurationErrors' because:
+  Build cache is disabled
+Task ':app:checkKotlinGradlePluginConfigurationErrors' is not up-to-date because:
+  Task has not declared any outputs despite executing actions.
+Resolve mutations for :app:preBuild (Thread[Execution worker,5,main]) started.
+:app:preBuild (Thread[Execution worker,5,main]) started.
+
+> Task :app:preBuild UP-TO-DATE
+Skipping task ':app:preBuild' as it has no actions.
+Resolve mutations for :app:preDebugBuild (Thread[Execution worker,5,main]) started.
+:app:preDebugBuild (Thread[Execution worker,5,main]) started.
+
+> Task :app:preDebugBuild UP-TO-DATE
+Skipping task ':app:preDebugBuild' as it has no actions.
+Resolve mutations for :app:checkDebugAarMetadata (Thread[Execution worker,5,main]) started.
+:app:checkDebugAarMetadata (Thread[Execution worker,5,main]) started.
+
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+Caching disabled for task ':app:checkDebugAarMetadata' because:
+  Build cache is disabled
+  Caching has been disabled for the task
+Skipping task ':app:checkDebugAarMetadata' as it is up-to-date.
+Resolve mutations for :app:processDebugNavigationResources (Thread[Execution worker,5,main]) started.
+:app:processDebugNavigationResources (Thread[Execution worker,5,main]) started.
+
+> Task :app:processDebugNavigationResources UP-TO-DATE
+Caching disabled for task ':app:processDebugNavigationResources' because:
+  Build cache is disabled
+Skipping task ':app:processDebugNavigationResources' as it is up-to-date.
+Resolve mutations for :app:compileDebugNavigationResources (Thread[Execution worker,5,main]) started.
+:app:compileDebugNavigationResources (Thread[Execution worker,5,main]) started.
+
+> Task :app:compileDebugNavigationResources UP-TO-DATE
+Caching disabled for task ':app:compileDebugNavigationResources' because:
+  Build cache is disabled
+Skipping task ':app:compileDebugNavigationResources' as it is up-to-date.
+Resolve mutations for :app:generateDebugResValues (Thread[Execution worker,5,main]) started.
+:app:generateDebugResValues (Thread[Execution worker,5,main]) started.
+
+> Task :app:generateDebugResValues UP-TO-DATE
+Caching disabled for task ':app:generateDebugResValues' because:
+  Build cache is disabled
+Skipping task ':app:generateDebugResValues' as it is up-to-date.
+Resolve mutations for :app:mapDebugSourceSetPaths (Thread[Execution worker,5,main]) started.
+:app:mapDebugSourceSetPaths (Thread[Execution worker,5,main]) started.
+
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+Caching disabled for task ':app:mapDebugSourceSetPaths' because:
+  Build cache is disabled
+  Caching has been disabled for the task
+Skipping task ':app:mapDebugSourceSetPaths' as it is up-to-date.
+Resolve mutations for :app:generateDebugResources (Thread[Execution worker,5,main]) started.
+:app:generateDebugResources (Thread[Execution worker,5,main]) started.
+
+> Task :app:generateDebugResources UP-TO-DATE
+Caching disabled for task ':app:generateDebugResources' because:
+  Build cache is disabled
+Skipping task ':app:generateDebugResources' as it is up-to-date.
+Resolve mutations for :app:mergeDebugResources (Thread[Execution worker Thread 2,5,main]) started.
+:app:mergeDebugResources (Thread[included builds,5,main]) started.
+
+> Task :app:mergeDebugResources UP-TO-DATE
+Caching disabled for task ':app:mergeDebugResources' because:
+  Build cache is disabled
+Skipping task ':app:mergeDebugResources' as it is up-to-date.
+Resolve mutations for :app:packageDebugResources (Thread[Execution worker Thread 2,5,main]) started.
+:app:packageDebugResources (Thread[Execution worker Thread 3,5,main]) started.
+
+> Task :app:packageDebugResources UP-TO-DATE
+Caching disabled for task ':app:packageDebugResources' because:
+  Build cache is disabled
+Skipping task ':app:packageDebugResources' as it is up-to-date.
+Resolve mutations for :app:parseDebugLocalResources (Thread[Execution worker Thread 3,5,main]) started.
+:app:parseDebugLocalResources (Thread[Execution worker Thread 3,5,main]) started.
+
+> Task :app:parseDebugLocalResources UP-TO-DATE
+Caching disabled for task ':app:parseDebugLocalResources' because:
+  Build cache is disabled
+Skipping task ':app:parseDebugLocalResources' as it is up-to-date.
+Resolve mutations for :app:createDebugCompatibleScreenManifests (Thread[Execution worker Thread 3,5,main]) started.
+:app:createDebugCompatibleScreenManifests (Thread[Execution worker Thread 3,5,main]) started.
+
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+Caching disabled for task ':app:createDebugCompatibleScreenManifests' because:
+  Build cache is disabled
+  Caching has been disabled for the task
+Skipping task ':app:createDebugCompatibleScreenManifests' as it is up-to-date.
+Resolve mutations for :app:extractDeepLinksDebug (Thread[Execution worker Thread 2,5,main]) started.
+:app:extractDeepLinksDebug (Thread[Execution worker Thread 2,5,main]) started.
+
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+Caching disabled for task ':app:extractDeepLinksDebug' because:
+  Build cache is disabled
+Skipping task ':app:extractDeepLinksDebug' as it is up-to-date.
+Resolve mutations for :app:processDebugMainManifest (Thread[Execution worker Thread 2,5,main]) started.
+:app:processDebugMainManifest (Thread[Execution worker Thread 2,5,main]) started.
+
+> Task :app:processDebugMainManifest UP-TO-DATE
+Caching disabled for task ':app:processDebugMainManifest' because:
+  Build cache is disabled
+Skipping task ':app:processDebugMainManifest' as it is up-to-date.
+Resolve mutations for :app:processDebugManifest (Thread[Execution worker Thread 2,5,main]) started.
+:app:processDebugManifest (Thread[Execution worker Thread 2,5,main]) started.
+
+> Task :app:processDebugManifest UP-TO-DATE
+Caching disabled for task ':app:processDebugManifest' because:
+  Build cache is disabled
+Skipping task ':app:processDebugManifest' as it is up-to-date.
+Resolve mutations for :app:processDebugManifestForPackage (Thread[Execution worker Thread 2,5,main]) started.
+:app:processDebugManifestForPackage (Thread[Execution worker Thread 2,5,main]) started.
+
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+Custom actions are attached to task ':app:processDebugManifestForPackage'.
+Caching disabled for task ':app:processDebugManifestForPackage' because:
+  Build cache is disabled
+Skipping task ':app:processDebugManifestForPackage' as it is up-to-date.
+Resolve mutations for :app:processDebugResources (Thread[Execution worker Thread 2,5,main]) started.
+:app:processDebugResources (Thread[Execution worker Thread 2,5,main]) started.
+
+> Task :app:processDebugResources UP-TO-DATE
+Caching disabled for task ':app:processDebugResources' because:
+  Build cache is disabled
+Skipping task ':app:processDebugResources' as it is up-to-date.
+Resolve mutations for :app:kaptGenerateStubsDebugKotlin (Thread[Execution worker,5,main]) started.
+:app:kaptGenerateStubsDebugKotlin (Thread[Execution worker,5,main]) started.
+
+> Task :app:kaptGenerateStubsDebugKotlin UP-TO-DATE
+Caching disabled for task ':app:kaptGenerateStubsDebugKotlin' because:
+  Build cache is disabled
+Skipping task ':app:kaptGenerateStubsDebugKotlin' as it is up-to-date.
+Resolve mutations for :app:kaptDebugKotlin (Thread[Execution worker,5,main]) started.
+:app:kaptDebugKotlin (Thread[Execution worker,5,main]) started.
+
+> Task :app:kaptDebugKotlin UP-TO-DATE
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+Caching disabled for task ':app:kaptDebugKotlin' because:
+  Build cache is disabled
+Skipping task ':app:kaptDebugKotlin' as it is up-to-date.
+Resolve mutations for :app:compileDebugKotlin (Thread[Execution worker Thread 2,5,main]) started.
+:app:compileDebugKotlin (Thread[Execution worker Thread 2,5,main]) started.
+
+> Task :app:compileDebugKotlin
+Caching disabled for task ':app:compileDebugKotlin' because:
+  Build cache is disabled
+Task ':app:compileDebugKotlin' is not up-to-date because:
+  Task has failed previously.
+The input changes require a full rebuild for incremental task ':app:compileDebugKotlin'.
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/kotlin', not found
+file or directory '/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/debug/java', not found
+Kotlin source files: /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/MainActivity.kt, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/data/repository/WarehouseRepository.kt, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/data/repository/RepairRepository.kt, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/data/repository/TransactionRepository.kt, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/data/api/ApiService.kt, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/data/api/ApiClient.kt, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/data/models/ServerConfig.kt, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/data/models/Transaction.kt, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/data/models/Repair.kt, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/data/models/WarehouseItem.kt, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/data/local/PreferencesKeys.kt, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/data/local/database/Converters.kt, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/data/local/database/AppDatabase.kt, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/data/local/dao/RepairDao.kt, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/data/local/dao/WarehouseItemDao.kt, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/data/local/dao/TransactionDao.kt, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/data/sync/SyncManager.kt, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/di/AppModule.kt, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/transactions/TransactionsViewModel.kt, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/transactions/TransactionsScreen.kt, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/settings/SettingsScreen.kt, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/warehouse/WarehouseScreen.kt, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/warehouse/EditBarcodeDialog.kt, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/warehouse/WarehouseViewModel.kt, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/warehouse/AssignBarcodeDialog.kt, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/repairs/RepairDetailScreen.kt, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/repairs/SelectWarehouseItemScreen.kt, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/repairs/RepairsScreen.kt, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/repairs/CreateRepairScreen.kt, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/repairs/RepairsViewModel.kt, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/scanner/ScannerScreen.kt, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/scanner/OcrPhotoCaptureView.kt, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/scanner/BarcodeScanner.kt, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/scanner/ScanModeSelectionDialog.kt, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/scanner/ScannerViewModel.kt, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/home/HomeScreen.kt, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/components/ConnectionIndicator.kt, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/navigation/NavGraph.kt, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/theme/Theme.kt, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/theme/Type.kt, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ServiceCenterApplication.kt
+Java source files: /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/dagger/hilt/internal/aggregatedroot/codegen/_com_servicecenter_ServiceCenterApplication.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/hilt_aggregated_deps/_com_servicecenter_ui_screens_repairs_RepairsViewModel_HiltModules_BindsModule.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/hilt_aggregated_deps/_com_servicecenter_ui_screens_settings_SettingsViewModel_HiltModules_BindsModule.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/hilt_aggregated_deps/_com_servicecenter_ui_screens_transactions_TransactionsViewModel_HiltModules_BindsModule.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/hilt_aggregated_deps/_com_servicecenter_ui_screens_warehouse_WarehouseViewModel_HiltModules_KeyModule.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/hilt_aggregated_deps/_com_servicecenter_ServiceCenterApplication_GeneratedInjector.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/hilt_aggregated_deps/_com_servicecenter_ui_screens_warehouse_WarehouseViewModel_HiltModules_BindsModule.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/hilt_aggregated_deps/_com_servicecenter_ui_screens_transactions_TransactionsViewModel_HiltModules_KeyModule.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/hilt_aggregated_deps/_com_servicecenter_ui_screens_repairs_RepairsViewModel_HiltModules_KeyModule.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/hilt_aggregated_deps/_com_servicecenter_ui_screens_scanner_ScannerViewModel_HiltModules_KeyModule.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/hilt_aggregated_deps/_com_servicecenter_di_AppModule.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/hilt_aggregated_deps/_com_servicecenter_ui_screens_settings_SettingsViewModel_HiltModules_KeyModule.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/hilt_aggregated_deps/_com_servicecenter_ui_screens_scanner_ScannerViewModel_HiltModules_BindsModule.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/hilt_aggregated_deps/_com_servicecenter_MainActivity_GeneratedInjector.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/com/servicecenter/data/api/ApiClient_Factory.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/com/servicecenter/data/local/database/AppDatabase_Impl.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/com/servicecenter/data/local/dao/TransactionDao_Impl.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/com/servicecenter/data/local/dao/RepairDao_Impl.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/com/servicecenter/data/local/dao/WarehouseItemDao_Impl.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/com/servicecenter/data/sync/SyncManager_Factory.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/com/servicecenter/ServiceCenterApplication_MembersInjector.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/com/servicecenter/di/AppModule_ProvideRepairRepositoryFactory.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/com/servicecenter/di/AppModule_ProvideSyncManagerFactory.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/com/servicecenter/di/AppModule_ProvideWarehouseRepositoryFactory.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/com/servicecenter/di/AppModule_ProvideAppDatabaseFactory.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/com/servicecenter/di/AppModule_ProvideDataStoreFactory.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/com/servicecenter/di/AppModule_ProvideTransactionRepositoryFactory.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/com/servicecenter/di/AppModule_ProvideApiClientFactory.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/com/servicecenter/MainActivity_GeneratedInjector.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/com/servicecenter/MainActivity_MembersInjector.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/com/servicecenter/ui/screens/transactions/TransactionsViewModel_Factory.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/com/servicecenter/ui/screens/transactions/TransactionsViewModel_HiltModules.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/com/servicecenter/ui/screens/transactions/TransactionsViewModel_HiltModules_KeyModule_ProvideFactory.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/com/servicecenter/ui/screens/settings/SettingsViewModel_HiltModules_KeyModule_ProvideFactory.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/com/servicecenter/ui/screens/settings/SettingsViewModel_HiltModules.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/com/servicecenter/ui/screens/settings/SettingsViewModel_Factory.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/com/servicecenter/ui/screens/warehouse/WarehouseViewModel_HiltModules.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/com/servicecenter/ui/screens/warehouse/WarehouseViewModel_Factory.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/com/servicecenter/ui/screens/warehouse/WarehouseViewModel_HiltModules_KeyModule_ProvideFactory.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/com/servicecenter/ui/screens/repairs/RepairsViewModel_Factory.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/com/servicecenter/ui/screens/repairs/RepairsViewModel_HiltModules.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/com/servicecenter/ui/screens/repairs/RepairsViewModel_HiltModules_KeyModule_ProvideFactory.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/com/servicecenter/ui/screens/scanner/ScannerViewModel_Factory.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/com/servicecenter/ui/screens/scanner/ScannerViewModel_HiltModules_KeyModule_ProvideFactory.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/com/servicecenter/ui/screens/scanner/ScannerViewModel_HiltModules.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/com/servicecenter/Hilt_MainActivity.java, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/generated/source/kapt/debug/com/servicecenter/ServiceCenterApplication_GeneratedInjector.java
+Script source files: 
+Script file extensions: 
+Using Kotlin/JVM incremental compilation
+[KOTLIN] Kotlin compilation 'jdkHome' argument: null
+i: found daemon on port 17086 (3684664 ms old), trying to connect
+i: connected to the daemon
+Options for KOTLIN DAEMON: IncrementalCompilationOptions(super=CompilationOptions(compilerMode=INCREMENTAL_COMPILER, targetPlatform=JVM, reportCategories=[0, 3], reportSeverity=2, requestedCompilationResults=[0], kotlinScriptExtensions=[]), areFileChangesKnown=false, modifiedFiles=null, deletedFiles=null, classpathChanges=NotAvailableForNonIncrementalRun, workingDir=/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/kotlin/compileDebugKotlin/cacheable, multiModuleICSettings=MultiModuleICSettings(buildHistoryFile=/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/kotlin/compileDebugKotlin/local-state/build-history.bin, useModuleDetection=true), usePreciseJavaTracking=true, outputFiles=[/home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/tmp/kotlin-classes/debug, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/kotlin/compileDebugKotlin/cacheable, /home/kasnew/Документи/service-center-app_AI_PC_APK/android-app/app/build/kotlin/compileDebugKotlin/local-state])
+e: file:///home/kasnew/%D0%94%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B8/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/repairs/CreateRepairScreen.kt:260:37 Operator '==' cannot be applied to 'Double' and 'Int'
+e: file:///home/kasnew/%D0%94%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B8/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/repairs/CreateRepairScreen.kt:260:65 Unresolved reference: productsPercent
+e: file:///home/kasnew/%D0%94%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B8/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/repairs/RepairDetailScreen.kt:57:17 Unresolved reference: isLoading
+e: file:///home/kasnew/%D0%94%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B8/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/repairs/RepairDetailScreen.kt:60:21 Unresolved reference: repair
+e: file:///home/kasnew/%D0%94%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B8/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/repairs/RepairDetailScreen.kt:76:21 Unresolved reference: isLoadingParts
+e: file:///home/kasnew/%D0%94%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B8/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/repairs/RepairDetailScreen.kt:79:25 Unresolved reference: parts
+e: file:///home/kasnew/%D0%94%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B8/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/repairs/RepairDetailScreen.kt:81:25 Unresolved reference: parts
+e: file:///home/kasnew/%D0%94%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B8/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/repairs/RepairDetailScreen.kt:81:33 Not enough information to infer type variable T
+e: file:///home/kasnew/%D0%94%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B8/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/repairs/RepairDetailScreen.kt:83:25 Unresolved reference: isLoadingParts
+e: file:///home/kasnew/%D0%94%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B8/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/repairs/RepairDetailScreen.kt:88:21 Unresolved reference: isLoading
+e: file:///home/kasnew/%D0%94%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B8/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/repairs/RepairDetailScreen.kt:102:13 Unresolved reference: isLoading
+e: file:///home/kasnew/%D0%94%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B8/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/repairs/RepairDetailScreen.kt:142:25 Unresolved reference: repair
+e: file:///home/kasnew/%D0%94%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B8/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/repairs/RepairDetailScreen.kt:147:57 Unresolved reference: repair
+e: file:///home/kasnew/%D0%94%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B8/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/repairs/RepairDetailScreen.kt:163:45 Unresolved reference: repair
+e: file:///home/kasnew/%D0%94%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B8/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/repairs/RepairDetailScreen.kt:170:37 Unresolved reference: showServerNotConnectedDialog
+e: file:///home/kasnew/%D0%94%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B8/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/repairs/RepairDetailScreen.kt:184:37 Unresolved reference: showDeleteDialog
+e: file:///home/kasnew/%D0%94%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B8/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/repairs/RepairDetailScreen.kt:186:37 Unresolved reference: showServerNotConnectedDialog
+e: file:///home/kasnew/%D0%94%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B8/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/repairs/RepairDetailScreen.kt:203:25 Unresolved reference: showServerNotConnectedDialog
+e: file:///home/kasnew/%D0%94%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B8/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/repairs/RepairDetailScreen.kt:211:13 Unresolved reference: isLoading
+e: file:///home/kasnew/%D0%94%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B8/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/repairs/RepairDetailScreen.kt:220:20 Unresolved reference: repair
+e: file:///home/kasnew/%D0%94%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B8/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/repairs/RepairDetailScreen.kt:222:26 Unresolved reference: repair
+e: file:///home/kasnew/%D0%94%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B8/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/repairs/RepairDetailScreen.kt:223:25 Unresolved reference: parts
+e: file:///home/kasnew/%D0%94%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B8/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/repairs/RepairDetailScreen.kt:224:34 Unresolved reference: isLoadingParts
+e: file:///home/kasnew/%D0%94%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B8/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/repairs/RepairDetailScreen.kt:242:17 No value passed for parameter 'executors'
+e: file:///home/kasnew/%D0%94%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B8/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/repairs/RepairDetailScreen.kt:256:13 Unresolved reference: showDeleteDialog
+e: file:///home/kasnew/%D0%94%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B8/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/repairs/RepairDetailScreen.kt:256:33 Unresolved reference: repair
+e: file:///home/kasnew/%D0%94%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B8/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/repairs/RepairDetailScreen.kt:258:38 Unresolved reference: showDeleteDialog
+e: file:///home/kasnew/%D0%94%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B8/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/repairs/RepairDetailScreen.kt:265:42 Unresolved reference: repair
+e: file:///home/kasnew/%D0%94%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B8/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/repairs/RepairDetailScreen.kt:267:37 Unresolved reference: showDeleteDialog
+e: file:///home/kasnew/%D0%94%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B8/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/repairs/RepairDetailScreen.kt:277:44 Unresolved reference: showDeleteDialog
+e: file:///home/kasnew/%D0%94%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B8/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/repairs/RepairDetailScreen.kt:287:13 Unresolved reference: showServerNotConnectedDialog
+e: file:///home/kasnew/%D0%94%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B8/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/repairs/RepairDetailScreen.kt:289:38 Unresolved reference: showServerNotConnectedDialog
+e: file:///home/kasnew/%D0%94%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B8/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/repairs/RepairDetailScreen.kt:295:44 Unresolved reference: showServerNotConnectedDialog
+e: file:///home/kasnew/%D0%94%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B8/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/repairs/RepairDetailScreen.kt:466:41 Operator '==' cannot be applied to 'Double' and 'Int'
+e: file:///home/kasnew/%D0%94%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B8/service-center-app_AI_PC_APK/android-app/app/src/main/java/com/servicecenter/ui/screens/repairs/RepairDetailScreen.kt:466:69 Unresolved reference: productsPercent
+
+> Task :app:compileDebugKotlin FAILED
+
+[Incubating] Problems report is available at: file:///home/kasnew/%D0%94%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B8/service-center-app_AI_PC_APK/android-app/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDebugKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.13/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 13s
+19 actionable tasks: 2 executed, 17 up-to-date

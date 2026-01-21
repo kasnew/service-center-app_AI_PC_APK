@@ -15,13 +15,32 @@ interface RepairDao {
     @Query("SELECT * FROM repairs WHERE synced = 0")
     suspend fun getUnsyncedRepairs(): List<Repair>
     
-    @Query("SELECT * FROM repairs WHERE clientName LIKE '%' || :query || '%' OR clientPhone LIKE '%' || :query || '%' OR deviceName LIKE '%' || :query || '%' OR CAST(receiptId AS TEXT) LIKE '%' || :query || '%'")
+    @Query("""
+        SELECT * FROM repairs WHERE 
+            clientName LIKE '%' || :query || '%' OR 
+            clientPhone LIKE '%' || :query || '%' OR 
+            REPLACE(REPLACE(REPLACE(REPLACE(clientPhone, '-', ''), ' ', ''), '(', ''), ')', '') LIKE '%' || :query || '%' OR
+            deviceName LIKE '%' || :query || '%' OR 
+            CAST(receiptId AS TEXT) LIKE '%' || :query || '%' OR
+            CAST(totalCost AS TEXT) LIKE '%' || :query || '%'
+        ORDER BY receiptId DESC
+    """)
     fun searchRepairs(query: String): Flow<List<Repair>>
     
     @Query("SELECT * FROM repairs WHERE status = :status ORDER BY receiptId DESC")
     fun getRepairsByStatus(status: String): Flow<List<Repair>>
     
-    @Query("SELECT * FROM repairs WHERE status = :status AND (clientName LIKE '%' || :query || '%' OR clientPhone LIKE '%' || :query || '%' OR deviceName LIKE '%' || :query || '%' OR CAST(receiptId AS TEXT) LIKE '%' || :query || '%')")
+    @Query("""
+        SELECT * FROM repairs WHERE status = :status AND (
+            clientName LIKE '%' || :query || '%' OR 
+            clientPhone LIKE '%' || :query || '%' OR 
+            REPLACE(REPLACE(REPLACE(REPLACE(clientPhone, '-', ''), ' ', ''), '(', ''), ')', '') LIKE '%' || :query || '%' OR
+            deviceName LIKE '%' || :query || '%' OR 
+            CAST(receiptId AS TEXT) LIKE '%' || :query || '%' OR
+            CAST(totalCost AS TEXT) LIKE '%' || :query || '%'
+        )
+        ORDER BY receiptId DESC
+    """)
     fun searchRepairsByStatus(query: String, status: String): Flow<List<Repair>>
     
     @Insert(onConflict = OnConflictStrategy.REPLACE)

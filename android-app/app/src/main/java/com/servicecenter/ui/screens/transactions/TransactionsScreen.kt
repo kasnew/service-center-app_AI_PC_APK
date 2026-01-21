@@ -14,7 +14,13 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.servicecenter.data.models.Transaction
 import com.servicecenter.ui.components.ConnectionIndicator
@@ -35,65 +41,93 @@ fun TransactionsScreen(
     var showCategoryFilter by remember { mutableStateOf(false) }
     val isConnected by settingsViewModel.isConnected.collectAsState(initial = false)
     
+    LaunchedEffect(Unit) {
+        settingsViewModel.checkConnection()
+        viewModel.loadTransactions()
+        viewModel.loadBalances()
+    }
+    
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Транзакції") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
-                    }
-                },
-                actions = {
-                    ConnectionIndicator()
-                    IconButton(
-                        onClick = { 
-                            if (isConnected) {
-                            viewModel.loadTransactions()
-                            viewModel.loadBalances()
-                            }
-                        },
-                        enabled = !isLoading && isConnected
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        androidx.compose.ui.graphics.Brush.verticalGradient(
+                            colors = listOf(androidx.compose.ui.graphics.Color(0xFFE3F2FD), androidx.compose.ui.graphics.Color(0xFFF5F5F5))
+                        )
+                    )
+            ) {
+                Column {
+                    Spacer(modifier = Modifier.height(32.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        if (isLoading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                strokeWidth = 2.dp
+                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            IconButton(onClick = onBack) {
+                                Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
+                            }
+                            Text(
+                                text = "Транзакції",
+                                style = MaterialTheme.typography.headlineMedium.copy(
+                                    fontWeight = FontWeight.Bold
+                                )
                             )
-                        } else {
-                            Icon(
-                                Icons.Default.Sync,
-                                contentDescription = "Синхронізувати"
-                            )
+                        }
+                        
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            ConnectionIndicator()
+                            IconButton(
+                                onClick = { 
+                                    if (isConnected) {
+                                        viewModel.loadTransactions()
+                                        viewModel.loadBalances()
+                                    }
+                                },
+                                enabled = !isLoading && isConnected
+                            ) {
+                                if (isLoading) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
+                                    Icon(Icons.Default.Sync, contentDescription = "Синхронізувати")
+                                }
+                            }
                         }
                     }
                 }
-            )
+            }
         }
     ) { padding ->
-        if (isLoading && transactions.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = androidx.compose.ui.Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        } else {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    androidx.compose.ui.graphics.Brush.verticalGradient(
+                        colors = listOf(androidx.compose.ui.graphics.Color(0xFFE3F2FD), androidx.compose.ui.graphics.Color(0xFFF5F5F5))
+                    )
+                )
+                .padding(padding)
+        ) {
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
+                modifier = Modifier.fillMaxSize()
             ) {
                 // Balances and filter row
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
+                        containerColor = androidx.compose.ui.graphics.Color.White
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
                     Row(
                         modifier = Modifier
@@ -296,113 +330,130 @@ fun CategoryFilterDropdown(
 fun TransactionCard(transaction: Transaction) {
     val isIncome = transaction.amount >= 0
     val categoryIcon = getCategoryIcon(transaction.category)
+    var isExpanded by remember { mutableStateOf(false) }
     
-    // Build description with executor name in one line
+    // Build description with executor name
     val fullDescription = buildString {
         append(transaction.description)
         if (transaction.executorName != null && transaction.executorName.isNotEmpty()) {
-            append(" ${transaction.executorName}")
+            append(" (${transaction.executorName})")
         }
     }
     
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { isExpanded = !isExpanded },
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = androidx.compose.ui.graphics.Color.White
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top
+                .padding(12.dp)
         ) {
-            // Very small category icon
-            Icon(
-                imageVector = categoryIcon,
-                contentDescription = transaction.category,
-                tint = if (isIncome)
-                    MaterialTheme.colorScheme.primary
-                else
-                    MaterialTheme.colorScheme.error,
-                modifier = Modifier.size(16.dp)
-            )
-            
-            Spacer(modifier = Modifier.width(10.dp))
-            
-            Column(
-                modifier = Modifier.weight(1f)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Description with executor in one line
-                Text(
-                    text = fullDescription,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                
-                Spacer(modifier = Modifier.height(4.dp))
-                
-                // Category and payment type in one line - more readable
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
                 ) {
-                    // Category - larger and more visible
+                    Icon(
+                        imageVector = categoryIcon,
+                        contentDescription = transaction.category,
+                        tint = if (isIncome)
+                            Color(0xFF4CAF50)
+                        else
+                            Color(0xFFF44336),
+                        modifier = Modifier.size(18.dp)
+                    )
+                    
+                    Spacer(modifier = Modifier.width(8.dp))
+                    
                     Text(
                         text = transaction.category,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    
-                    if (transaction.paymentType != null) {
-                        Text(
-                            text = "•",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = transaction.paymentType,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
                 }
                 
-                // Date in separate line
-                if (transaction.dateExecuted != null) {
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = formatDate(transaction.dateExecuted),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            
-            Spacer(modifier = Modifier.width(8.dp))
-            
-            // Amount - ensure it's horizontal
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.Center
-            ) {
                 Text(
                     text = formatAmount(transaction.amount),
                     style = MaterialTheme.typography.titleMedium,
                     color = if (isIncome)
-                        MaterialTheme.colorScheme.primary
+                        Color(0xFF2E7D32)
                     else
-                        MaterialTheme.colorScheme.error,
+                        Color(0xFFC62828),
                     fontWeight = FontWeight.Bold
                 )
+            }
+            
+            if (isExpanded) {
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                if (transaction.description.isNotEmpty()) {
+                    Text(
+                        text = fullDescription,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.DarkGray
+                    )
+                }
+                
+                if (transaction.paymentType != null) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Payments,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = Color.Gray
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = transaction.paymentType,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray
+                        )
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(4.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Bottom
+            ) {
+                Text(
+                    text = if (transaction.dateExecuted != null) formatDate(transaction.dateExecuted) else "",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.Gray
+                )
+                
+                if (!isExpanded) {
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowDown,
+                        contentDescription = "Докладніше",
+                        modifier = Modifier.size(16.dp),
+                        tint = Color.Gray.copy(alpha = 0.5f)
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowUp,
+                        contentDescription = "Згорнути",
+                        modifier = Modifier.size(16.dp),
+                        tint = Color.Gray.copy(alpha = 0.5f)
+                    )
+                }
             }
         }
     }

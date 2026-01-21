@@ -1,17 +1,23 @@
 package com.servicecenter.ui.screens.repairs
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.servicecenter.data.models.Repair
 import com.servicecenter.data.models.WarehouseItem
@@ -34,48 +40,85 @@ fun RepairsScreen(
     val availableStatuses = viewModel.availableStatuses
     val isConnected by settingsViewModel.isConnected.collectAsState(initial = false)
     
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Ремонти") },
-                actions = {
-                    ConnectionIndicator()
-                    IconButton(
-                        onClick = { 
-                            if (isConnected) {
-                                viewModel.loadRepairs()
-                            }
-                        },
-                        enabled = !isLoading && isConnected
-                    ) {
-                        Icon(
-                            Icons.Default.Sync,
-                            contentDescription = "Синхронізувати",
-                            tint = if (isLoading) 
-                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                            else 
-                                MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFFE3F2FD),
+                        Color(0xFFF5F5F5)
+                    )
+                )
             )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { 
-                    if (isConnected) {
-                        onCreateRepair()
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Diia-style Header
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .padding(top = 50.dp, bottom = 16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Ремонти",
+                        style = MaterialTheme.typography.headlineLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 28.sp,
+                            color = Color(0xFF1A1A1A)
+                        )
+                    )
+                    
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        // Connection Status Pill
+                        Surface(
+                            color = if (isConnected) Color(0xFFE8F5E9) else Color(0xFFFFEBEE),
+                            shape = CircleShape
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(5.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .background(
+                                            color = if (isConnected) Color(0xFF4CAF50) else Color(0xFFF44336),
+                                            shape = CircleShape
+                                        )
+                                )
+                                Text(
+                                    text = if (isConnected) "В мережі" else "Офлайн",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = if (isConnected) Color(0xFF2E7D32) else Color(0xFFC62828),
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                )
+                            }
+                        }
+                        
+                        // Sync button
+                        IconButton(
+                            onClick = { if (isConnected) viewModel.loadRepairs() },
+                            enabled = !isLoading && isConnected
+                        ) {
+                            Icon(Icons.Default.Sync, contentDescription = "Синхронізувати", tint = Color(0xFF1976D2))
+                        }
                     }
                 }
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Додати ремонт")
             }
-        }
-    ) { padding ->
+            
+            // Floating Action Button overlay
+            Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
         ) {
             // Filters row
             Row(
@@ -98,7 +141,13 @@ fun RepairsScreen(
                             }
                         }
                     } else null,
-                    singleLine = true
+                    singleLine = true,
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White,
+                        disabledContainerColor = Color.White,
+                    )
                 )
                 
                 // Status filter dropdown
@@ -124,8 +173,8 @@ fun RepairsScreen(
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(repairs) { repair ->
                         RepairItem(
@@ -138,17 +187,16 @@ fun RepairsScreen(
                     if (repairs.isEmpty()) {
                         item {
                             Box(
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier.fillMaxWidth().padding(top = 40.dp),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
                                     text = when {
-                                        searchQuery.isNotEmpty() || selectedStatus != null -> 
-                                            "Нічого не знайдено"
-                                        else -> 
-                                            "Немає ремонтів"
+                                        searchQuery.isNotEmpty() || selectedStatus != null -> "Нічого не знайдено"
+                                        else -> "Немає ремонтів"
                                     },
-                                    style = MaterialTheme.typography.bodyLarge
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = Color.Gray
                                 )
                             }
                         }
@@ -156,7 +204,22 @@ fun RepairsScreen(
                 }
             }
         }
+            
+        // FAB in the corner (outside the Column but inside the Box overlay)
+            FloatingActionButton(
+                onClick = { if (isConnected) onCreateRepair() },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(24.dp),
+                shape = RoundedCornerShape(24.dp),
+                containerColor = Color(0xFF1976D2),
+                elevation = FloatingActionButtonDefaults.elevation(8.dp)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Додати ремонт", tint = Color.White)
+            }
+        }
     }
+}
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -168,17 +231,14 @@ fun RepairItem(
 ) {
     var parts by remember { mutableStateOf<List<WarehouseItem>>(emptyList()) }
     var isLoadingParts by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
     
     // Load parts when repair is displayed
     LaunchedEffect(repair.id) {
         if (repair.id != null) {
             isLoadingParts = true
             try {
-                val loadedParts = viewModel.getRepairParts(repair.id)
-                parts = loadedParts
+                parts = viewModel.getRepairParts(repair.id)
             } catch (e: Exception) {
-                android.util.Log.e("RepairItem", "Error loading parts for repair ${repair.id}: ${e.message}", e)
                 parts = emptyList()
             } finally {
                 isLoadingParts = false
@@ -189,10 +249,9 @@ fun RepairItem(
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-        )
+        colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Column(
             modifier = Modifier
@@ -230,7 +289,8 @@ fun RepairItem(
                         )
                     },
                     colors = AssistChipDefaults.assistChipColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                        containerColor = getStatusColor(repair.status),
+                        labelColor = Color.White
                     )
                 )
             }
@@ -306,6 +366,30 @@ fun RepairItem(
                         text = repair.deviceName,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            
+            // Fourth row: Executor
+            if (repair.executor.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.PersonOutline,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = repair.executor,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Medium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -481,8 +565,13 @@ fun StatusFilterDropdown(
             modifier = Modifier
                 .menuAnchor()
                 .width(180.dp),
-            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-            singleLine = true
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color.White,
+                disabledContainerColor = Color.White
+            ),
+            singleLine = true,
+            shape = RoundedCornerShape(16.dp)
         )
         
         ExposedDropdownMenu(
@@ -534,4 +623,16 @@ fun StatusFilterDropdown(
     }
 }
 
-
+// Helper function to get status color matching PC app colors
+fun getStatusColor(status: String): Color {
+    return when (status) {
+        "У черзі" -> Color(0xFFF59E0B) // amber-500
+        "У роботі" -> Color(0xFF3B82F6) // blue-500
+        "Очікув. відпов./деталі" -> Color(0xFFF97316) // orange-500
+        "Готовий до видачі" -> Color(0xFF22C55E) // green-500
+        "Не додзвонилися" -> Color(0xFFEF4444) // red-500
+        "Одеса" -> Color(0xFFA855F7) // purple-500
+        "Видано" -> Color(0xFF14B8A6) // teal-500
+        else -> Color(0xFF64748B) // slate-500
+    }
+}

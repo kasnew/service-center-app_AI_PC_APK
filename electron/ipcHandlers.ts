@@ -1652,21 +1652,22 @@ export function registerIpcHandlers() {
     const db = getDb();
     const { repairId, isPaid, dateEnd } = data;
 
-    // Get previous state for cash register logic
-    const previousState = db.prepare(`
-        SELECT ID, Квитанция, Сумма, Оплачено, Состояние, Виконавець, ТипОплати
+    // Get basic info to find receiptId
+    const repair = db.prepare(`
+        SELECT ID, Квитанция
         FROM Ремонт 
         WHERE ID = ? OR Квитанция = ?
     `).get(repairId, repairId) as any;
 
-    if (!previousState) {
+    if (!repair) {
       throw new Error('Ремонт не знайдено');
     }
 
-    const actualRepairId = previousState.ID;
-    const receiptId = previousState.Квитанция;
+    const receiptId = repair.Квитанция;
 
-    // Update all parts for this repair
+    // ONLY update parts sold date. 
+    // Do NOT update repair status or create cash transactions here.
+    // Full state and cash register logic are handled in 'save-repair'.
     db.prepare(`
       UPDATE Расходники SET
         Дата_продажи = ?
@@ -1676,144 +1677,9 @@ export function registerIpcHandlers() {
       receiptId
     );
 
-    // Also sync the repair record status
-    if (isPaid) {
-      db.prepare(`
-        UPDATE Ремонт SET 
-          Оплачено = 1, 
-          Состояние = 6, 
-          Конец_ремонта = ? 
-        WHERE ID = ?
-      `).run(toDelphiDate(dateEnd), actualRepairId);
-    } else {
-      db.prepare(`
-        UPDATE Ремонт SET 
-          Оплачено = 0 
-        WHERE ID = ?
-      `).run(actualRepairId);
-    }
-
-    // --- CASH REGISTER LOGIC ---
-    const settings = getCashRegisterSettings(db);
-
-    if (settings.cashRegisterEnabled) {
-      const wasPaid = previousState.Оплачено === 1 || previousState.Состояние === 6;
-      const isNowPaid = isPaid;
-
-      if (!wasPaid && isNowPaid) {
-        const balances = getBalances(db);
-        const pType = previousState.ТипОплати || 'Готівка';
-        const totalCost = previousState.Сумма || 0;
-        const executor = previousState.Виконавець || 'Андрій';
-
-        let newCash = balances.cash;
-        let newCard = balances.card;
-        let commission = 0;
-
-        let description = `Оплата квитанції #${receiptId}. ${pType}. ${executor}`;
-
-        if (pType === 'Картка') {
-          commission = totalCost * (settings.cardCommissionPercent / 100);
-          newCard += totalCost;
-          description += ` (Комісія: ${commission.toFixed(2)} грн)`;
-        } else {
-          newCash += totalCost;
-        }
-
-        const executorRecord = db.prepare('SELECT ID FROM Executors WHERE Name = ?').get(executor) as any;
-
-        createTransaction(db, {
-          category: 'Прибуток',
-          description: description,
-          amount: totalCost,
-          cash: newCash,
-          card: newCard,
-          executorId: executorRecord?.ID,
-          executorName: executor,
-          receiptId: actualRepairId,
-          paymentType: pType,
-          dateExecuted: dateEnd
-        });
-
-        if (commission > 0) {
-          const commissionBalances = getBalances(db);
-          const commissionCardBalance = commissionBalances.card - commission;
-          createTransaction(db, {
-            category: 'Комісія банку',
-            description: `Комісія банку за оплату квитанції #${receiptId}`,
-            amount: -commission,
-            cash: commissionBalances.cash,
-            card: commissionCardBalance,
-            receiptId: actualRepairId,
-            paymentType: 'Картка',
-            dateExecuted: dateEnd
-          });
-        }
-      } else if (wasPaid && !isNowPaid) {
-        // Handle cancellation if needed (though UI might not support un-paying yet)
-        const existingProfit = db.prepare(`
-                SELECT * FROM Каса 
-                WHERE КвитанціяID = ? AND Категорія = 'Прибуток'
-                ORDER BY ID DESC LIMIT 1
-            `).get(actualRepairId) as any;
-
-        if (existingProfit) {
-          const balances = getBalances(db);
-          let reverseCash = balances.cash;
-          let reverseCard = balances.card;
-
-          if (existingProfit.ТипОплати === 'Картка') {
-            reverseCard -= existingProfit.Сума;
-          } else {
-            reverseCash -= existingProfit.Сума;
-          }
-
-          createTransaction(db, {
-            category: 'Скасування',
-            description: `Скасування оплати квитанції #${receiptId} (повернення в роботу)`,
-            amount: -existingProfit.Сума,
-            cash: reverseCash,
-            card: reverseCard,
-            executorId: existingProfit.ВиконавецьID,
-            executorName: existingProfit.ВиконавецьІмя,
-            receiptId: actualRepairId,
-            paymentType: existingProfit.ТипОплати,
-            relatedTransactionId: existingProfit.ID,
-            dateExecuted: dateEnd
-          });
-
-          // Also cancel commission if card
-          if (existingProfit.ТипОплати === 'Картка') {
-            const commissionBalances = getBalances(db);
-            const existingCommission = db.prepare(`
-                        SELECT * FROM Каса 
-                        WHERE КвитанціяID = ? AND Категорія = 'Комісія банку'
-                        ORDER BY ID DESC LIMIT 1
-                    `).get(actualRepairId) as any;
-
-            if (existingCommission) {
-              const commissionAmount = Math.abs(existingCommission.Сума);
-              const newCardBalance = commissionBalances.card + commissionAmount;
-              createTransaction(db, {
-                category: 'Скасування',
-                description: `Скасування комісії банку за квитанцію #${receiptId} (повернення в роботу)`,
-                amount: commissionAmount,
-                cash: commissionBalances.cash,
-                card: newCardBalance,
-                receiptId: actualRepairId,
-                paymentType: 'Картка',
-                dateExecuted: dateEnd
-              });
-            }
-          }
-        }
-      }
-    }
-
-    triggerAutoBackup('barcode-delete');
-
     return { success: true };
   });
+
 
   // Get available suppliers
   // Get available suppliers
@@ -1943,7 +1809,7 @@ export function registerIpcHandlers() {
 
       // Check if backup file exists
       if (!fs.existsSync(backupPath)) {
-        throw new Error(`Файл резервної копії не знайдено: ${backupPath}`);
+        throw new Error(`Файл резервної копії не знайдено: ${backupPath} `);
       }
 
       // Close database before restore
@@ -2011,7 +1877,7 @@ export function registerIpcHandlers() {
       // Reopen database even if restore failed
       reopenDb();
       console.error('Restore failed:', error);
-      throw new Error(`Помилка відновлення з резервної копії: ${error.message}`);
+      throw new Error(`Помилка відновлення з резервної копії: ${error.message} `);
     }
   });
 
@@ -2050,7 +1916,7 @@ export function registerIpcHandlers() {
       return allBackups.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     } catch (error: any) {
       console.error('List backups failed:', error);
-      throw new Error(`Помилка отримання списку резервних копій: ${error.message}`);
+      throw new Error(`Помилка отримання списку резервних копій: ${error.message} `);
     }
   });
 
@@ -2067,7 +1933,7 @@ export function registerIpcHandlers() {
       return { success: true };
     } catch (error: any) {
       console.error('Delete backup failed:', error);
-      throw new Error(`Помилка видалення резервної копії: ${error.message}`);
+      throw new Error(`Помилка видалення резервної копії: ${error.message} `);
     }
   });
 
@@ -2093,7 +1959,7 @@ export function registerIpcHandlers() {
       return { success: true };
     } catch (error: any) {
       console.error('Delete all backups failed:', error);
-      throw new Error(`Помилка видалення усіх резервних копій: ${error.message}`);
+      throw new Error(`Помилка видалення усіх резервних копій: ${error.message} `);
     }
   });
 
@@ -2104,7 +1970,7 @@ export function registerIpcHandlers() {
     } catch (error: any) {
       reopenDb();
       console.error('Manual backup failed:', error);
-      throw new Error(`Помилка створення резервної копії: ${error.message}`);
+      throw new Error(`Помилка створення резервної копії: ${error.message} `);
     }
   });
 
@@ -2135,7 +2001,7 @@ export function registerIpcHandlers() {
       return { success: true };
     } catch (error: any) {
       console.error('Clear database failed:', error);
-      throw new Error(`Помилка очистки бази даних: ${error.message}`);
+      throw new Error(`Помилка очистки бази даних: ${error.message} `);
     }
   });
 
@@ -2159,7 +2025,7 @@ export function registerIpcHandlers() {
       return { success: true };
     } catch (error: any) {
       console.error('Rename backup failed:', error);
-      throw new Error(`Помилка перейменування: ${error.message}`);
+      throw new Error(`Помилка перейменування: ${error.message} `);
     }
   });
 
@@ -2271,7 +2137,7 @@ export function registerIpcHandlers() {
       const isWindows = process.platform === 'win32';
       const command = isWindows ? 'shutdown /s /f /t 0' : 'shutdown -h now';
 
-      console.log(`Executing shutdown command: ${command}`);
+      console.log(`Executing shutdown command: ${command} `);
       execSync(command);
 
       return { success: true };
@@ -2292,7 +2158,7 @@ export function registerIpcHandlers() {
       console.error('Validate legacy database failed:', error);
       return {
         isValid: false,
-        error: `Помилка валідації: ${error.message}`,
+        error: `Помилка валідації: ${error.message} `,
       };
     }
   });
@@ -2330,7 +2196,7 @@ export function registerIpcHandlers() {
       console.error('Import legacy database failed:', error);
       return {
         success: false,
-        error: `Помилка імпорту: ${error.message}`,
+        error: `Помилка імпорту: ${error.message} `,
       };
     }
   });
@@ -2400,10 +2266,10 @@ export function registerIpcHandlers() {
 
     // Create initial balance transaction
     db.prepare(`
-      INSERT INTO Каса (
-        Дата_створення, Дата_виконання, Категорія, Опис, Сума, Готівка, Карта
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(
+      INSERT INTO Каса(
+      Дата_створення, Дата_виконання, Категорія, Опис, Сума, Готівка, Карта
+    ) VALUES(?, ?, ?, ?, ?, ?, ?)
+      `).run(
       toDelphiDate(now),
       toDelphiDate(now),
       'Початковий баланс',
@@ -2551,30 +2417,30 @@ export function registerIpcHandlers() {
     const { startDate, endDate, category, paymentType, search } = filters;
 
     let query = `
-      SELECT 
-        ID as id,
-        Дата_створення as dateCreated,
-        Дата_виконання as dateExecuted,
-        Категорія as category,
-        Опис as description,
-        Сума as amount,
-        Готівка as cash,
-        Карта as card,
-        ВиконавецьІмя as executorName,
-        ТипОплати as paymentType
+  SELECT
+  ID as id,
+    Дата_створення as dateCreated,
+    Дата_виконання as dateExecuted,
+    Категорія as category,
+    Опис as description,
+    Сума as amount,
+    Готівка as cash,
+    Карта as card,
+    ВиконавецьІмя as executorName,
+    ТипОплати as paymentType
       FROM Каса
-      WHERE 1=1 AND (Сума != 0 OR Категорія IN ('Коригування', 'Списання'))
+      WHERE 1 = 1 AND(Сума != 0 OR Категорія IN('Коригування', 'Списання'))
     `;
 
     const params: any[] = [];
 
     if (startDate) {
-      query += ` AND Дата_виконання >= ?`;
+      query += ` AND Дата_виконання >= ? `;
       params.push(toDelphiDate(startDate));
     }
 
     if (endDate) {
-      query += ` AND Дата_виконання <= ?`;
+      query += ` AND Дата_виконання <= ? `;
       // Set to end of day to include all transactions on that date
       const date = new Date(endDate);
       date.setUTCHours(23, 59, 59, 999);
@@ -2582,18 +2448,18 @@ export function registerIpcHandlers() {
     }
 
     if (category) {
-      query += ` AND Категорія = ?`;
+      query += ` AND Категорія = ? `;
       params.push(category);
     }
 
     if (paymentType) {
-      query += ` AND ТипОплати = ?`;
+      query += ` AND ТипОплати = ? `;
       params.push(paymentType);
     }
 
     if (search) {
-      query += ` AND Опис LIKE ?`;
-      params.push(`%${search}%`);
+      query += ` AND Опис LIKE ? `;
+      params.push(`% ${search}% `);
     }
 
     query += ` ORDER BY Дата_виконання DESC, ID DESC`;
@@ -2666,8 +2532,8 @@ export function registerIpcHandlers() {
     const formatDiff = (value: number) => `${value >= 0 ? '+' : ''}${value.toFixed(2)} грн`;
     const diffDetails = `(готівка: ${formatDiff(cashDiff)}, картка: ${formatDiff(cardDiff)})`;
     const finalDescription = description
-      ? `${description} ${diffDetails}`
-      : `Коригування балансів ${diffDetails}`;
+      ? `${description} ${diffDetails} `
+      : `Коригування балансів ${diffDetails} `;
 
     // Create adjustment transaction
     // We update balances to match actual values
@@ -2706,12 +2572,12 @@ export function registerIpcHandlers() {
       // 3. Update subsequent transactions
       // We need to shift balances for all newer transactions
       db.prepare(`
-        UPDATE Каса 
-        SET 
-          Готівка = Готівка + ?,
-          Карта = Карта + ?
-        WHERE ID > ?
-      `).run(cashDiff, cardDiff, id);
+        UPDATE Каса
+  SET
+  Готівка = Готівка + ?,
+    Карта = Карта + ?
+      WHERE ID > ?
+        `).run(cashDiff, cardDiff, id);
     });
 
     transaction();
@@ -2727,13 +2593,13 @@ export function registerIpcHandlers() {
     const { startDate, endDate } = filters;
 
     let query = `
-      SELECT 
-        r.ID as repairId,
-        r.Виконавець as executorName,
-        r.Доход as profit,
-        r.Стоимость as labor,
-        r.Сумма as totalCost,
-        r.Конец_ремонта as dateEnd
+      SELECT
+  r.ID as repairId,
+    r.Виконавець as executorName,
+    r.Доход as profit,
+    r.Стоимость as labor,
+    r.Сумма as totalCost,
+    r.Конец_ремонта as dateEnd
       FROM Ремонт r
       WHERE r.Оплачено = 1 AND r.Сумма != 0
     `;
@@ -2741,12 +2607,12 @@ export function registerIpcHandlers() {
     const params: any[] = [];
 
     if (startDate) {
-      query += ` AND r.Конец_ремонта >= ?`;
+      query += ` AND r.Конец_ремонта >= ? `;
       params.push(toDelphiDate(startDate));
     }
 
     if (endDate) {
-      query += ` AND r.Конец_ремонта <= ?`;
+      query += ` AND r.Конец_ремонта <= ? `;
       const date = new Date(endDate);
       date.setUTCHours(23, 59, 59, 999);
       params.push(toDelphiDate(date.toISOString()));
@@ -2767,12 +2633,12 @@ export function registerIpcHandlers() {
     const writeOffsParams: any[] = [];
 
     if (startDate) {
-      writeOffsQuery += ` AND Дата_виконання >= ?`;
+      writeOffsQuery += ` AND Дата_виконання >= ? `;
       writeOffsParams.push(toDelphiDate(startDate));
     }
 
     if (endDate) {
-      writeOffsQuery += ` AND Дата_виконання <= ?`;
+      writeOffsQuery += ` AND Дата_виконання <= ? `;
       const date = new Date(endDate);
       date.setUTCHours(23, 59, 59, 999);
       writeOffsParams.push(toDelphiDate(date.toISOString()));
@@ -2801,9 +2667,9 @@ export function registerIpcHandlers() {
         SELECT ТипОплати as paymentType, Сума as amount
         FROM Каса
         WHERE Категорія = 'Прибуток' AND КвитанціяID = ?
-        ORDER BY ID DESC
+    ORDER BY ID DESC
         LIMIT 1
-      `).get(repairData.repairId) as any;
+    `).get(repairData.repairId) as any;
 
       // Calculate commission if payment was by card
       let commission = 0;
@@ -2883,17 +2749,17 @@ export function registerIpcHandlers() {
     const { executorName, startDate, endDate } = filters;
 
     let query = `
-      SELECT 
-        r.ID as id,
-        r.Квитанция as receiptId,
-        r.Наименование_техники as deviceName,
-        r.Имя_заказчика as clientName,
-        r.Телефон as clientPhone,
-        r.Стоимость as costLabor,
-        r.Сумма as totalCost,
-        r.Доход as profit,
-        r.Конец_ремонта as dateEnd,
-        r.ТипОплати as paymentType
+  SELECT
+  r.ID as id,
+    r.Квитанция as receiptId,
+    r.Наименование_техники as deviceName,
+    r.Имя_заказчика as clientName,
+    r.Телефон as clientPhone,
+    r.Стоимость as costLabor,
+    r.Сумма as totalCost,
+    r.Доход as profit,
+    r.Конец_ремонта as dateEnd,
+    r.ТипОплати as paymentType
       FROM Ремонт r
       WHERE r.Оплачено = 1 AND r.Сумма != 0
     `;
@@ -2901,17 +2767,17 @@ export function registerIpcHandlers() {
     const params: any[] = [];
 
     if (executorName) {
-      query += ` AND r.Виконавець = ?`;
+      query += ` AND r.Виконавець = ? `;
       params.push(executorName);
     }
 
     if (startDate) {
-      query += ` AND r.Конец_ремонта >= ?`;
+      query += ` AND r.Конец_ремонта >= ? `;
       params.push(toDelphiDate(startDate));
     }
 
     if (endDate) {
-      query += ` AND r.Конец_ремонта <= ?`;
+      query += ` AND r.Конец_ремонта <= ? `;
       const date = new Date(endDate);
       date.setUTCHours(23, 59, 59, 999);
       params.push(toDelphiDate(date.toISOString()));
@@ -2945,9 +2811,9 @@ export function registerIpcHandlers() {
         SELECT ТипОплати as paymentType, Сума as amount
         FROM Каса
         WHERE Категорія = 'Прибуток' AND КвитанціяID = ?
-        ORDER BY ID DESC
+    ORDER BY ID DESC
         LIMIT 1
-      `).get(repairId) as any;
+    `).get(repairId) as any;
 
       // Calculate commission if payment was by card
       let commission = 0;
@@ -2960,7 +2826,7 @@ export function registerIpcHandlers() {
         SELECT SUM(Сумма) as partsCost
         FROM Расходники
         WHERE Квитанция = ? AND Наличие = 0
-      `);
+    `);
       const partsResult = partsQuery.get(repairId) as any;
       const partsCost = partsResult?.partsCost || 0;
 
@@ -2991,17 +2857,17 @@ export function registerIpcHandlers() {
     let expensesQuery = `
       SELECT SUM(Вход) as totalExpenses
       FROM Расходники
-      WHERE 1=1
+      WHERE 1 = 1
     `;
     const expensesParams: any[] = [];
 
     if (startDate) {
-      expensesQuery += ` AND Приход >= ?`;
+      expensesQuery += ` AND Приход >= ? `;
       expensesParams.push(toDelphiDate(startDate));
     }
 
     if (endDate) {
-      expensesQuery += ` AND Приход <= ?`;
+      expensesQuery += ` AND Приход <= ? `;
       const date = new Date(endDate);
       date.setUTCHours(23, 59, 59, 999);
       expensesParams.push(toDelphiDate(date.toISOString()));
@@ -3018,12 +2884,12 @@ export function registerIpcHandlers() {
     const revenueParams: any[] = [];
 
     if (startDate) {
-      revenueQuery += ` AND Дата_продажи >= ?`;
+      revenueQuery += ` AND Дата_продажи >= ? `;
       revenueParams.push(toDelphiDate(startDate));
     }
 
     if (endDate) {
-      revenueQuery += ` AND Дата_продажи <= ?`;
+      revenueQuery += ` AND Дата_продажи <= ? `;
       const date = new Date(endDate);
       date.setUTCHours(23, 59, 59, 999);
       revenueParams.push(toDelphiDate(date.toISOString()));
@@ -3053,15 +2919,15 @@ export function registerIpcHandlers() {
 
     // Build query with date range filter
     let query = `
-      SELECT 
-        ID as id,
-        Квитанция as receiptId,
-        Наименование_техники as deviceName,
-        Имя_заказчика as clientName,
-        Телефон as clientPhone,
-        Стоимость as costLabor,
-        Сумма as totalCost,
-        Конец_ремонта as dateEnd
+  SELECT
+  ID as id,
+    Квитанция as receiptId,
+    Наименование_техники as deviceName,
+    Имя_заказчика as clientName,
+    Телефон as clientPhone,
+    Стоимость as costLabor,
+    Сумма as totalCost,
+    Конец_ремонта as dateEnd
       FROM Ремонт
       WHERE Состояние = 4 AND Оплачено = 0 AND Сумма != 0
     `;
@@ -3069,12 +2935,12 @@ export function registerIpcHandlers() {
     const params: any[] = [];
 
     if (startDate) {
-      query += ` AND Конец_ремонта >= ?`;
+      query += ` AND Конец_ремонта >= ? `;
       params.push(toDelphiDate(startDate));
     }
 
     if (endDate) {
-      query += ` AND Конец_ремонта <= ?`;
+      query += ` AND Конец_ремонта <= ? `;
       const date = new Date(endDate);
       date.setUTCHours(23, 59, 59, 999);
       params.push(toDelphiDate(date.toISOString()));
@@ -3094,7 +2960,7 @@ export function registerIpcHandlers() {
         SELECT SUM(Сумма) as partsTotal
         FROM Расходники
         WHERE Квитанция = ?
-      `).get(repair.id) as any;
+    `).get(repair.id) as any;
 
       const servicesCost = repair.costLabor || 0;
       const partsCost = parts?.partsTotal || 0;
