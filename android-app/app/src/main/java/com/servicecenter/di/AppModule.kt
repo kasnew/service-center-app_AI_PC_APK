@@ -112,10 +112,12 @@ object AppModule {
         repairRepository: RepairRepository,
         warehouseRepository: WarehouseRepository,
         transactionRepository: TransactionRepository,
-        dataStore: DataStore<Preferences>
+        dataStore: DataStore<Preferences>,
+        apiClient: ApiClient
     ): SyncManager {
         return SyncManager(
             context = context,
+            apiClient = apiClient,
             repairRepository = repairRepository,
             warehouseRepository = warehouseRepository,
             transactionRepository = transactionRepository,

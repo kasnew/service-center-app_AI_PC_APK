@@ -18,17 +18,28 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class SyncManager @Inject constructor(
     private val context: Context,
+    private val apiClient: com.servicecenter.data.api.ApiClient,
     private val repairRepository: RepairRepository,
     private val warehouseRepository: WarehouseRepository,
     private val transactionRepository: TransactionRepository,
     private val dataStore: DataStore<Preferences>
 ) {
+    private val _isOfflineMode = MutableStateFlow(false)
+    val isOfflineMode: StateFlow<Boolean> = _isOfflineMode.asStateFlow()
+    
+    private var networkFailures = 0
+    private val FAILURE_THRESHOLD = 3
+    
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var isSyncing = false
     private var lastSyncTime: Long = 0
@@ -68,10 +79,11 @@ class SyncManager @Inject constructor(
     fun start() {
         android.util.Log.d("SyncManager", "Starting SyncManager")
         
-        // Register network callback
+        // Register network callback for any available data transport
         val networkRequest = NetworkRequest.Builder()
-            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-            .addCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+            .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+            .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
+            .addTransportType(NetworkCapabilities.TRANSPORT_ETHERNET)
             .build()
         
         connectivityManager.registerNetworkCallback(networkRequest, networkCallback)
@@ -86,7 +98,11 @@ class SyncManager @Inject constructor(
     
     fun stop() {
         android.util.Log.d("SyncManager", "Stopping SyncManager")
-        connectivityManager.unregisterNetworkCallback(networkCallback)
+        try {
+            connectivityManager.unregisterNetworkCallback(networkCallback)
+        } catch (e: Exception) {
+            // Ignore if not registered
+        }
     }
     
     fun syncNow() {
@@ -101,12 +117,32 @@ class SyncManager @Inject constructor(
     }
     
     private suspend fun performSyncIfNeeded() {
+        if (_isOfflineMode.value) {
+            android.util.Log.d("SyncManager", "Skipping sync: Offline Mode is active")
+            return
+        }
+        
         val now = System.currentTimeMillis()
         if (now - lastSyncTime < syncInterval && !isSyncing) {
             android.util.Log.d("SyncManager", "Sync skipped, too soon since last sync")
             return
         }
         performSync(force = false)
+    }
+    
+    fun setOfflineMode(enabled: Boolean) {
+        android.util.Log.d("SyncManager", "Setting Offline Mode: $enabled")
+        _isOfflineMode.value = enabled
+        apiClient.isOffline = enabled
+        if (!enabled) {
+            networkFailures = 0
+            syncNow()
+        }
+    }
+    
+    fun retryConnection() {
+        android.util.Log.d("SyncManager", "Retrying connection manually...")
+        setOfflineMode(false)
     }
     
     private suspend fun performSync(force: Boolean = false) {
@@ -144,6 +180,7 @@ class SyncManager @Inject constructor(
                 android.util.Log.d("SyncManager", "Repairs synced successfully")
             } catch (e: Exception) {
                 android.util.Log.e("SyncManager", "Error syncing repairs: ${e.message}", e)
+                throw e // Re-throw to count as failure
             }
             
             // Sync warehouse items
@@ -152,6 +189,7 @@ class SyncManager @Inject constructor(
                 android.util.Log.d("SyncManager", "Warehouse items synced successfully")
             } catch (e: Exception) {
                 android.util.Log.e("SyncManager", "Error syncing warehouse items: ${e.message}", e)
+                // Don't re-throw here to allow partial sync success
             }
             
             // Sync transactions
@@ -160,11 +198,19 @@ class SyncManager @Inject constructor(
                 android.util.Log.d("SyncManager", "Transactions synced successfully")
             } catch (e: Exception) {
                 android.util.Log.e("SyncManager", "Error syncing transactions: ${e.message}", e)
+                // Don't re-throw here
             }
             
             android.util.Log.d("SyncManager", "Sync completed successfully")
+            networkFailures = 0 // Reset failures on success
         } catch (e: Exception) {
             android.util.Log.e("SyncManager", "Sync error: ${e.message}", e)
+            networkFailures++
+            if (networkFailures >= FAILURE_THRESHOLD) {
+                android.util.Log.w("SyncManager", "Too many network failures ($networkFailures), entering Offline Mode")
+                _isOfflineMode.value = true
+                apiClient.isOffline = true
+            }
         } finally {
             isSyncing = false
         }
@@ -179,8 +225,13 @@ class SyncManager @Inject constructor(
     private fun isNetworkAvailable(): Boolean {
         val network = connectivityManager.activeNetwork ?: return false
         val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
-        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-                capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+        
+        // For local server sync, we don't strictly need NET_CAPABILITY_INTERNET
+        // because the server might be on a local offline WiFi network.
+        // We just need some form of connectivity (Wifi, Ethernet, or even Cellular if server is public)
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) ||
+               capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+               capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
     }
 }
 

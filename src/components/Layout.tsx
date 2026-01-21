@@ -134,13 +134,7 @@ export const Layout: React.FC = () => {
     };
 
     return (
-        <div
-            className="flex flex-col h-screen"
-            style={{
-                backgroundColor: 'var(--theme-bg)',
-                color: 'var(--theme-text)',
-            }}
-        >
+        <div className="flex flex-col h-screen bg-main-layout">
             {/* Main Content */}
             <main className={clsx(
                 "flex-1 overflow-hidden flex flex-col transition-all duration-500",
@@ -148,7 +142,7 @@ export const Layout: React.FC = () => {
             )}>
                 {/* Navigation Tabs Bar with Connection Status */}
                 <div
-                    className="flex items-center justify-between px-6 py-3 border-b gap-4"
+                    className="flex items-center justify-between px-6 py-3 border-b gap-4 no-print"
                     style={{
                         backgroundColor: 'var(--theme-surface)',
                         borderColor: 'var(--theme-border)',

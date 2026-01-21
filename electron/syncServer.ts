@@ -53,6 +53,8 @@ export async function startSyncServer(port: number = 3000): Promise<{ success: b
     // Track unique clients by IP address
     app.use((req, _res, next) => {
       const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
+      console.log(`[Sync Server] ${req.method} ${req.url} from ${clientIp}`);
+
       // Remove port if present (e.g., "::ffff:192.168.1.1" or "192.168.1.1:12345")
       const cleanIp = clientIp.split(':').pop() || clientIp;
       const now = Date.now();
@@ -74,6 +76,14 @@ export async function startSyncServer(port: number = 3000): Promise<{ success: b
     // Health check endpoint
     app.get('/api/health', (_req: any, res: any) => {
       res.json({ status: 'ok', timestamp: new Date().toISOString() });
+    });
+
+    // Add root endpoint for easy testing in browser
+    app.get('/', (_req: any, res: any) => {
+      res.json({
+        message: 'Service Center Sync Server is running',
+        endpoints: ['/api/health', '/api/repairs', '/api/warehouse']
+      });
     });
 
     // ========== REPAIRS ENDPOINTS ==========

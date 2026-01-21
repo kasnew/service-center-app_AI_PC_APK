@@ -120,20 +120,11 @@ export const ProfitChart: React.FC<ProfitChartProps> = ({ receipts, groupBy }) =
                     <Line
                         type="monotone"
                         dataKey="service"
-                        name="Чистий прибуток сервісу"
+                        name="Чистий прибуток"
                         stroke="#10b981"
                         strokeWidth={3}
                         dot={{ r: 4, fill: '#10b981' }}
                         activeDot={{ r: 6 }}
-                    />
-                    <Line
-                        type="monotone"
-                        dataKey="total"
-                        name="Загальна виручка"
-                        stroke="#3b82f6"
-                        strokeWidth={2}
-                        strokeDasharray="5 5"
-                        dot={false}
                     />
                 </LineChart>
             </ResponsiveContainer>

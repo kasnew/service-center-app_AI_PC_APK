@@ -10,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -32,6 +33,8 @@ fun HomeScreen(
 ) {
     val isConnected by settingsViewModel.isConnected.collectAsState(initial = false)
     val isChecking by settingsViewModel.isChecking.collectAsState(initial = false)
+    val isOfflineMode by settingsViewModel.isOfflineMode.collectAsState(initial = false)
+    val connectionError by settingsViewModel.connectionError.collectAsState(initial = null)
 
     // Ensure connection check is triggered when screen appears
     LaunchedEffect(Unit) {
@@ -73,76 +76,108 @@ fun HomeScreen(
                             letterSpacing = (-0.5).sp
                         )
                     )
-                    Text(
-                        text = "Сервіс",
-                        style = MaterialTheme.typography.headlineMedium.copy(
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 24.sp,
-                            color = Color(0xFF1A1A1A).copy(alpha = 0.6f)
-                        ),
-                        modifier = Modifier.padding(top = 2.dp)
-                    )
                 }
 
-                // Visible Connection Status Pill
-                Surface(
-                    color = when {
-                        isChecking -> Color(0xFFF5F5F5)
-                        isConnected -> Color(0xFFE8F5E9)
-                        else -> Color(0xFFFFEBEE)
-                    },
-                    shape = CircleShape,
-                    modifier = Modifier.padding(top = 4.dp),
-                    shadowElevation = 1.dp
+                // Offline Mode and Connection Status
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    // Offline Switch
                     Row(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        if (isChecking) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(12.dp),
-                                strokeWidth = 2.dp,
-                                color = Color.Gray
-                            )
-                            Text(
-                                text = "Перевірка...",
-                                style = MaterialTheme.typography.labelMedium.copy(
-                                    color = Color.Gray,
-                                    fontWeight = FontWeight.Bold
+                        Icon(
+                            imageVector = if (isOfflineMode) Icons.Default.CloudOff else Icons.Default.CloudQueue,
+                            contentDescription = null,
+                            tint = if (isOfflineMode) Color(0xFFC62828) else Color(0xFF1976D2),
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Switch(
+                            checked = isOfflineMode,
+                            onCheckedChange = { settingsViewModel.setOfflineMode(it) },
+                            modifier = Modifier.scale(0.8f) // Make it slightly smaller
+                        )
+                    }
+
+                    // Visible Connection Status Pill
+                    Surface(
+                        color = when {
+                            isChecking -> Color(0xFFF5F5F5)
+                            isOfflineMode -> Color(0xFFFFFDE7) // Pale yellow for offline mode
+                            isConnected -> Color(0xFFE8F5E9)
+                            else -> Color(0xFFFFEBEE)
+                        },
+                        shape = CircleShape,
+                        shadowElevation = 1.dp,
+                        onClick = { settingsViewModel.checkConnection(force = true) }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            if (isChecking) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(12.dp),
+                                    strokeWidth = 2.dp,
+                                    color = Color.Gray
                                 )
-                            )
-                        } else {
-                            Box(
-                                modifier = Modifier
-                                    .size(10.dp)
-                                    .background(
-                                        color = if (isConnected) Color(0xFF4CAF50) else Color(0xFFF44336),
-                                        shape = CircleShape
+                                Text(
+                                    text = "Перевірка...",
+                                    style = MaterialTheme.typography.labelMedium.copy(
+                                        color = Color.Gray,
+                                        fontWeight = FontWeight.Bold
                                     )
-                            )
-                            Text(
-                                text = if (isConnected) "В мережі" else "Офлайн",
-                                style = MaterialTheme.typography.labelMedium.copy(
-                                    color = if (isConnected) Color(0xFF2E7D32) else Color(0xFFC62828),
-                                    fontWeight = FontWeight.Bold
                                 )
-                            )
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .size(10.dp)
+                                        .background(
+                                            color = when {
+                                                isOfflineMode -> Color(0xFFFBC02D) // Yellow for offline
+                                                isConnected -> Color(0xFF4CAF50) 
+                                                else -> Color(0xFFF44336)
+                                            },
+                                            shape = CircleShape
+                                        )
+                                )
+                                Text(
+                                    text = when {
+                                        isOfflineMode -> "Автономно"
+                                        isConnected -> "В мережі"
+                                        else -> "Офлайн"
+                                    },
+                                    style = MaterialTheme.typography.labelMedium.copy(
+                                        color = when {
+                                            isOfflineMode -> Color(0xFF827717)
+                                            isConnected -> Color(0xFF2E7D32) 
+                                            else -> Color(0xFFC62828)
+                                        },
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                )
+                            }
                         }
+                    }
+                    
+                    // Error message below pill
+                    if (connectionError != null && !isConnected && !isChecking && !isOfflineMode) {
+                        Text(
+                            text = connectionError!!,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFFC62828),
+                            modifier = Modifier.padding(top = 4.dp, end = 4.dp),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.End
+                        )
                     }
                 }
             }
             
-            Text(
-                text = "Сервіс",
-                style = MaterialTheme.typography.headlineMedium.copy(
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 24.sp,
-                    color = Color(0xFF1A1A1A).copy(alpha = 0.7f)
-                ),
-                modifier = Modifier.padding(top = 2.dp)
-            )
+            Spacer(modifier = Modifier.height(20.dp))
+
             
             Spacer(modifier = Modifier.height(30.dp))
             

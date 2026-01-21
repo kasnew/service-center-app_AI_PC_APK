@@ -163,7 +163,7 @@ export default function CashRegister() {
     return (
         <div className="p-6 h-full flex flex-col">
             {/* Header & Balances */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6 no-print">
                 <div className="md:col-span-2">
                     <h1 className="text-2xl font-bold text-slate-100 mb-1">Каса</h1>
                     <p className="text-slate-400 text-sm">Управління фінансами та транзакціями</p>
@@ -184,7 +184,7 @@ export default function CashRegister() {
             </div>
 
             {/* Tabs */}
-            <div className="flex gap-2 mb-6 border-b border-slate-600">
+            <div className="flex gap-2 mb-6 border-b border-slate-600 no-print">
                 <button
                     onClick={() => setActiveTab('transactions')}
                     className={clsx(

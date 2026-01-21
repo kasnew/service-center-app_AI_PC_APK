@@ -1,7 +1,7 @@
 {
   "name": "service-center-web-client",
   "private": true,
-  "version": "1.0.0",
+  "version": "2026.22.64",
   "type": "module",
   "scripts": {
     "dev": "vite",

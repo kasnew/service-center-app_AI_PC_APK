@@ -13,39 +13,44 @@ import javax.inject.Singleton
 
 @Singleton
 class ApiClient @Inject constructor() {
-    private var retrofit: Retrofit? = null
+    private val retrofits = java.util.Collections.synchronizedMap(mutableMapOf<String, Retrofit>())
     private var currentBaseUrl: String? = null
     
-    fun getApiService(baseUrl: String): ApiService {
+    var isOffline: Boolean = false
+    
+    fun getApiService(baseUrl: String): ApiService? {
+        if (isOffline) return null
+        
         val normalizedUrl = baseUrl.ensureTrailingSlash()
         
-        if (retrofit == null || currentBaseUrl != normalizedUrl) {
-            val loggingInterceptor = HttpLoggingInterceptor().apply {
-                level = HttpLoggingInterceptor.Level.BODY
+        val retrofit = synchronized(retrofits) {
+            retrofits.getOrPut(normalizedUrl) {
+                val loggingInterceptor = HttpLoggingInterceptor().apply {
+                    level = HttpLoggingInterceptor.Level.BODY
+                }
+                
+                val client = OkHttpClient.Builder()
+                    .addInterceptor(loggingInterceptor)
+                    .connectTimeout(5, TimeUnit.SECONDS)
+                    .readTimeout(5, TimeUnit.SECONDS)
+                    .writeTimeout(5, TimeUnit.SECONDS)
+                    .build()
+                
+                // Create Gson with custom adapter for status field
+                val gson = GsonBuilder()
+                    .registerTypeAdapter(com.servicecenter.data.models.Repair::class.java, RepairStatusAdapter())
+                    .create()
+                
+                Retrofit.Builder()
+                    .baseUrl(normalizedUrl)
+                    .client(client)
+                    .addConverterFactory(GsonConverterFactory.create(gson))
+                    .build()
             }
-            
-            val client = OkHttpClient.Builder()
-                .addInterceptor(loggingInterceptor)
-                .connectTimeout(30, TimeUnit.SECONDS)
-                .readTimeout(30, TimeUnit.SECONDS)
-                .writeTimeout(30, TimeUnit.SECONDS)
-                .build()
-            
-            // Create Gson with custom adapter for status field
-            val gson = GsonBuilder()
-                .registerTypeAdapter(com.servicecenter.data.models.Repair::class.java, RepairStatusAdapter())
-                .create()
-            
-            retrofit = Retrofit.Builder()
-                .baseUrl(normalizedUrl)
-                .client(client)
-                .addConverterFactory(GsonConverterFactory.create(gson))
-                .build()
-            
-            currentBaseUrl = normalizedUrl
         }
         
-        return retrofit!!.create(ApiService::class.java)
+        currentBaseUrl = normalizedUrl
+        return retrofit.create(ApiService::class.java)
     }
     
     private fun String.ensureTrailingSlash(): String {

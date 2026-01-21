@@ -109,6 +109,11 @@ button,
   border-color: var(--theme-border) !important;
 }
 
+.bg-main-layout {
+  background-color: var(--theme-bg);
+  color: var(--theme-text);
+}
+
 .text-theme-primary {
   color: var(--theme-primary) !important;
 }
@@ -266,5 +271,146 @@ body.rainbow-mode .rainbow-groupbox::before {
 
   to {
     background-position: var(--rainbow-length, 200%) 0%;
+  }
+}
+
+/* Print Styles for PDF Reports */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .no-print,
+  button,
+  nav,
+  input,
+  select,
+  header,
+  .sidebar {
+    display: none !important;
+  }
+
+  main {
+    display: block !important;
+    overflow: visible !important;
+    height: auto !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .flex-1 {
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  .h-screen {
+    height: auto !important;
+  }
+
+  .overflow-hidden,
+  .overflow-auto {
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  /* Absolute background reset for all containers during print */
+  * {
+    background-color: transparent !important;
+  }
+
+  html,
+  body,
+  #root,
+  main,
+  div,
+  section,
+  article,
+  header,
+  footer,
+  aside,
+  nav {
+    background-color: white !important;
+    background: white !important;
+    box-shadow: none !important;
+    color: black !important;
+  }
+
+  /* Reset layout constraints */
+  .h-screen,
+  .h-full,
+  .min-h-screen {
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  .rainbow-groupbox {
+    border: 1px solid #cbd5e1 !important;
+    background: white !important;
+    box-shadow: none !important;
+  }
+
+  .rainbow-groupbox::before,
+  .rgb-border::before,
+  .rgb-border::after {
+    display: none !important;
+  }
+
+  /* Remove default margins/paddings from layout containers that wrap the report */
+  .p-4,
+  .p-6,
+  .p-8,
+  .p-10,
+  .m-4,
+  .m-6,
+  .m-8 {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  th,
+  td {
+    border: 1px solid #cbd5e1 !important;
+    color: black !important;
+  }
+
+  .text-green-800,
+  .text-green-400,
+  .text-blue-800,
+  .text-blue-400,
+  .text-red-800,
+  .text-red-400,
+  .text-amber-800,
+  .text-yellow-400 {
+    color: black !important;
+    font-weight: bold !important;
+  }
+
+  /* Ensure the chart is visible if printing analytics */
+  .recharts-wrapper {
+    background: white !important;
+  }
+
+  .show-on-print {
+    display: block !important;
+    background-color: white !important;
+    color: black !important;
+    padding: 1cm !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  /* Hide icons during print */
+  svg,
+  .flex-shrink-0 {
+    display: none !important;
   }
 }

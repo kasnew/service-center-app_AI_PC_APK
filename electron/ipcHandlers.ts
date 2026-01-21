@@ -2759,7 +2759,9 @@ export function registerIpcHandlers() {
     r.Сумма as totalCost,
     r.Доход as profit,
     r.Конец_ремонта as dateEnd,
-    r.ТипОплати as paymentType
+    r.ТипОплати as paymentType,
+    r.Выполнено as workDone,
+    r.Описание_неисправности as faultDesc
       FROM Ремонт r
       WHERE r.Оплачено = 1 AND r.Сумма != 0
     `;
@@ -3211,14 +3213,37 @@ export function registerIpcHandlers() {
       // CPU Temperature (Linux)
       let cpuTemp = 0;
       try {
-        const tempStr = execSync('cat /sys/class/thermal/thermal_zone*/temp | head -n 1').toString();
-        cpuTemp = Math.round(parseInt(tempStr) / 1000);
+        // Find CPU thermal zone
+        const zones = fs.readdirSync('/sys/class/thermal').filter(d => d.startsWith('thermal_zone'));
+        let maxTemp = 0;
+
+        for (const zone of zones) {
+          try {
+            const type = fs.readFileSync(`/sys/class/thermal/${zone}/type`, 'utf8').trim().toLowerCase();
+            const temp = parseInt(fs.readFileSync(`/sys/class/thermal/${zone}/temp`, 'utf8').trim()) / 1000;
+
+            // Prioritize package or core temperatures
+            if (type.includes('pkg') || type.includes('core') || type.includes('cpu')) {
+              cpuTemp = Math.round(temp);
+              break;
+            }
+
+            // Keep track of max temp as fallback
+            if (temp > maxTemp && temp < 110) {
+              maxTemp = temp;
+            }
+          } catch (e) { /* ignore individual zone errors */ }
+        }
+
+        if (cpuTemp === 0 && maxTemp > 0) {
+          cpuTemp = Math.round(maxTemp);
+        }
       } catch (e) {
-        // Fallback
+        // Fallback for non-standard Linux or errors
         try {
-          const tempStr = execSync('cat /sys/class/thermal/thermal_zone0/temp').toString();
+          const tempStr = execSync('cat /sys/class/thermal/thermal_zone*/temp | sort -nr | head -n 1').toString();
           cpuTemp = Math.round(parseInt(tempStr) / 1000);
-        } catch (e2) {
+        } catch (eFallback) {
           // No luck
         }
       }

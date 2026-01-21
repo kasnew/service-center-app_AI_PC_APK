@@ -14,8 +14,8 @@ android {
         applicationId = "com.chipzone.app"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 22064
+        versionName = "2026.22.64"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
