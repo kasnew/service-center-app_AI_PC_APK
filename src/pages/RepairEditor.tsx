@@ -5,11 +5,12 @@ import { repairApi } from '../api/repairs';
 import { warehouseApi } from '../api/warehouse';
 import { executorsApi } from '../api/executors';
 import { RepairStatus } from '../types/db';
-import { Save, X, Trash2, Calendar, User, Laptop, Package, DollarSign, FileText, Cpu, Zap, Settings as SettingsIcon, Phone, Smartphone } from 'lucide-react';
+import { Save, X, Trash2, Calendar, User, Laptop, Package, DollarSign, FileText, Cpu, Zap, Settings as SettingsIcon, Phone, Smartphone, RotateCcw } from 'lucide-react';
 import PartsManager from '../components/PartsManager';
 import { formatPhoneNumber, normalizeMoneyInput, parseMoneyValue } from '../utils/formatters';
 import { ConfirmationModal } from '../components/ConfirmationModal';
 import { QRCodeModal } from '../components/QRCodeModal';
+import { RefundModal, RefundData } from '../components/RefundModal';
 import { useTheme } from '../contexts/ThemeContext';
 
 export const RepairEditor: React.FC = () => {
@@ -58,6 +59,7 @@ export const RepairEditor: React.FC = () => {
     const [hasPartsChanged, setHasPartsChanged] = useState(false);
     const [isSaveOnExitModalOpen, setIsSaveOnExitModalOpen] = useState(false);
     const [isQRModalOpen, setIsQRModalOpen] = useState(false);
+    const [isRefundModalOpen, setIsRefundModalOpen] = useState(false);
     const loadedIdRef = useRef<string | null>(null);
 
     // Load existing repair
@@ -176,9 +178,9 @@ export const RepairEditor: React.FC = () => {
                 setPreviousPaidStatus(repair.isPaid);
                 loadedIdRef.current = id || null;
             }
-        } else if (copyFrom && isNew) {
-            // Loading from copy: only if not already loaded
-            if (loadedIdRef.current !== 'new_copy') {
+        } else if (isNew) {
+            // Handle loading from copy
+            if (copyFrom && loadedIdRef.current !== 'new_copy') {
                 const mode = location.state?.copyMode || 'full';
 
                 const baseData = {
@@ -208,16 +210,18 @@ export const RepairEditor: React.FC = () => {
                 setInitialData((prev: any) => ({ ...prev, ...baseData }));
                 loadedIdRef.current = 'new_copy';
             }
-        } else if (nextReceiptId && isNew) {
-            // Updating receipt ID for new repair: only update if not already set or if it's 0
-            setFormData((prev: any) => {
-                if (prev.receiptId !== 0 && prev.receiptId !== undefined) return prev;
-                return { ...prev, receiptId: nextReceiptId };
-            });
-            setInitialData((prev: any) => {
-                if (prev?.receiptId !== 0 && prev?.receiptId !== undefined) return prev;
-                return { ...formData, receiptId: nextReceiptId };
-            });
+
+            // Separately handle nextReceiptId assignment, regardless of whether it's a copy or fresh new
+            if (nextReceiptId) {
+                setFormData((prev: any) => {
+                    if (prev.receiptId !== 0 && prev.receiptId !== undefined) return prev;
+                    return { ...prev, receiptId: nextReceiptId };
+                });
+                setInitialData((prev: any) => {
+                    if (prev?.receiptId !== 0 && prev?.receiptId !== undefined) return prev;
+                    return { ...prev, receiptId: nextReceiptId };
+                });
+            }
         }
     }, [repair, nextReceiptId, isNew, copyFrom, id]);
 
@@ -297,7 +301,40 @@ export const RepairEditor: React.FC = () => {
         }
     });
 
+    const refundMutation = useMutation({
+        mutationFn: (data: RefundData) => repairApi.processRefund({
+            repairId: effectiveRepairId,
+            receiptId: formData.receiptId,
+            refundAmount: data.refundAmount,
+            refundType: data.refundType,
+            returnPartsToWarehouse: data.returnPartsToWarehouse,
+            note: data.note || undefined
+        }),
+        onSuccess: (result) => {
+            if (result.success) {
+                // Invalidate queries without waiting
+                queryClient.invalidateQueries({ queryKey: ['repairs'], exact: false });
+                queryClient.invalidateQueries({ queryKey: ['repair-parts'], exact: false });
+                queryClient.invalidateQueries({ queryKey: ['transactions'], exact: false });
+                queryClient.invalidateQueries({ queryKey: ['cash-balances'] });
+                setIsRefundModalOpen(false);
+                // Navigate back to dashboard after successful refund
+                navigate('/');
+            } else {
+                alert(`Помилка повернення: ${result.error}`);
+            }
+        },
+        onError: (error: any) => {
+            alert(`Помилка: ${error.message}`);
+        }
+    });
+
     const handleSave = () => {
+        if (isNew && formData.receiptId === 0) {
+            alert('Помилка: номер квитанції не отримано. Зачекайте або перезавантажте сторінку.');
+            return;
+        }
+
         const currentParts = queryClient.getQueryData<any[]>(['repair-parts', effectiveRepairId]) || parts;
         const partsTotal = currentParts.reduce((sum: number, part: any) => sum + (part.priceUah || 0), 0);
         const partsProfit = currentParts.reduce((sum: number, part: any) => sum + (part.profit || 0), 0);
@@ -693,8 +730,8 @@ export const RepairEditor: React.FC = () => {
                     <div className="space-y-3 pt-2">
                         <button
                             type="submit"
-                            disabled={saveMutation.isPending || !isDirty}
-                            className={`w-full px-6 py-4 rounded-lg font-bold text-lg transition-all flex items-center justify-center gap-2 shadow-lg ${!isDirty
+                            disabled={saveMutation.isPending || !isDirty || (isNew && formData.receiptId === 0)}
+                            className={`w-full px-6 py-4 rounded-lg font-bold text-lg transition-all flex items-center justify-center gap-2 shadow-lg ${(!isDirty || (isNew && formData.receiptId === 0))
                                 ? 'bg-slate-700 text-slate-500 cursor-not-allowed border-2 border-slate-600'
                                 : 'bg-blue-600 hover:bg-blue-500 text-white border-2 border-blue-400/30'
                                 }`}
@@ -702,7 +739,7 @@ export const RepairEditor: React.FC = () => {
                             <Save className={`w-6 h-6 ${isDirty ? 'animate-pulse' : ''}`} />
                             {saveMutation.isPending ? 'Збереження...' : 'Зберегти (Ctrl + S)'}
                         </button>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className={`grid gap-2 ${!isNew && formData.isPaid ? 'grid-cols-3' : 'grid-cols-2'}`}>
                             <button
                                 type="button"
                                 onClick={handleCancel}
@@ -711,6 +748,16 @@ export const RepairEditor: React.FC = () => {
                                 <X className="w-4 h-4" />
                                 Скасувати
                             </button>
+                            {!isNew && formData.isPaid && (
+                                <button
+                                    type="button"
+                                    onClick={() => setIsRefundModalOpen(true)}
+                                    className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2 text-sm"
+                                >
+                                    <RotateCcw className="w-4 h-4" />
+                                    Повернути
+                                </button>
+                            )}
                             {!isNew && (
                                 <button
                                     type="button"
@@ -858,6 +905,17 @@ export const RepairEditor: React.FC = () => {
                 message="Бажаєте зберегти зміни перед виходом?"
                 confirmLabel="Зберегти"
                 cancelLabel="Вийти без збереження"
+            />
+
+            <RefundModal
+                isOpen={isRefundModalOpen}
+                onClose={() => setIsRefundModalOpen(false)}
+                onConfirm={(data) => refundMutation.mutate(data)}
+                receiptId={formData.receiptId}
+                totalCost={formData.totalCost || (formData.costLabor + partsTotal)}
+                originalPaymentType={formData.paymentType}
+                hasParts={parts.length > 0}
+                isLoading={refundMutation.isPending}
             />
         </div>
     );

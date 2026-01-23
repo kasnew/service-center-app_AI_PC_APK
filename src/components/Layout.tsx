@@ -14,7 +14,7 @@ import { RefreshCw, AlertCircle } from 'lucide-react';
 
 export const Layout: React.FC = () => {
     const { currentTheme } = useTheme();
-    const { updateResult, isChecking, checkUpdates } = useUpdate();
+    const { updateResult, isChecking, checkUpdates, manualCheckResult } = useUpdate();
     const queryClient = useQueryClient();
     const navigate = useNavigate();
     const [isToggling, setIsToggling] = useState(false);
@@ -298,13 +298,25 @@ export const Layout: React.FC = () => {
 
                         <div className="flex items-center gap-3">
                             <button
-                                onClick={() => checkUpdates()}
+                                onClick={() => checkUpdates(true)}
                                 disabled={isChecking}
                                 className={`group relative flex items-center gap-2 px-2 py-1 rounded-md transition-all
                                     ${updateResult?.hasUpdate
                                         ? 'bg-orange-500/10 text-orange-400 hover:bg-orange-500/20'
-                                        : 'text-slate-500 hover:bg-slate-700/50 hover:text-slate-300'}`}
-                                title={updateResult?.hasUpdate ? `Доступна версія ${updateResult.latestVersion}! Натисніть для перевірки.` : "Перевірити оновлення"}
+                                        : manualCheckResult === 'no-update'
+                                            ? 'bg-green-500/10 text-green-400'
+                                            : manualCheckResult === 'error'
+                                                ? 'bg-red-500/10 text-red-400'
+                                                : 'text-slate-500 hover:bg-slate-700/50 hover:text-slate-300'}`}
+                                title={
+                                    updateResult?.hasUpdate
+                                        ? `Доступна версія ${updateResult.latestVersion}! Натисніть для перевірки.`
+                                        : manualCheckResult === 'no-update'
+                                            ? 'У вас найновіша версія!'
+                                            : manualCheckResult === 'error'
+                                                ? `Помилка перевірки: ${updateResult?.error || 'Не вдалося з\'єднатися з сервером'}`
+                                                : "Перевірити оновлення"
+                                }
                             >
                                 <span className="text-[10px] font-mono leading-none">
                                     {(() => {
@@ -325,6 +337,12 @@ export const Layout: React.FC = () => {
                                         <AlertCircle className="w-3 h-3 text-orange-400 animate-pulse" />
                                         <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border border-slate-900 shadow-sm shadow-red-500/50" />
                                     </div>
+                                ) : manualCheckResult === 'no-update' ? (
+                                    <svg className="w-3 h-3 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                ) : manualCheckResult === 'error' ? (
+                                    <AlertCircle className="w-3 h-3 text-red-400" />
                                 ) : null}
                             </button>
                             <button

@@ -44,5 +44,16 @@ export const repairApi = {
 
     getStatusCounts: async (): Promise<Record<number, number>> => {
         return await window.ipcRenderer.invoke('get-status-counts');
+    },
+
+    processRefund: async (data: {
+        repairId: number;
+        receiptId: number;
+        refundAmount: number;
+        refundType: 'Готівка' | 'Картка';
+        returnPartsToWarehouse: boolean;
+        note?: string;
+    }): Promise<{ success: boolean; error?: string }> => {
+        return await window.ipcRenderer.invoke('process-refund', data);
     }
 };

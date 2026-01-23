@@ -117,6 +117,13 @@ interface ApiService {
 
     @DELETE("api/locks/{id}")
     suspend fun releaseLock(@Path("id") id: Int): Response<Map<String, Boolean>>
+
+    // Refund
+    @POST("api/repairs/{id}/refund")
+    suspend fun processRefund(
+        @Path("id") id: Int,
+        @Body request: RefundRequest
+    ): Response<RefundResponse>
 }
 
 data class LockResponse(
@@ -213,4 +220,16 @@ data class UpdateBarcodeRequest(
     val barcode: String?
 )
 
+data class RefundRequest(
+    val receiptId: Int,
+    val refundAmount: Double,
+    val refundType: String,
+    val returnPartsToWarehouse: Boolean,
+    val note: String? = null
+)
+
+data class RefundResponse(
+    val success: Boolean,
+    val error: String? = null
+)
 

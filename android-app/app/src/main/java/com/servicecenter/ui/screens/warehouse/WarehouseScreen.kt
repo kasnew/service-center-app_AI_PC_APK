@@ -38,13 +38,13 @@ fun WarehouseScreen(
     val suppliers by viewModel.suppliers.collectAsState(initial = emptyList())
     val selectedSupplier by viewModel.selectedSupplier.collectAsState()
     val showInStockOnly by viewModel.showInStockOnly.collectAsState()
+    val groupByType by viewModel.groupByType.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     
     var showSupplierDropdown by remember { mutableStateOf(false) }
     var itemToEditBarcode by remember { mutableStateOf<WarehouseItem?>(null) }
     var showServerNotConnectedDialog by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
     val isConnected by settingsViewModel.isConnected.collectAsState(initial = false)
     
     LaunchedEffect(Unit) {
@@ -137,6 +137,19 @@ fun WarehouseScreen(
                     text = "В наявності",
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.clickable { viewModel.setShowInStockOnly(!showInStockOnly) }
+                )
+                
+                Spacer(modifier = Modifier.width(24.dp))
+                
+                Checkbox(
+                    checked = groupByType,
+                    onCheckedChange = { viewModel.setGroupByType(it) }
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Групувати",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.clickable { viewModel.setGroupByType(!groupByType) }
                 )
             }
             
@@ -300,19 +313,42 @@ fun WarehouseItemCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = androidx.compose.ui.graphics.Color.White)
+        elevation = CardDefaults.cardElevation(defaultElevation = if (item.quantity > 1) 4.dp else 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (item.quantity > 1) androidx.compose.ui.graphics.Color(0xFFF0F7FF) else androidx.compose.ui.graphics.Color.White
+        )
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(12.dp)
         ) {
-            Text(
-                text = item.name,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = item.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                if (item.quantity > 1) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        shape = CircleShape,
+                        modifier = Modifier.padding(start = 8.dp)
+                    ) {
+                        Text(
+                            text = "x${item.quantity}",
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Black),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                }
+            }
             Spacer(modifier = Modifier.height(4.dp))
             
             Row(

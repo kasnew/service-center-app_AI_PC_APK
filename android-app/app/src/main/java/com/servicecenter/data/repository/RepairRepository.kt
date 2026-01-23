@@ -349,6 +349,56 @@ class RepairRepository(
             false
         }
     }
+
+    // --- REFUND METHODS ---
+
+    suspend fun processRefund(
+        repairId: Int,
+        receiptId: Int,
+        refundAmount: Double,
+        refundType: String,
+        returnPartsToWarehouse: Boolean,
+        note: String? = null,
+        serverUrl: String? = null
+    ): Result<Boolean> {
+        val api = getApiService(serverUrl)
+        return try {
+            api?.let { service ->
+                val request = com.servicecenter.data.api.RefundRequest(
+                    receiptId = receiptId,
+                    refundAmount = refundAmount,
+                    refundType = refundType,
+                    returnPartsToWarehouse = returnPartsToWarehouse,
+                    note = note
+                )
+                val response = service.processRefund(repairId, request)
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body?.success == true) {
+                        // Update local repair to reflect refund
+                        repairDao.getRepairById(repairId)?.let { repair ->
+                            val updatedRepair = repair.copy(
+                                isPaid = false,
+                                status = "4" // Ready status
+                            )
+                            repairDao.updateRepair(updatedRepair)
+                        }
+                        android.util.Log.d("RepairRepository", "Refund processed successfully for repair $repairId")
+                        Result.success(true)
+                    } else {
+                        android.util.Log.e("RepairRepository", "Refund failed: ${body?.error}")
+                        Result.failure(Exception(body?.error ?: "Unknown error"))
+                    }
+                } else {
+                    android.util.Log.e("RepairRepository", "Failed to process refund: ${response.code()}")
+                    Result.failure(Exception("Failed to process refund: ${response.code()}"))
+                }
+            } ?: Result.failure(Exception("No API available - refund requires server connection"))
+        } catch (e: Exception) {
+            android.util.Log.e("RepairRepository", "Error processing refund: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
 }
 
 

@@ -11,10 +11,10 @@ const streamPipeline = promisify(pipeline);
 import os from 'os';
 import { execSync } from 'child_process';
 import {
-  encryptFile,
   decryptFile,
   getOrCreateEncryptionKey
 } from './encryption';
+import { createBackup } from './backup';
 // Google Drive integration temporarily disabled
 // import { authenticate, isAuthenticated, deleteTokens, loadCredentials } from './oauth';
 // import {
@@ -40,6 +40,33 @@ function toJsDate(jdn: number | null): string | null {
   return new Date(timestamp).toISOString();
 }
 
+function getNextWorkingDay(date: Date): Date {
+  const d = new Date(date);
+  const day = d.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+
+  if (day >= 1 && day <= 4) { // Mon-Thu
+    d.setDate(d.getDate() + 1);
+  } else if (day === 5) { // Fri
+    d.setDate(d.getDate() + 3);
+  } else if (day === 6) { // Sat
+    d.setDate(d.getDate() + 2);
+  } else { // Sun
+    d.setDate(d.getDate() + 1);
+  }
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function isCardPending(dateExecutedJdn: number, today: Date): boolean {
+  const txDate = new Date((dateExecutedJdn - JDN_EPOCH) * MS_PER_DAY);
+  const nextWorkingDay = getNextWorkingDay(txDate);
+
+  const todayStart = new Date(today);
+  todayStart.setHours(0, 0, 0, 0);
+
+  return nextWorkingDay > todayStart;
+}
+
 function toDelphiDate(isoDate: string | Date | null): number | null {
   if (!isoDate) return null;
   const date = new Date(isoDate);
@@ -49,66 +76,7 @@ function toDelphiDate(isoDate: string | Date | null): number | null {
 }
 
 
-async function createBackupHelper(encrypt: boolean = true, type: 'manual' | 'auto' = 'manual', tag?: string) {
-  const dbPath = getDbPath();
-  const dbDir = path.dirname(dbPath);
-  const typeDir = path.join(dbDir, 'backups', type);
 
-  // Create backups directory if it doesn't exist
-  if (!fs.existsSync(typeDir)) {
-    fs.mkdirSync(typeDir, { recursive: true });
-  }
-
-  // Generate backup filename with timestamp
-  const now = new Date();
-  const timestamp = now.toISOString()
-    .replace(/:/g, '-')
-    .replace(/\..+/, '')
-    .replace('T', '_');
-
-  // Use .gz for compressed backups
-  const extension = encrypt ? '.encrypted.gz' : '.sqlite.gz';
-  const tagPrefix = tag ? `${tag}_` : '';
-  const backupFileName = `${tagPrefix}${type}_${timestamp}${extension}`;
-  const backupPath = path.join(typeDir, backupFileName);
-
-  // Close database connection before copying
-  closeDb();
-
-  try {
-    const tempCompressed = backupPath + '.gz.tmp';
-
-    // 1. Always Compress first
-    const readStream = fs.createReadStream(dbPath);
-    const writeStream = fs.createWriteStream(tempCompressed);
-    const zip = zlib.createGzip();
-    await streamPipeline(readStream, zip, writeStream);
-
-    if (encrypt) {
-      const encryptionKey = getOrCreateEncryptionKey(dbDir);
-      // 2. Encrypt the compressed file
-      await encryptFile(tempCompressed, backupPath, encryptionKey);
-      fs.unlinkSync(tempCompressed);
-    } else {
-      // Just move the compressed file to final destination
-      fs.renameSync(tempCompressed, backupPath);
-    }
-
-    // Get stats for return
-    const stats = fs.statSync(backupPath);
-    return {
-      success: true,
-      fileName: backupFileName,
-      size: stats.size,
-      date: stats.mtime.toISOString(),
-      encrypted: encrypt,
-      type: type
-    };
-  } finally {
-    // Reopen database
-    reopenDb();
-  }
-}
 
 let autoBackupTimer: NodeJS.Timeout | null = null;
 let pendingAutoBackupTags = new Set<string>();
@@ -128,7 +96,7 @@ function triggerAutoBackup(tag?: string) {
       }
 
       console.log(`Running scheduled auto-backup with tags: ${tagsToUse || 'none'}...`);
-      await createBackupHelper(true, 'auto', tagsToUse);
+      await createBackup(true, 'auto', tagsToUse);
 
       const dbPath = getDbPath();
       const dbDir = path.dirname(dbPath);
@@ -399,6 +367,7 @@ export function registerIpcHandlers() {
       return 1; // Default to Queue
     };
 
+    const start = Date.now();
     const repairs = db.prepare(query).all(...queryParams).map((r: any) => ({
       ...r,
       status: convertStatusToNumber(r.status),
@@ -406,33 +375,53 @@ export function registerIpcHandlers() {
       dateEnd: toJsDate(r.dateEnd),
     }));
 
+    const countStart = Date.now();
     const total = (db.prepare(countQuery).get(...countParams) as any).count;
+
+    const duration = Date.now() - start;
+    if (duration > 200) {
+      console.log(`[IPC] get-repairs took ${duration}ms (query: ${countStart - start}ms, count: ${Date.now() - countStart}ms). Records: ${repairs.length}, Total: ${total}`);
+    }
 
     return { repairs, total, page, totalPages: Math.ceil(total / limit) };
   });
 
-  // Get status counts
+  // Get status counts - optimized to use a single query
   ipcMain.handle('get-status-counts', async (_event) => {
+    const start = Date.now();
     const db = getDb();
-    const counts: Record<number, number> = {};
+    const counts: Record<number, number> = {
+      1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0
+    };
 
-    // Get count for each status (check both number and string formats)
-    for (let status = 1; status <= 7; status++) {
-      // Map number to string for comparison
-      const statusMap: Record<number, string[]> = {
-        1: ['У черзі', '1'],
-        2: ['У роботі', '2'],
-        3: ['Очікув. відпов./деталі', 'Очікування', '3'],
-        4: ['Готовий до видачі', 'Готовий', '4'],
-        5: ['Не додзвонилися', 'Не додзвонились', '5'],
-        6: ['Видано', '6'],
-        7: ['Одеса', '7']
+    try {
+      // Map string statuses to their numeric IDs as defined in Dashboard.tsx/RepairStatus
+      const statusValueMap: Record<string, number> = {
+        'У черзі': 1, '1': 1,
+        'У роботі': 2, '2': 2,
+        'Очікув. відпов./деталі': 3, 'Очікування': 3, '3': 3,
+        'Готовий до видачі': 4, 'Готовий': 4, '4': 4,
+        'Не додзвонилися': 5, 'Не додзвонились': 5, '5': 5,
+        'Видано': 6, '6': 6,
+        'Одеса': 7, '7': 7
       };
 
-      const statusStrings = statusMap[status] || [status.toString()];
-      const placeholders = statusStrings.map(() => '?').join(',');
-      const result = db.prepare(`SELECT COUNT(*) as count FROM Ремонт WHERE Состояние IN (${placeholders})`).get(...statusStrings) as any;
-      counts[status] = result?.count || 0;
+      const results = db.prepare('SELECT Состояние, COUNT(*) as count FROM Ремонт GROUP BY Состояние').all() as any[];
+
+      results.forEach(row => {
+        const val = String(row.Состояние);
+        const statusId = statusValueMap[val];
+        if (statusId) {
+          counts[statusId] += row.count;
+        }
+      });
+
+      const duration = Date.now() - start;
+      if (duration > 100) {
+        console.log(`[IPC] get-status-counts took ${duration}ms`);
+      }
+    } catch (error) {
+      console.error('Error fetching status counts:', error);
     }
 
     return counts;
@@ -1141,6 +1130,161 @@ export function registerIpcHandlers() {
     triggerAutoBackup('repair-delete');
 
     return { success: true };
+  });
+
+  // Process refund for a repair
+  ipcMain.handle('process-refund', async (_event, data) => {
+    const { repairId, receiptId, refundAmount, refundType, returnPartsToWarehouse, note } = data;
+
+    const db = getDb();
+
+    // Get repair info
+    const repair = db.prepare(`
+      SELECT ID, Квитанция as receiptId, Сумма as totalCost, Оплачено as isPaid, 
+             ТипОплати as paymentType, Виконавець as executor
+      FROM Ремонт WHERE ID = ?
+    `).get(repairId) as any;
+
+    if (!repair) {
+      return { success: false, error: 'Ремонт не знайдено' };
+    }
+
+    if (!repair.isPaid) {
+      return { success: false, error: 'Квитанція не оплачена' };
+    }
+
+    const settings = getCashRegisterSettings(db);
+
+    const refundTransaction = db.transaction(() => {
+      // --- CASH REGISTER LOGIC ---
+      if (settings.cashRegisterEnabled) {
+        const balances = getBalances(db);
+
+        // Find the original income transaction
+        const originalIncome = db.prepare(`
+          SELECT ID, Сума as amount, ТипОплати as paymentType, ВиконавецьID as executorId, 
+                 ВиконавецьІмя as executorName
+          FROM Каса 
+          WHERE КвитанціяID = ? AND Категорія = 'Прибуток'
+          ORDER BY ID DESC LIMIT 1
+        `).get(repairId) as any;
+
+        const originalPaymentType = originalIncome?.paymentType || repair.paymentType || 'Готівка';
+        const isFullRefund = refundAmount === repair.totalCost;
+
+        // Calculate new balances based on refund type
+        // The refund type might be different from original payment type
+        let newCash = balances.cash;
+        let newCard = balances.card;
+
+        // Subtract from the balance based on refund type (how we're paying the refund)
+        if (refundType === 'Готівка') {
+          newCash -= refundAmount;
+        } else {
+          newCard -= refundAmount;
+        }
+
+        // Create refund transaction
+        let refundDescription = `Повернення коштів за квитанцію #${receiptId}`;
+        if (!isFullRefund) {
+          refundDescription += ` (часткове: ${refundAmount.toFixed(2)} з ${repair.totalCost.toFixed(2)} ₴)`;
+        }
+        if (note) {
+          refundDescription += `. ${note}`;
+        }
+        if (refundType !== originalPaymentType) {
+          refundDescription += ` [Оплата: ${originalPaymentType}, Повернення: ${refundType}]`;
+        }
+
+        // Get executor info
+        const executorRecord = db.prepare('SELECT ID FROM Executors WHERE Name = ?').get(repair.executor) as any;
+
+        createTransaction(db, {
+          category: 'Повернення',
+          description: refundDescription,
+          amount: -refundAmount,
+          cash: newCash,
+          card: newCard,
+          executorId: executorRecord?.ID || originalIncome?.executorId,
+          executorName: repair.executor || originalIncome?.executorName,
+          receiptId: repairId,
+          paymentType: refundType,
+          relatedTransactionId: originalIncome?.ID
+        });
+
+        // If original payment was by card and this is a full refund, reverse the commission too
+        if (isFullRefund && originalPaymentType === 'Картка') {
+          const commissionTransaction = db.prepare(`
+            SELECT ID, Сума as amount
+            FROM Каса
+            WHERE Категорія = 'Комісія банку' AND КвитанціяID = ?
+            ORDER BY ID DESC LIMIT 1
+          `).get(repairId) as any;
+
+          if (commissionTransaction) {
+            const commissionBalances = getBalances(db);
+            const commissionAmount = Math.abs(commissionTransaction.amount || 0);
+
+            createTransaction(db, {
+              category: 'Повернення',
+              description: `Повернення комісії банку за квитанцію #${receiptId}`,
+              amount: commissionAmount,
+              cash: commissionBalances.cash,
+              card: commissionBalances.card + commissionAmount,
+              receiptId: repairId,
+              paymentType: 'Картка',
+              relatedTransactionId: commissionTransaction.ID
+            });
+          }
+        }
+      }
+
+      // Return parts to warehouse if requested
+      if (returnPartsToWarehouse) {
+        // Get parts attached to this repair
+        const parts = db.prepare(`
+          SELECT ID, Поставщик as supplier
+          FROM Расходники 
+          WHERE Квитанция = ?
+        `).all(repairId) as any[];
+
+        for (const part of parts) {
+          if (part.supplier === 'ЧипЗона' || part.supplier === 'Послуга') {
+            // Delete manually created service entries
+            db.prepare('DELETE FROM Расходники WHERE ID = ?').run(part.ID);
+          } else {
+            // Return real parts to warehouse
+            db.prepare(`
+              UPDATE Расходники SET 
+                Квитанция = NULL,
+                Наличие = 1,
+                Дата_продажи = NULL,
+                Сумма = 0,
+                Доход = 0
+              WHERE ID = ?
+            `).run(part.ID);
+          }
+        }
+      }
+
+      // Update repair record - mark as unpaid after refund
+      db.prepare(`
+        UPDATE Ремонт SET 
+          Оплачено = 0,
+          Состояние = 4,
+          UpdateTimestamp = datetime('now')
+        WHERE ID = ?
+      `).run(repairId);
+    });
+
+    try {
+      refundTransaction();
+      triggerAutoBackup('refund');
+      return { success: true };
+    } catch (error) {
+      console.error('Error in process-refund transaction:', error);
+      return { success: false, error: (error as any).message };
+    }
   });
 
   // Get next receipt ID
@@ -1966,7 +2110,7 @@ export function registerIpcHandlers() {
   // Create backup with manual trigger
   ipcMain.handle('create-backup', async (_event, encrypt: boolean = true) => {
     try {
-      return await createBackupHelper(encrypt, 'manual');
+      return await createBackup(encrypt, 'manual');
     } catch (error: any) {
       reopenDb();
       console.error('Manual backup failed:', error);
@@ -1978,7 +2122,7 @@ export function registerIpcHandlers() {
   ipcMain.handle('clear-database', async () => {
     try {
       // First, create manual backup
-      await createBackupHelper(true, 'manual');
+      await createBackup(true, 'manual');
 
       const db = getDb();
 
@@ -2121,7 +2265,7 @@ export function registerIpcHandlers() {
 
       // 1. Create a backup first (to ensure everything is saved)
       try {
-        await createBackupHelper(true, 'auto', 'before_shutdown');
+        await createBackup(true, 'auto', 'before_shutdown');
         console.log('Shutdown backup created successfully');
       } catch (backupError) {
         console.error('Failed to create shutdown backup, continuing with shutdown:', backupError);
@@ -2172,7 +2316,7 @@ export function registerIpcHandlers() {
       if (backupName) {
         await ipcMain.emit('create-backup-with-name', null, backupName);
       } else {
-        await createBackupHelper();
+        await createBackup();
       }
 
       // Step 2: Import legacy data
@@ -2294,11 +2438,37 @@ export function registerIpcHandlers() {
       LIMIT 1
     `).get() as any;
 
-    if (latest) {
-      return { cash: latest.cash || 0, card: latest.card || 0 };
+    if (!latest) return { cash: 0, card: 0, cardPending: 0 };
+
+    // Calculate pending card payments
+    // Money from card payments is credited on the next working day.
+    const today = new Date();
+
+    // Fetch card transactions from the last 10 days to check for pending ones
+    const thresholdDate = new Date();
+    thresholdDate.setDate(thresholdDate.getDate() - 10);
+    const thresholdJdn = toDelphiDate(thresholdDate.toISOString());
+
+    const transactions = db.prepare(`
+      SELECT Сума as amount, Дата_виконання as dateExecuted
+      FROM Каса
+      WHERE ТипОплати = 'Картка' 
+      AND Категорія IN ('Прибуток', 'Комісія банку', 'Скасування')
+      AND Дата_виконання >= ?
+    `).all(thresholdJdn) as any[];
+
+    let cardPending = 0;
+    for (const tx of transactions) {
+      if (isCardPending(tx.dateExecuted, today)) {
+        cardPending += tx.amount || 0;
+      }
     }
 
-    return { cash: 0, card: 0 };
+    return {
+      cash: latest.cash || 0,
+      card: latest.card || 0,
+      cardPending: cardPending
+    };
   });
 
   // ========== EXPENSE CATEGORIES HANDLERS ==========

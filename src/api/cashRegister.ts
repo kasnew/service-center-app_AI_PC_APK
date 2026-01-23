@@ -17,7 +17,7 @@ export const cashRegisterApi = {
     },
 
     // Get current balances
-    getBalances: async (): Promise<{ cash: number; card: number }> => {
+    getBalances: async (): Promise<{ cash: number; card: number; cardPending: number }> => {
         return await window.ipcRenderer.invoke('get-cash-balances');
     },
 };

@@ -141,7 +141,7 @@ export function UpdateChecker() {
     const isLight = currentTheme.type === 'light';
 
     const performCheck = async () => {
-        await checkUpdates();
+        await checkUpdates(true);
     };
 
     return (

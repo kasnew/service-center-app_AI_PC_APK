@@ -26,8 +26,11 @@ class WarehouseViewModel @Inject constructor(
     private val _selectedSupplier = MutableStateFlow<String?>(null)
     val selectedSupplier: StateFlow<String?> = _selectedSupplier.asStateFlow()
     
-    private val _showInStockOnly = MutableStateFlow(true) // За замовчуванням показуємо тільки товари в наявності
+    private val _showInStockOnly = MutableStateFlow(true)
     val showInStockOnly: StateFlow<Boolean> = _showInStockOnly.asStateFlow()
+    
+    private val _groupByType = MutableStateFlow(true) // По замовчуванню групуємо однотипні товари
+    val groupByType: StateFlow<Boolean> = _groupByType.asStateFlow()
     
     private val _warehouseItems = MutableStateFlow<List<WarehouseItem>>(emptyList())
     val warehouseItems: StateFlow<List<WarehouseItem>> = _warehouseItems.asStateFlow()
@@ -42,10 +45,11 @@ class WarehouseViewModel @Inject constructor(
         _warehouseItems,
         _searchQuery,
         _selectedSupplier,
-        _showInStockOnly
-    ) { items, query, supplier, inStockOnly ->
+        _showInStockOnly,
+        _groupByType
+    ) { items, query, supplier, inStockOnly, groupBy ->
         android.util.Log.d("WarehouseViewModel", "=== FILTERING START ===")
-        android.util.Log.d("WarehouseViewModel", "Total items: ${items.size}, supplier: $supplier, query: '$query', inStockOnly: $inStockOnly")
+        android.util.Log.d("WarehouseViewModel", "Total items: ${items.size}, supplier: $supplier, query: '$query', inStockOnly: $inStockOnly, groupBy: $groupBy")
         
         var filtered = items
         
@@ -70,6 +74,19 @@ class WarehouseViewModel @Inject constructor(
                 it.productCode?.lowercase()?.contains(queryLower) == true
             }
             android.util.Log.d("WarehouseViewModel", "After search filter ('$query'): $beforeCount -> ${filtered.size} items")
+        }
+        
+        if (groupBy) {
+            val beforeCount = filtered.size
+            filtered = filtered.groupBy { "${it.name.lowercase()}|${it.supplier?.lowercase() ?: ""}" }
+                .map { entry ->
+                    val group = entry.value
+                    val first = group.first()
+                    first.copy(
+                        quantity = group.sumOf { it.quantity }
+                    )
+                }
+            android.util.Log.d("WarehouseViewModel", "After grouping: $beforeCount -> ${filtered.size} groups")
         }
         
         android.util.Log.d("WarehouseViewModel", "=== FILTERING END: ${filtered.size} items ===")
@@ -103,6 +120,11 @@ class WarehouseViewModel @Inject constructor(
     fun setShowInStockOnly(showInStockOnly: Boolean) {
         android.util.Log.d("WarehouseViewModel", "Setting showInStockOnly: $showInStockOnly")
         _showInStockOnly.value = showInStockOnly
+    }
+    
+    fun setGroupByType(groupBy: Boolean) {
+        android.util.Log.d("WarehouseViewModel", "Setting groupByType: $groupBy")
+        _groupByType.value = groupBy
     }
     
     private suspend fun getServerUrl(): String? {

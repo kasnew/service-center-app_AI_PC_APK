@@ -565,6 +565,185 @@ export async function startSyncServer(port: number = 3000): Promise<{ success: b
       }
     });
 
+    // POST /api/repairs/:id/refund - Process refund for a repair
+    app.post('/api/repairs/:id/refund', (req: any, res: any) => {
+      try {
+        const db = getDb();
+        const repairId = parseInt(req.params.id, 10);
+        const { receiptId, refundAmount, refundType, returnPartsToWarehouse, note } = req.body;
+
+        // Get repair info
+        const repair = db.prepare(`
+          SELECT ID, Квитанция as receiptId, Сумма as totalCost, Оплачено as isPaid, 
+                 ТипОплати as paymentType, Виконавець as executor
+          FROM Ремонт WHERE ID = ?
+        `).get(repairId) as any;
+
+        if (!repair) {
+          return res.status(404).json({ success: false, error: 'Ремонт не знайдено' });
+        }
+
+        if (!repair.isPaid) {
+          return res.status(400).json({ success: false, error: 'Квитанція не оплачена' });
+        }
+
+        const refundTransaction = db.transaction(() => {
+          // Get current balances
+          const latest = db.prepare(`
+            SELECT Готівка as cash, Карта as card 
+            FROM Каса 
+            ORDER BY ID DESC 
+            LIMIT 1
+          `).get() as any;
+
+          const balances = {
+            cash: latest?.cash || 0,
+            card: latest?.card || 0
+          };
+
+          // Find the original income transaction
+          const originalIncome = db.prepare(`
+            SELECT ID, Сума as amount, ТипОплати as paymentType, ВиконавецьID as executorId, 
+                   ВиконавецьІмя as executorName
+            FROM Каса 
+            WHERE КвитанціяID = ? AND Категорія = 'Прибуток'
+            ORDER BY ID DESC LIMIT 1
+          `).get(repairId) as any;
+
+          const originalPaymentType = originalIncome?.paymentType || repair.paymentType || 'Готівка';
+          const isFullRefund = refundAmount === repair.totalCost;
+
+          // Calculate new balances based on refund type
+          let newCash = balances.cash;
+          let newCard = balances.card;
+
+          if (refundType === 'Готівка') {
+            newCash -= refundAmount;
+          } else {
+            newCard -= refundAmount;
+          }
+
+          // Create refund description
+          let refundDescription = `Повернення коштів за квитанцію #${receiptId || repair.receiptId}`;
+          if (!isFullRefund) {
+            refundDescription += ` (часткове: ${refundAmount.toFixed(2)} з ${repair.totalCost.toFixed(2)} ₴)`;
+          }
+          if (note) {
+            refundDescription += `. ${note}`;
+          }
+          if (refundType !== originalPaymentType) {
+            refundDescription += ` [Оплата: ${originalPaymentType}, Повернення: ${refundType}]`;
+          }
+
+          // Get executor info
+          const executorRecord = db.prepare('SELECT ID FROM Executors WHERE Name = ?').get(repair.executor) as any;
+
+          const now = new Date().toISOString();
+
+          // Create refund transaction
+          db.prepare(`
+            INSERT INTO Каса (
+              Дата_створення, Дата_виконання, Категорія, Опис, Сума, Готівка, Карта,
+              ВиконавецьID, ВиконавецьІмя, КвитанціяID, ТипОплати, ЗвязанаТранзакціяID
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(
+            toDelphiDate(now),
+            toDelphiDate(now),
+            'Повернення',
+            refundDescription,
+            -refundAmount,
+            newCash,
+            newCard,
+            executorRecord?.ID || originalIncome?.executorId,
+            repair.executor || originalIncome?.executorName,
+            repairId,
+            refundType,
+            originalIncome?.ID || null
+          );
+
+          // If original payment was by card and this is a full refund, reverse the commission too
+          if (isFullRefund && originalPaymentType === 'Картка') {
+            const commissionTransaction = db.prepare(`
+              SELECT ID, Сума as amount
+              FROM Каса
+              WHERE Категорія = 'Комісія банку' AND КвитанціяID = ?
+              ORDER BY ID DESC LIMIT 1
+            `).get(repairId) as any;
+
+            if (commissionTransaction) {
+              const commissionBalances = db.prepare(`
+                SELECT Готівка as cash, Карта as card 
+                FROM Каса 
+                ORDER BY ID DESC 
+                LIMIT 1
+              `).get() as any;
+
+              const commissionAmount = Math.abs(commissionTransaction.amount || 0);
+
+              db.prepare(`
+                INSERT INTO Каса (
+                  Дата_створення, Дата_виконання, Категорія, Опис, Сума, Готівка, Карта,
+                  КвитанціяID, ТипОплати, ЗвязанаТранзакціяID
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              `).run(
+                toDelphiDate(now),
+                toDelphiDate(now),
+                'Повернення',
+                `Повернення комісії банку за квитанцію #${receiptId || repair.receiptId}`,
+                commissionAmount,
+                commissionBalances.cash,
+                commissionBalances.card + commissionAmount,
+                repairId,
+                'Картка',
+                commissionTransaction.ID
+              );
+            }
+          }
+
+          // Return parts to warehouse if requested
+          if (returnPartsToWarehouse) {
+            const parts = db.prepare(`
+              SELECT ID, Поставщик as supplier
+              FROM Расходники 
+              WHERE Квитанция = ?
+            `).all(repairId) as any[];
+
+            for (const part of parts) {
+              if (part.supplier === 'ЧипЗона' || part.supplier === 'Послуга') {
+                db.prepare('DELETE FROM Расходники WHERE ID = ?').run(part.ID);
+              } else {
+                db.prepare(`
+                  UPDATE Расходники SET 
+                    Квитанция = NULL,
+                    Наличие = 1,
+                    Дата_продажи = NULL,
+                    Сумма = 0,
+                    Доход = 0
+                  WHERE ID = ?
+                `).run(part.ID);
+              }
+            }
+          }
+
+          // Update repair record - mark as unpaid after refund
+          db.prepare(`
+            UPDATE Ремонт SET 
+              Оплачено = 0,
+              Состояние = 4,
+              UpdateTimestamp = datetime('now')
+            WHERE ID = ?
+          `).run(repairId);
+        });
+
+        refundTransaction();
+
+        res.json({ success: true });
+      } catch (error: any) {
+        console.error('Error processing refund:', error);
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
     // ========== WAREHOUSE ENDPOINTS ==========
 
     // GET /api/warehouse - List warehouse items

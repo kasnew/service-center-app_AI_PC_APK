@@ -6,7 +6,7 @@ import { executorsApi } from '../api/executors';
 import { warehouseApi } from '../api/warehouse';
 import { profitsApi } from '../api/cashRegister';
 import { RepairStatus } from '../types/db';
-import { Search, Loader2, Copy, Trash2, Phone, Check, Clock, Play, XCircle, MapPin, CheckCircle, X } from 'lucide-react';
+import { Search, Loader2, Copy, Trash2, Phone, Check, Clock, Play, XCircle, MapPin, CheckCircle, X, Eye, EyeOff, RotateCcw } from 'lucide-react';
 import { ContextMenu, ContextMenuItem } from '../components/ContextMenu';
 import { ConfirmationModal } from '../components/ConfirmationModal';
 import { clsx } from 'clsx';
@@ -18,6 +18,7 @@ import { fuzzySearch } from '../utils/fuzzySearch';
 import { QRCodeModal } from '../components/QRCodeModal';
 import { Smartphone, Filter } from 'lucide-react';
 import { AdvancedFiltersModal, AdvancedFilterRule } from '../components/AdvancedFiltersModal';
+import { RefundModal, RefundData } from '../components/RefundModal';
 
 export const Dashboard: React.FC = () => {
     const { currentTheme } = useTheme();
@@ -32,8 +33,18 @@ export const Dashboard: React.FC = () => {
     const [searchInput, setSearchInput] = React.useState('');
     const [qrModalData, setQrModalData] = React.useState<{ phoneNumber: string; clientName: string; workDone?: string } | null>(null);
     const [isAdvancedModalOpen, setIsAdvancedModalOpen] = React.useState(false);
+    const [refundModal, setRefundModal] = React.useState<{ repair: any } | null>(null);
     const queryClient = useQueryClient();
     const searchInputRef = React.useRef<HTMLInputElement>(null);
+    const [showFinancialStats, setShowFinancialStats] = React.useState(() => {
+        return localStorage.getItem('show_financial_stats') !== 'false';
+    });
+
+    const toggleFinancialStats = () => {
+        const newValue = !showFinancialStats;
+        setShowFinancialStats(newValue);
+        localStorage.setItem('show_financial_stats', String(newValue));
+    };
 
     // Hotkeys
     useHotkeys('ctrl+f', () => {
@@ -120,7 +131,7 @@ export const Dashboard: React.FC = () => {
     const { data: statusCounts = {} } = useQuery({
         queryKey: ['status-counts'],
         queryFn: () => repairApi.getStatusCounts(),
-        refetchInterval: 10000, // Refresh every 10 seconds to catch external changes
+        refetchInterval: 30000,
     });
 
     const { data, isLoading, isError } = useQuery<GetRepairsResponse>({
@@ -138,7 +149,7 @@ export const Dashboard: React.FC = () => {
             advancedFilters: advancedFilters.length > 0 ? advancedFilters : undefined
         }),
         placeholderData: keepPreviousData,
-        refetchInterval: 3000, // Refresh every 3 seconds to get updates from executor web/mobile
+        refetchInterval: 15000,
     });
 
     // Broad fetch for fuzzy search fallback (only if search is active and backend returned nothing)
@@ -336,6 +347,31 @@ export const Dashboard: React.FC = () => {
         }
     });
 
+    const refundMutation = useMutation({
+        mutationFn: (data: { repair: any; refundData: RefundData }) => repairApi.processRefund({
+            repairId: data.repair.id,
+            receiptId: data.repair.receiptId,
+            refundAmount: data.refundData.refundAmount,
+            refundType: data.refundData.refundType,
+            returnPartsToWarehouse: data.refundData.returnPartsToWarehouse,
+            note: data.refundData.note || undefined
+        }),
+        onSuccess: (result) => {
+            if (result.success) {
+                queryClient.invalidateQueries({ queryKey: ['repairs'] });
+                queryClient.invalidateQueries({ queryKey: ['transactions'] });
+                queryClient.invalidateQueries({ queryKey: ['cash-balances'] });
+                setRefundModal(null);
+            } else {
+                alert(`Помилка повернення: ${result.error}`);
+            }
+        },
+        onError: (error: any) => {
+            console.error('Refund error:', error);
+            alert(`Помилка: ${error.message}`);
+        }
+    });
+
     // Mutation for updating repair status directly from table
     const updateStatusMutation = useMutation({
         mutationFn: ({ id, status, receiptId, paymentType }: { id: number; status: RepairStatus; receiptId: number; paymentType?: string }) => {
@@ -489,35 +525,49 @@ export const Dashboard: React.FC = () => {
         <div className="h-full flex flex-col p-6 space-y-6 overflow-hidden">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-6">
-                    <h2 className="text-2xl font-bold text-slate-100">Активні ремонти</h2>
+                    <div className="flex items-center gap-3">
+                        <h2 className="text-2xl font-bold text-slate-100">Активні ремонти</h2>
+                        <button
+                            onClick={toggleFinancialStats}
+                            className={clsx(
+                                "p-1.5 rounded-lg transition-all hover:bg-slate-700/50",
+                                showFinancialStats ? "text-blue-400" : "text-slate-500"
+                            )}
+                            title={showFinancialStats ? "Приховати прибутки" : "Показати прибутки"}
+                        >
+                            {showFinancialStats ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+                        </button>
+                    </div>
 
                     {/* Financial Stats Section */}
-                    <div className={clsx(
-                        "flex rounded-lg p-1.5 px-4 border gap-5 text-sm transition-all shadow-sm",
-                        isLight ? "bg-white border-slate-300" : "bg-slate-800/40 border-slate-600/50"
-                    )}>
-                        <div className="flex gap-2 items-center">
-                            <span className={clsx("font-medium opacity-80", isLight ? "text-blue-800" : "text-blue-400")}>Андрій:</span>
-                            <span className={clsx("font-bold tabular-nums", isLight ? "text-slate-900" : "text-slate-100")}>
-                                {Math.round(todayStats.andriySalary)}
-                            </span>
-                            <span className="text-slate-500 font-normal opacity-50">/</span>
-                            <span className={clsx("font-semibold tabular-nums", isLight ? "text-slate-700" : "text-slate-200")}>
-                                {Math.round(monthStats.andriySalary)}
-                            </span>
+                    {showFinancialStats && (
+                        <div className={clsx(
+                            "flex rounded-lg p-1.5 px-4 border gap-5 text-sm transition-all shadow-sm",
+                            isLight ? "bg-white border-slate-300" : "bg-slate-800/40 border-slate-600/50"
+                        )}>
+                            <div className="flex gap-2 items-center">
+                                <span className={clsx("font-medium opacity-80", isLight ? "text-blue-800" : "text-blue-400")}>Андрій:</span>
+                                <span className={clsx("font-bold tabular-nums", isLight ? "text-slate-900" : "text-slate-100")}>
+                                    {Math.round(todayStats.andriySalary)}
+                                </span>
+                                <span className="text-slate-500 font-normal opacity-50">/</span>
+                                <span className={clsx("font-semibold tabular-nums", isLight ? "text-slate-700" : "text-slate-200")}>
+                                    {Math.round(monthStats.andriySalary)}
+                                </span>
+                            </div>
+                            <div className={clsx("w-px h-4 self-center", isLight ? "bg-slate-300" : "bg-slate-600")}></div>
+                            <div className="flex gap-2 items-center">
+                                <span className={clsx("font-medium opacity-80", isLight ? "text-amber-800" : "text-amber-400")}>Інші:</span>
+                                <span className={clsx("font-bold tabular-nums", isLight ? "text-slate-900" : "text-slate-100")}>
+                                    {Math.round(todayStats.othersSalary)}
+                                </span>
+                                <span className="text-slate-500 font-normal opacity-50">/</span>
+                                <span className={clsx("font-semibold tabular-nums", isLight ? "text-slate-700" : "text-slate-200")}>
+                                    {Math.round(monthStats.othersSalary)}
+                                </span>
+                            </div>
                         </div>
-                        <div className={clsx("w-px h-4 self-center", isLight ? "bg-slate-300" : "bg-slate-600")}></div>
-                        <div className="flex gap-2 items-center">
-                            <span className={clsx("font-medium opacity-80", isLight ? "text-amber-800" : "text-amber-400")}>Інші:</span>
-                            <span className={clsx("font-bold tabular-nums", isLight ? "text-slate-900" : "text-slate-100")}>
-                                {Math.round(todayStats.othersSalary)}
-                            </span>
-                            <span className="text-slate-500 font-normal opacity-50">/</span>
-                            <span className={clsx("font-semibold tabular-nums", isLight ? "text-slate-700" : "text-slate-200")}>
-                                {Math.round(monthStats.othersSalary)}
-                            </span>
-                        </div>
-                    </div>
+                    )}
                 </div>
 
                 <button
@@ -694,7 +744,7 @@ export const Dashboard: React.FC = () => {
                                 <th className="px-4 py-4 text-center w-[110px]">Дата видачі</th>
                                 <th className="px-4 py-4 text-center" style={{ width: '150px' }}>Виконавець</th>
                                 <th className="px-6 py-4 w-[200px] text-center">Примітки</th>
-                                <th className="px-4 py-4 text-center w-[60px]">Дії</th>
+                                <th className="px-4 py-4 text-center w-[80px]">Дії</th>
                             </tr>
                         </thead>
                     </table>
@@ -713,7 +763,7 @@ export const Dashboard: React.FC = () => {
                             <col style={{ width: '110px' }} />
                             <col style={{ width: '150px' }} />
                             <col style={{ width: '200px' }} />
-                            <col style={{ width: '60px' }} />
+                            <col style={{ width: '80px' }} />
                         </colgroup>
                         <tbody className="divide-y divide-slate-600">
                             {isFuzzyActive && (
@@ -943,17 +993,35 @@ export const Dashboard: React.FC = () => {
                                                 {repair.note || '-'}
                                             </div>
                                         </td>
-                                        <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setDeleteId(repair.id);
-                                                }}
-                                                className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-700 rounded-lg transition-colors"
-                                                title="Видалити"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
+                                        <td className="px-4 py-4 text-center" onClick={(e) => e.stopPropagation()}>
+                                            <div className="flex items-center justify-center gap-1">
+                                                <div className="w-8 flex justify-center">
+                                                    {Boolean(repair.isPaid) && (
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setRefundModal({ repair });
+                                                            }}
+                                                            className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-slate-700 rounded-lg transition-colors"
+                                                            title="Повернення коштів"
+                                                        >
+                                                            <RotateCcw className="w-4 h-4" />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                <div className="w-8 flex justify-center">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setDeleteId(repair.id);
+                                                        }}
+                                                        className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-700 rounded-lg transition-colors"
+                                                        title="Видалити"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))
@@ -1120,6 +1188,19 @@ export const Dashboard: React.FC = () => {
                     setIsAdvancedModalOpen(false);
                 }}
             />
+
+            {refundModal && (
+                <RefundModal
+                    isOpen={!!refundModal}
+                    onClose={() => setRefundModal(null)}
+                    onConfirm={(refundData) => refundMutation.mutate({ repair: refundModal.repair, refundData })}
+                    receiptId={refundModal.repair.receiptId}
+                    totalCost={refundModal.repair.totalCost}
+                    originalPaymentType={refundModal.repair.paymentType || 'Готівка'}
+                    hasParts={false}
+                    isLoading={refundMutation.isPending}
+                />
+            )}
         </div>
     );
 };

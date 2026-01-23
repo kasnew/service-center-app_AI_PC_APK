@@ -186,13 +186,19 @@ export default function CashRegister() {
 
                 {balances && (
                     <>
-                        <div className="bg-slate-700 rounded-lg p-4 border border-slate-600 shadow-sm rainbow-groupbox">
-                            <p className="text-sm text-slate-400 mb-1">Готівка</p>
-                            <p className={`text-2xl font-bold ${greenColor}`}>{balances.cash.toFixed(2)} ₴</p>
+                        <div className="bg-slate-700/50 rounded-lg p-3 border border-slate-600/50 shadow-sm rainbow-groupbox">
+                            <p className="text-xs text-slate-400 mb-1">Готівка</p>
+                            <p className={`text-xl font-bold ${greenColor}`}>{balances.cash.toFixed(2)} ₴</p>
                         </div>
-                        <div className="bg-slate-700 rounded-lg p-4 border border-slate-600 shadow-sm rainbow-groupbox">
-                            <p className="text-sm text-slate-400 mb-1">Картка</p>
-                            <p className={`text-2xl font-bold ${blueColor}`}>{balances.card.toFixed(2)} ₴</p>
+                        <div className="bg-slate-700/50 rounded-lg p-3 border border-slate-600/50 shadow-sm rainbow-groupbox flex flex-col justify-between">
+                            <div>
+                                <p className="text-xs text-slate-400 mb-1">Картка (Доступно)</p>
+                                <p className={`text-xl font-bold ${blueColor}`}>{(balances.card - (balances.cardPending || 0)).toFixed(2)} ₴</p>
+                            </div>
+                            <div className="mt-2 pt-2 border-t border-slate-600/30 flex justify-between items-end">
+                                <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Очікується:</p>
+                                <p className="text-sm font-semibold text-slate-400">{(balances.cardPending || 0).toFixed(2)} ₴</p>
+                            </div>
                         </div>
                     </>
                 )}

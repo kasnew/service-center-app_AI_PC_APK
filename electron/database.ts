@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import path from 'node:path';
-import { app } from 'electron';
+import { app, dialog } from 'electron';
 import fs from 'fs';
 
 let db: Database.Database | null = null;
@@ -11,40 +11,26 @@ export function initDatabase() {
     dbPath = path.join(process.cwd(), 'base.sqlite');
 
     if (app.isPackaged) {
-        // In production, try to find database in the same directory as the AppImage
-        // This allows portable usage when database is in the same folder
-
-        // For AppImage, APPIMAGE env variable contains the path to the AppImage file
-        // For other executables, use process.execPath
         let appImagePath: string | undefined;
 
         if (process.env.APPIMAGE) {
-            // Running as AppImage
             appImagePath = process.env.APPIMAGE;
         } else {
-            // Running as regular executable
             appImagePath = process.execPath;
         }
 
         const appImageDir = appImagePath ? path.dirname(appImagePath) : process.cwd();
 
-        // Try multiple locations in order of priority:
-        // 1. Same directory as AppImage (for portable use)
-        // 2. userData directory (default Electron location)
-
         const portablePath = path.join(appImageDir, 'base.sqlite');
         const userDataPath = path.join(app.getPath('userData'), 'base.sqlite');
 
-        // Check if database exists in AppImage directory (portable mode)
         if (fs.existsSync(portablePath)) {
             dbPath = portablePath;
             console.log('Using portable database from AppImage directory:', dbPath);
         } else {
-            // Use userData directory
             dbPath = userDataPath;
             console.log('Using userData directory for database:', dbPath);
 
-            // Ensure userData directory exists
             const userDataDir = app.getPath('userData');
             if (!fs.existsSync(userDataDir)) {
                 fs.mkdirSync(userDataDir, { recursive: true });
@@ -53,11 +39,55 @@ export function initDatabase() {
     }
 
     console.log('Database path:', dbPath);
+    const DB_VERSION = 1;
 
     try {
         db = new Database(dbPath, { verbose: console.log });
         db.pragma('journal_mode = WAL');
         db.pragma('synchronous = NORMAL');
+
+        // Check database version
+        const currentVersion = db.pragma('user_version', { simple: true }) as number;
+
+        if (currentVersion < DB_VERSION && fs.existsSync(dbPath)) {
+            console.log(`Database version mismatch: current ${currentVersion}, target ${DB_VERSION}`);
+
+            // Warn user and perform migration
+            const choice = dialog.showMessageBoxSync({
+                type: 'info',
+                title: 'Оновлення бази даних',
+                message: 'Доступна нова версія структури бази даних.',
+                detail: 'Програма виконає оновлення та створить резервну копію перед початком. Це займе кілька секунд.',
+                buttons: ['Оновити', 'Вийти'],
+                defaultId: 0,
+                cancelId: 1
+            });
+
+            if (choice === 1) {
+                app.quit();
+                process.exit(0);
+            }
+
+            // Perform backup
+            try {
+                const { createSimpleBackupSync } = require('./backup');
+                const backupPath = createSimpleBackupSync();
+                console.log('Migration backup created:', backupPath);
+            } catch (backupError) {
+                console.error('Failed to create migration backup:', backupError);
+                const confirm = dialog.showMessageBoxSync({
+                    type: 'warning',
+                    title: 'Помилка бекапу',
+                    message: 'Не вдалося створити резервну копію. Продовжити оновлення без бекапу?',
+                    buttons: ['Так', 'Ні'],
+                    defaultId: 1
+                });
+                if (confirm === 1) {
+                    app.quit();
+                    process.exit(0);
+                }
+            }
+        }
 
         // Create Suppliers table
         db.prepare(`
@@ -80,7 +110,6 @@ export function initDatabase() {
         }
 
         // Import existing suppliers from Warehouse items
-        // We only import those that are not null/empty and not already in the list
         db.prepare(`
             INSERT OR IGNORE INTO Suppliers (Name)
             SELECT DISTINCT Поставщик
@@ -98,89 +127,48 @@ export function initDatabase() {
             )
         `).run();
 
-        // Populate initial executor ONLY if table is empty
         const executorCount = db.prepare('SELECT COUNT(*) as count FROM Executors').get() as { count: number };
-
         if (executorCount.count === 0) {
             db.prepare('INSERT INTO Executors (Name, SalaryPercent, ProductsPercent) VALUES (?, ?, ?)').run('Андрій', 100.0, 100.0);
         }
 
-        // Add ProductsPercent column if it doesn't exist (migration for existing databases)
+        // Ad-hoc migrations (keeping them for safety, but integrated into the flow)
         try {
             const executorTableInfo = db.prepare('PRAGMA table_info(Executors)').all() as Array<{ name: string }>;
-            const hasProductsPercent = executorTableInfo.some(col => col.name === 'ProductsPercent');
-
-            if (!hasProductsPercent) {
+            if (!executorTableInfo.some(col => col.name === 'ProductsPercent')) {
                 db.prepare('ALTER TABLE Executors ADD COLUMN ProductsPercent REAL NOT NULL DEFAULT 0').run();
-                // Set Андрій's ProductsPercent to 100 by default
                 db.prepare('UPDATE Executors SET ProductsPercent = 100.0 WHERE Name = ?').run('Андрій');
-                console.log('Added ProductsPercent column to Executors table');
             }
-        } catch (error) {
-            console.error('Error adding ProductsPercent column:', error);
-        }
+        } catch (e) { }
 
-        // Add Password and Role columns for web authentication (migration)
         try {
             const executorTableInfo = db.prepare('PRAGMA table_info(Executors)').all() as Array<{ name: string }>;
-            const hasPassword = executorTableInfo.some(col => col.name === 'Password');
-            const hasRole = executorTableInfo.some(col => col.name === 'Role');
-
-            if (!hasPassword) {
+            if (!executorTableInfo.some(col => col.name === 'Password')) {
                 db.prepare('ALTER TABLE Executors ADD COLUMN Password TEXT').run();
-                console.log('Added Password column to Executors table');
             }
-            if (!hasRole) {
+            if (!executorTableInfo.some(col => col.name === 'Role')) {
                 db.prepare("ALTER TABLE Executors ADD COLUMN Role TEXT DEFAULT 'worker'").run();
-                // Set first executor as admin
                 db.prepare("UPDATE Executors SET Role = 'admin' WHERE ID = (SELECT MIN(ID) FROM Executors)").run();
-                console.log('Added Role column to Executors table');
             }
-        } catch (error) {
-            console.error('Error adding auth columns to Executors:', error);
-        }
+        } catch (e) { }
 
-        // Add Виконавець column to Ремонт table if it doesn't exist
         try {
-            // Check if column exists
             const tableInfo = db.prepare('PRAGMA table_info(Ремонт)').all() as Array<{ name: string }>;
-            const hasExecutorColumn = tableInfo.some(col => col.name === 'Виконавець');
-
-            if (!hasExecutorColumn) {
+            if (!tableInfo.some(col => col.name === 'Виконавець')) {
                 db.prepare('ALTER TABLE Ремонт ADD COLUMN Виконавець TEXT DEFAULT \'Андрій\'').run();
-                console.log('Added Виконавець column to Ремонт table');
             }
-        } catch (error) {
-            console.error('Error adding Виконавець column:', error);
-        }
-
-        // Add ТипОплати column to Ремонт table if it doesn't exist
-        try {
-            const tableInfo = db.prepare('PRAGMA table_info(Ремонт)').all() as Array<{ name: string }>;
-            const hasPaymentTypeColumn = tableInfo.some(col => col.name === 'ТипОплати');
-
-            if (!hasPaymentTypeColumn) {
+            if (!tableInfo.some(col => col.name === 'ТипОплати')) {
                 db.prepare('ALTER TABLE Ремонт ADD COLUMN ТипОплати TEXT DEFAULT \'Готівка\'').run();
-                console.log('Added ТипОплати column to Ремонт table');
             }
-        } catch (error) {
-            console.error('Error adding ТипОплати column:', error);
-        }
+        } catch (e) { }
 
-        // Add ШтрихКод column to Расходники table if it doesn't exist
         try {
             const tableInfo = db.prepare('PRAGMA table_info(Расходники)').all() as Array<{ name: string }>;
-            const hasBarcodeColumn = tableInfo.some(col => col.name === 'ШтрихКод');
-
-            if (!hasBarcodeColumn) {
+            if (!tableInfo.some(col => col.name === 'ШтрихКод')) {
                 db.prepare('ALTER TABLE Расходники ADD COLUMN ШтрихКод TEXT').run();
-                console.log('Added ШтрихКод column to Расходники table');
             }
-        } catch (error) {
-            console.error('Error adding ШтрихКод column:', error);
-        }
+        } catch (e) { }
 
-        // Create settings table
         db.prepare(`
             CREATE TABLE IF NOT EXISTS settings (
                 key TEXT PRIMARY KEY,
@@ -188,7 +176,6 @@ export function initDatabase() {
             )
         `).run();
 
-        // Create expense categories table if it doesn't exist
         db.prepare(`
             CREATE TABLE IF NOT EXISTS КатегоріїВитрат (
                 ID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -197,7 +184,6 @@ export function initDatabase() {
             )
         `).run();
 
-        // Create income categories table if it doesn't exist
         db.prepare(`
             CREATE TABLE IF NOT EXISTS КатегоріїПрибутків (
                 ID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -206,7 +192,6 @@ export function initDatabase() {
             )
         `).run();
 
-        // Populate initial income categories ONLY if table is empty
         const incomeCategoryCount = db.prepare('SELECT COUNT(*) as count FROM КатегоріїПрибутків').get() as { count: number };
         if (incomeCategoryCount.count === 0) {
             const initialIncomeCategories = ['Ремонт', 'Продаж товару', 'Інший дохід'];
@@ -216,7 +201,6 @@ export function initDatabase() {
             });
         }
 
-        // Create SyncLocks table
         db.prepare(`
             CREATE TABLE IF NOT EXISTS SyncLocks (
                 ID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -226,30 +210,33 @@ export function initDatabase() {
             )
         `).run();
 
-        // Add UpdateTimestamp columns
         const tablesToUpdate = ['Ремонт', 'Каса', 'Расходники'];
         tablesToUpdate.forEach(tableName => {
             try {
                 if (!db) return;
                 const tableInfo = db.prepare(`PRAGMA table_info(${tableName})`).all() as any[];
-                const hasUpdateTimestamp = tableInfo.some(col => col.name === 'UpdateTimestamp');
-                if (!hasUpdateTimestamp) {
+                if (!tableInfo.some(col => col.name === 'UpdateTimestamp')) {
                     db.prepare(`ALTER TABLE ${tableName} ADD COLUMN UpdateTimestamp TEXT`).run();
                     db.prepare(`UPDATE ${tableName} SET UpdateTimestamp = datetime('now')`).run();
-                    console.log(`Added UpdateTimestamp column to ${tableName} table`);
                 }
-            } catch (error) {
-                console.error(`Error adding UpdateTimestamp to ${tableName}:`, error);
-            }
+            } catch (e) { }
         });
 
-        // PERFORMANCE INDEXES for actual database
+        // PERFORMANCE INDEXES
         db.prepare('CREATE INDEX IF NOT EXISTS idx_remont_kvitancia ON Ремонт(Квитанция)').run();
         db.prepare('CREATE INDEX IF NOT EXISTS idx_remont_phone ON Ремонт(Телефон)').run();
-        db.prepare('CREATE INDEX IF NOT EXISTS idx_remont_status ON Ремонт(Состояние)').run();
+        db.prepare('CREATE INDEX IF NOT EXISTS idx_remont_status_kvit ON Ремонт(Состояние, Квитанция)').run();
+        db.prepare('CREATE INDEX IF NOT EXISTS idx_remont_executor_kvit ON Ремонт(Виконавець, Квитанция)').run();
+        db.prepare('CREATE INDEX IF NOT EXISTS idx_remont_shouldcall_kvit ON Ремонт(Перезвонить, Квитанция)').run();
         db.prepare('CREATE INDEX IF NOT EXISTS idx_remont_start ON Ремонт(Начало_ремонта)').run();
         db.prepare('CREATE INDEX IF NOT EXISTS idx_rashodniki_kvitancia ON Расходники(Квитанция)').run();
         db.prepare('CREATE INDEX IF NOT EXISTS idx_rashodniki_barcode ON Расходники(ШтрихКод)').run();
+
+        // Finalize version update
+        if (currentVersion < DB_VERSION) {
+            db.pragma(`user_version = ${DB_VERSION}`);
+            console.log(`Database migrated to version ${DB_VERSION}`);
+        }
 
         return true;
     } catch (error) {
