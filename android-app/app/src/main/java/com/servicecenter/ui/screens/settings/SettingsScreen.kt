@@ -45,6 +45,8 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
 import java.util.Collections
 import com.servicecenter.data.sync.SyncManager
 import javax.inject.Inject
@@ -137,6 +139,53 @@ fun SettingsScreen(
                         Switch(
                             checked = isOfflineMode,
                             onCheckedChange = { viewModel.setOfflineMode(it) }
+                        )
+                    }
+            }
+            
+            // Autostart Switch
+            item {
+                val isAutoStartEnabled by viewModel.isAutoStartEnabled.collectAsState()
+                Card(
+                    shape = RoundedCornerShape(24.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = androidx.compose.ui.graphics.Color.White
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Launch,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Column {
+                                Text(
+                                    text = "Автозапуск",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "Запускати додаток після перезавантаження",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        Switch(
+                            checked = isAutoStartEnabled,
+                            onCheckedChange = { viewModel.setAutoStartEnabled(it) }
                         )
                     }
                 }
@@ -547,6 +596,18 @@ class SettingsViewModel @Inject constructor(
     
     private val _connectionError = MutableStateFlow<String?>(null)
     val connectionError: StateFlow<String?> = _connectionError.asStateFlow()
+
+    val isAutoStartEnabled: StateFlow<Boolean> = dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.AUTOSTART_ENABLED] ?: false
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    fun setAutoStartEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            dataStore.edit { preferences ->
+                preferences[PreferencesKeys.AUTOSTART_ENABLED] = enabled
+            }
+        }
+    }
 
     init {
         loadServers()

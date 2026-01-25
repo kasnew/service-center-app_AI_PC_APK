@@ -772,23 +772,25 @@ export async function startSyncServer(port: number = 3000): Promise<{ success: b
 
         let query = `
           SELECT
-            ID as id,
-            Наименование_расходника as name,
-            Цена_уе as priceUsd,
-            Курс as exchangeRate,
-            Вход as costUah,
-            Сумма as priceUah,
-            Доход as profit,
-            Наличие as inStock,
-            Поставщик as supplier,
-            Приход as dateArrival,
-            Дата_продажи as dateSold,
-            Квитанция as receiptId,
-            Накладная as invoice,
-            Код_товара as productCode,
-            ШтрихКод as barcode
-          FROM Расходники
-          WHERE 1=1 ${filterCondition}
+            R.ID as id,
+            R.Наименование_расходника as name,
+            R.Цена_уе as priceUsd,
+            R.Курс as exchangeRate,
+            R.Вход as costUah,
+            R.Сумма as priceUah,
+            R.Доход as profit,
+            R.Наличие as inStock,
+            R.Поставщик as supplier,
+            R.Приход as dateArrival,
+            R.Дата_продажи as dateSold,
+            R.Квитанция as receiptId,
+            R.Накладная as invoice,
+            R.Код_товара as productCode,
+            R.ШтрихКод as barcode,
+            WL.MinQuantity as minQuantity
+          FROM Расходники R
+          LEFT JOIN WarehouseLimits WL ON R.Код_товара = WL.ProductCode
+          WHERE 1=1 ${filterCondition.replace(/Наличие|Дата_продажи/g, (m) => `R.${m}`)}
         `;
 
         const params: any[] = [];
@@ -800,25 +802,25 @@ export async function startSyncServer(port: number = 3000): Promise<{ success: b
 
         if (search) {
           query += ` AND (
-            Наименование_расходника LIKE ? OR 
-            Поставщик LIKE ? OR
-            Код_товара LIKE ?
+            R.Наименование_расходника LIKE ? OR 
+            R.Поставщик LIKE ? OR
+            R.Код_товара LIKE ?
           )`;
           const searchParam = `%${search}%`;
           params.push(searchParam, searchParam, searchParam);
         }
 
         if (dateArrivalStart) {
-          query += ` AND Приход >= ?`;
+          query += ` AND R.Приход >= ?`;
           params.push(toDelphiDate(dateArrivalStart as string));
         }
 
         if (dateArrivalEnd) {
-          query += ` AND Приход <= ?`;
+          query += ` AND R.Приход <= ?`;
           params.push(toDelphiDate(dateArrivalEnd as string));
         }
 
-        query += ` ORDER BY Приход DESC`;
+        query += ` ORDER BY R.Приход DESC`;
 
         const items = db.prepare(query).all(...params).map((item: any) => ({
           ...item,
@@ -860,24 +862,26 @@ export async function startSyncServer(port: number = 3000): Promise<{ success: b
 
         const item = db.prepare(`
           SELECT
-            ID as id,
-            Наименование_расходника as name,
-            Цена_уе as priceUsd,
-            Курс as exchangeRate,
-            Вход as costUah,
-            Сумма as priceUah,
-            Доход as profit,
-            Наличие as inStock,
-            Поставщик as supplier,
-            Приход as dateArrival,
-            Дата_продажи as dateSold,
-            Квитанция as receiptId,
-            Накладная as invoice,
-            Код_товара as productCode,
-            ШтрихКод as barcode
-          FROM Расходники
-          WHERE ШтрихКод = ?
-          ORDER BY ID DESC
+            R.ID as id,
+            R.Наименование_расходника as name,
+            R.Цена_уе as priceUsd,
+            R.Курс as exchangeRate,
+            R.Вход as costUah,
+            R.Сумма as priceUah,
+            R.Доход as profit,
+            R.Наличие as inStock,
+            R.Поставщик as supplier,
+            R.Приход as dateArrival,
+            R.Дата_продажи as dateSold,
+            R.Квитанция as receiptId,
+            R.Накладная as invoice,
+            R.Код_товара as productCode,
+            R.ШтрихКод as barcode,
+            WL.MinQuantity as minQuantity
+          FROM Расходники R
+          LEFT JOIN WarehouseLimits WL ON R.Код_товара = WL.ProductCode
+          WHERE R.ШтрихКод = ?
+          ORDER BY R.ID DESC
           LIMIT 1
         `).get(barcode) as any;
 
@@ -963,23 +967,25 @@ export async function startSyncServer(port: number = 3000): Promise<{ success: b
         // Note: Квитанция field in Расходники stores the repair ID, not receiptId
         const parts = db.prepare(`
           SELECT
-            ID as id,
-            Наименование_расходника as name,
-            Цена_уе as priceUsd,
-            Курс as exchangeRate,
-            Вход as costUah,
-            Сумма as priceUah,
-            Доход as profit,
-            Наличие as inStock,
-            Поставщик as supplier,
-            Приход as dateArrival,
-            Дата_продажи as dateSold,
-            Квитанция as receiptId,
-            Накладная as invoice,
-            Код_товара as productCode,
-            ШтрихКод as barcode
-          FROM Расходники
-          WHERE Квитанция = ?
+            R.ID as id,
+            R.Наименование_расходника as name,
+            R.Цена_уе as priceUsd,
+            R.Курс as exchangeRate,
+            R.Вход as costUah,
+            R.Сумма as priceUah,
+            R.Доход as profit,
+            R.Наличие as inStock,
+            R.Поставщик as supplier,
+            R.Приход as dateArrival,
+            R.Дата_продажи as dateSold,
+            R.Квитанция as receiptId,
+            R.Накладная as invoice,
+            R.Код_товара as productCode,
+            R.ШтрихКод as barcode,
+            WL.MinQuantity as minQuantity
+          FROM Расходники R
+          LEFT JOIN WarehouseLimits WL ON R.Код_товара = WL.ProductCode
+          WHERE R.Квитанция = ?
         `).all(repairId).map((p: any) => ({
           ...p,
           dateArrival: toJsDate(p.dateArrival),

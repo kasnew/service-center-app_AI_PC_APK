@@ -28,6 +28,8 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({ isOpen, onClose, phone
             // Clean up phone number (remove spaces, parentheses, etc.)
             const cleanPhone = phoneNumber.replace(/\D/g, '');
             // Simple tel: link
+            // Use vCard format for better compatibility with Android/Xiaomi scanners
+            // and to include identifying information
             const telLink = `tel:+${cleanPhone.startsWith('38') ? cleanPhone : '38' + cleanPhone}`;
 
             QRCode.toCanvas(
@@ -35,10 +37,11 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({ isOpen, onClose, phone
                 telLink,
                 {
                     width: 256,
-                    margin: 2,
+                    margin: 4, // Increased margin for better detection
+                    errorCorrectionLevel: 'H', // Use highest error correction
                     color: {
-                        dark: isLight ? '#1e293b' : '#f8fafc',
-                        light: isLight ? '#f8fafc' : '#1e293b',
+                        dark: '#000000',  // Always black modules
+                        light: '#ffffff', // Always white background
                     },
                 },
                 (error) => {

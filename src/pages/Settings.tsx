@@ -4,7 +4,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { settingsApi, BackupInfo } from '../api/settings';
 import { executorsApi, Executor } from '../api/executors';
 import { expenseCategoriesApi, incomeCategoriesApi } from '../api/cashRegister';
-import { ExpenseCategory, IncomeCategory } from '../types/db';
+// import { warehouseApi } from '../api/warehouse';
+import { Part, ExpenseCategory, IncomeCategory } from '../types/db';
 import { Database, Download, Trash2, RotateCcw, AlertTriangle, HardDrive, Users, Plus, UserCog, Wifi, WifiOff, Copy, ChevronDown, ChevronRight, Check, X, Edit2 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { ConfirmationModal } from '../components/ConfirmationModal';
@@ -968,11 +969,10 @@ export default function Settings() {
                                 )}
                             </div>
                         </div>
+
                     </div>
                 </>
             )}
-
-
 
             {activeCategory === 'appearance' && (
                 <ThemeSettings />
@@ -1025,181 +1025,183 @@ export default function Settings() {
 
 
 
-            {activeCategory === 'sync' && (
-                <div
-                    className="rounded-lg shadow-sm p-6 mb-6 border rainbow-groupbox"
-                    style={{
-                        backgroundColor: 'var(--theme-surface)',
-                        borderColor: 'var(--theme-border)',
-                        color: 'var(--theme-text)'
-                    }}
-                >
-                    <h2
-                        className="text-xl font-semibold mb-6 flex items-center gap-2"
-                        style={{ color: 'var(--theme-text)' }}
+            {
+                activeCategory === 'sync' && (
+                    <div
+                        className="rounded-lg shadow-sm p-6 mb-6 border rainbow-groupbox"
+                        style={{
+                            backgroundColor: 'var(--theme-surface)',
+                            borderColor: 'var(--theme-border)',
+                            color: 'var(--theme-text)'
+                        }}
                     >
-                        <Wifi className="w-6 h-6" />
-                        Синхронізація з мобільним додатком
-                    </h2>
+                        <h2
+                            className="text-xl font-semibold mb-6 flex items-center gap-2"
+                            style={{ color: 'var(--theme-text)' }}
+                        >
+                            <Wifi className="w-6 h-6" />
+                            Синхронізація з мобільним додатком
+                        </h2>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {/* Left Column: Controls & Status */}
-                        <div className="space-y-6">
-                            {/* Server Control Card */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            {/* Left Column: Controls & Status */}
+                            <div className="space-y-6">
+                                {/* Server Control Card */}
+                                <div
+                                    className="rounded-lg p-5 border"
+                                    style={{
+                                        backgroundColor: 'var(--theme-surface-secondary)',
+                                        borderColor: 'var(--theme-border)'
+                                    }}
+                                >
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="flex items-center gap-3">
+                                            {syncStatus?.running ? (
+                                                <div className="flex items-center gap-2">
+                                                    <div className="relative flex h-3 w-3">
+                                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                                        <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                                                    </div>
+                                                    <span className="text-green-600 dark:text-green-400 font-medium">Сервер працює</span>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                                                    <span className="text-slate-500 dark:text-slate-400 font-medium">Сервер зупинено</span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Control Button & Port */}
+                                        <div className="flex items-center gap-2">
+                                            {!syncStatus?.running && (
+                                                <input
+                                                    type="number"
+                                                    value={syncPort}
+                                                    onChange={(e) => setSyncPort(parseInt(e.target.value, 10) || 3000)}
+                                                    min="1024"
+                                                    max="65535"
+                                                    placeholder="Порт"
+                                                    className="w-20 px-2 py-1.5 text-sm rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-center border"
+                                                    style={{
+                                                        backgroundColor: 'var(--theme-surface)',
+                                                        borderColor: 'var(--theme-border)',
+                                                        color: 'var(--theme-text)'
+                                                    }}
+                                                />
+                                            )}
+                                            {syncStatus?.running ? (
+                                                <button
+                                                    onClick={() => stopSyncServerMutation.mutate()}
+                                                    disabled={stopSyncServerMutation.isPending}
+                                                    className="flex items-center gap-2 px-4 py-1.5 text-sm font-medium bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-500/50 rounded hover:bg-red-200 dark:hover:bg-red-500/20 transition-all disabled:opacity-50"
+                                                >
+                                                    <WifiOff className="w-4 h-4" />
+                                                    {stopSyncServerMutation.isPending ? 'Зупинка...' : 'Зупинити'}
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={() => startSyncServerMutation.mutate(syncPort)}
+                                                    disabled={startSyncServerMutation.isPending}
+                                                    className="flex items-center gap-2 px-4 py-1.5 text-sm font-medium bg-green-100 dark:bg-green-500/10 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-500/50 rounded hover:bg-green-200 dark:hover:bg-green-500/20 transition-all disabled:opacity-50"
+                                                >
+                                                    <Wifi className="w-4 h-4" />
+                                                    {startSyncServerMutation.isPending ? 'Запуск...' : 'Запустити'}
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Connection Info */}
+                                    {syncStatus?.running && syncStatus.ipAddresses && (
+                                        <div
+                                            className="mt-4 p-3 rounded border"
+                                            style={{
+                                                backgroundColor: 'var(--theme-surface)',
+                                                borderColor: 'var(--theme-border)'
+                                            }}
+                                        >
+                                            <p className="text-xs text-slate-500 mb-2 uppercase tracking-wider font-semibold">Адреси для підключення</p>
+                                            <div className="space-y-2">
+                                                {syncStatus.ipAddresses.map((ip, index) => (
+                                                    <div key={index} className="flex items-center justify-between group">
+                                                        <code className="text-blue-600 dark:text-blue-400 font-mono text-sm">
+                                                            http://{ip}:{syncStatus.port}
+                                                        </code>
+                                                        <button
+                                                            onClick={() => navigator.clipboard.writeText(`http://${ip}:${syncStatus.port}`)}
+                                                            className="p-1 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors opacity-0 group-hover:opacity-100"
+                                                            title="Копіювати адресу"
+                                                        >
+                                                            <Copy className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Info Alert */}
+                                <div
+                                    className="border rounded-lg p-4"
+                                    style={{
+                                        backgroundColor: 'var(--theme-surface)',
+                                        borderColor: 'var(--theme-primary)',
+                                        opacity: 0.9
+                                    }}
+                                >
+                                    <div className="flex gap-3">
+                                        <AlertTriangle className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--theme-primary)' }} />
+                                        <div className="text-sm space-y-1">
+                                            <p className="font-medium" style={{ color: 'var(--theme-text)' }}>Важливо</p>
+                                            <ul className="list-disc list-inside space-y-0.5 text-xs" style={{ color: 'var(--theme-text-secondary)' }}>
+                                                <li>Пристрої мають бути в одній WiFi мережі</li>
+                                                <li>Брандмауер не повинен блокувати порт {syncPort}</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Right Column: API Documentation */}
                             <div
-                                className="rounded-lg p-5 border"
+                                className="rounded-lg p-5 border h-full"
                                 style={{
                                     backgroundColor: 'var(--theme-surface-secondary)',
                                     borderColor: 'var(--theme-border)'
                                 }}
                             >
-                                <div className="flex items-center justify-between mb-4">
-                                    <div className="flex items-center gap-3">
-                                        {syncStatus?.running ? (
-                                            <div className="flex items-center gap-2">
-                                                <div className="relative flex h-3 w-3">
-                                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-                                                </div>
-                                                <span className="text-green-600 dark:text-green-400 font-medium">Сервер працює</span>
-                                            </div>
-                                        ) : (
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                                                <span className="text-slate-500 dark:text-slate-400 font-medium">Сервер зупинено</span>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Control Button & Port */}
-                                    <div className="flex items-center gap-2">
-                                        {!syncStatus?.running && (
-                                            <input
-                                                type="number"
-                                                value={syncPort}
-                                                onChange={(e) => setSyncPort(parseInt(e.target.value, 10) || 3000)}
-                                                min="1024"
-                                                max="65535"
-                                                placeholder="Порт"
-                                                className="w-20 px-2 py-1.5 text-sm rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-center border"
-                                                style={{
-                                                    backgroundColor: 'var(--theme-surface)',
-                                                    borderColor: 'var(--theme-border)',
-                                                    color: 'var(--theme-text)'
-                                                }}
-                                            />
-                                        )}
-                                        {syncStatus?.running ? (
-                                            <button
-                                                onClick={() => stopSyncServerMutation.mutate()}
-                                                disabled={stopSyncServerMutation.isPending}
-                                                className="flex items-center gap-2 px-4 py-1.5 text-sm font-medium bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-500/50 rounded hover:bg-red-200 dark:hover:bg-red-500/20 transition-all disabled:opacity-50"
-                                            >
-                                                <WifiOff className="w-4 h-4" />
-                                                {stopSyncServerMutation.isPending ? 'Зупинка...' : 'Зупинити'}
-                                            </button>
-                                        ) : (
-                                            <button
-                                                onClick={() => startSyncServerMutation.mutate(syncPort)}
-                                                disabled={startSyncServerMutation.isPending}
-                                                className="flex items-center gap-2 px-4 py-1.5 text-sm font-medium bg-green-100 dark:bg-green-500/10 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-500/50 rounded hover:bg-green-200 dark:hover:bg-green-500/20 transition-all disabled:opacity-50"
-                                            >
-                                                <Wifi className="w-4 h-4" />
-                                                {startSyncServerMutation.isPending ? 'Запуск...' : 'Запустити'}
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Connection Info */}
-                                {syncStatus?.running && syncStatus.ipAddresses && (
-                                    <div
-                                        className="mt-4 p-3 rounded border"
-                                        style={{
-                                            backgroundColor: 'var(--theme-surface)',
-                                            borderColor: 'var(--theme-border)'
-                                        }}
-                                    >
-                                        <p className="text-xs text-slate-500 mb-2 uppercase tracking-wider font-semibold">Адреси для підключення</p>
-                                        <div className="space-y-2">
-                                            {syncStatus.ipAddresses.map((ip, index) => (
-                                                <div key={index} className="flex items-center justify-between group">
-                                                    <code className="text-blue-600 dark:text-blue-400 font-mono text-sm">
-                                                        http://{ip}:{syncStatus.port}
-                                                    </code>
-                                                    <button
-                                                        onClick={() => navigator.clipboard.writeText(`http://${ip}:${syncStatus.port}`)}
-                                                        className="p-1 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors opacity-0 group-hover:opacity-100"
-                                                        title="Копіювати адресу"
-                                                    >
-                                                        <Copy className="w-3.5 h-3.5" />
-                                                    </button>
-                                                </div>
-                                            ))}
+                                <h3
+                                    className="text-sm font-semibold uppercase tracking-wider mb-4"
+                                    style={{ color: 'var(--theme-text-secondary)' }}
+                                >API Endpoints</h3>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-xs font-mono">
+                                    {[
+                                        { method: 'GET', path: '/api/health', color: 'text-green-500' },
+                                        { method: 'GET', path: '/api/repairs', color: 'text-blue-400' },
+                                        { method: 'GET', path: '/api/repairs/:id', color: 'text-blue-400' },
+                                        { method: 'POST', path: '/api/repairs', color: 'text-yellow-500' },
+                                        { method: 'PUT', path: '/api/repairs/:id', color: 'text-purple-400' },
+                                        { method: 'DEL', path: '/api/repairs/:id', color: 'text-red-400' },
+                                        { method: 'GET', path: '/api/warehouse', color: 'text-blue-400' },
+                                        { method: 'GET', path: '/api/transactions', color: 'text-blue-400' },
+                                        { method: 'GET', path: '/api/executors', color: 'text-blue-400' },
+                                        { method: 'GET', path: '/api/suppliers', color: 'text-blue-400' },
+                                        { method: 'GET', path: '/api/status-counts', color: 'text-blue-400' },
+                                        { method: 'GET', path: '/api/balances', color: 'text-blue-400' },
+                                    ].map((item, idx) => (
+                                        <div key={idx} className="flex items-center gap-2 py-1 border-b" style={{ borderColor: 'var(--theme-border)' }}>
+                                            <span className={`font-bold w-12 ${item.color}`}>{item.method}</span>
+                                            <span style={{ color: 'var(--theme-text)' }}>{item.path}</span>
                                         </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Info Alert */}
-                            <div
-                                className="border rounded-lg p-4"
-                                style={{
-                                    backgroundColor: 'var(--theme-surface)',
-                                    borderColor: 'var(--theme-primary)',
-                                    opacity: 0.9
-                                }}
-                            >
-                                <div className="flex gap-3">
-                                    <AlertTriangle className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--theme-primary)' }} />
-                                    <div className="text-sm space-y-1">
-                                        <p className="font-medium" style={{ color: 'var(--theme-text)' }}>Важливо</p>
-                                        <ul className="list-disc list-inside space-y-0.5 text-xs" style={{ color: 'var(--theme-text-secondary)' }}>
-                                            <li>Пристрої мають бути в одній WiFi мережі</li>
-                                            <li>Брандмауер не повинен блокувати порт {syncPort}</li>
-                                        </ul>
-                                    </div>
+                                    ))}
                                 </div>
-                            </div>
-                        </div>
-
-                        {/* Right Column: API Documentation */}
-                        <div
-                            className="rounded-lg p-5 border h-full"
-                            style={{
-                                backgroundColor: 'var(--theme-surface-secondary)',
-                                borderColor: 'var(--theme-border)'
-                            }}
-                        >
-                            <h3
-                                className="text-sm font-semibold uppercase tracking-wider mb-4"
-                                style={{ color: 'var(--theme-text-secondary)' }}
-                            >API Endpoints</h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-xs font-mono">
-                                {[
-                                    { method: 'GET', path: '/api/health', color: 'text-green-500' },
-                                    { method: 'GET', path: '/api/repairs', color: 'text-blue-400' },
-                                    { method: 'GET', path: '/api/repairs/:id', color: 'text-blue-400' },
-                                    { method: 'POST', path: '/api/repairs', color: 'text-yellow-500' },
-                                    { method: 'PUT', path: '/api/repairs/:id', color: 'text-purple-400' },
-                                    { method: 'DEL', path: '/api/repairs/:id', color: 'text-red-400' },
-                                    { method: 'GET', path: '/api/warehouse', color: 'text-blue-400' },
-                                    { method: 'GET', path: '/api/transactions', color: 'text-blue-400' },
-                                    { method: 'GET', path: '/api/executors', color: 'text-blue-400' },
-                                    { method: 'GET', path: '/api/suppliers', color: 'text-blue-400' },
-                                    { method: 'GET', path: '/api/status-counts', color: 'text-blue-400' },
-                                    { method: 'GET', path: '/api/balances', color: 'text-blue-400' },
-                                ].map((item, idx) => (
-                                    <div key={idx} className="flex items-center gap-2 py-1 border-b" style={{ borderColor: 'var(--theme-border)' }}>
-                                        <span className={`font-bold w-12 ${item.color}`}>{item.method}</span>
-                                        <span style={{ color: 'var(--theme-text)' }}>{item.path}</span>
-                                    </div>
-                                ))}
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
 
 

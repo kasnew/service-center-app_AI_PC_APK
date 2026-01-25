@@ -397,6 +397,7 @@ export const RepairEditor: React.FC = () => {
         await Promise.all([
             queryClient.invalidateQueries({ queryKey: ['repair-parts', effectiveRepairId] }),
             queryClient.invalidateQueries({ queryKey: ['repair', effectiveRepairId] }),
+            queryClient.invalidateQueries({ queryKey: ['warehouse-deficit-count'] }),
             refetchParts(),
             refetch() // Refetch the main repair data if it exists
         ]);
@@ -748,7 +749,7 @@ export const RepairEditor: React.FC = () => {
                                 <X className="w-4 h-4" />
                                 Скасувати
                             </button>
-                            {!isNew && formData.isPaid && (
+                            {!isNew && !!formData.isPaid && (
                                 <button
                                     type="button"
                                     onClick={() => setIsRefundModalOpen(true)}

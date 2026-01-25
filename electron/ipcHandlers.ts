@@ -1305,71 +1305,78 @@ export function registerIpcHandlers() {
       // Determine filter based on stockFilter or legacy inStock
       let filterCondition = '';
       if (stockFilter === 'inStock') {
-        filterCondition = 'AND Наличие = 1';
+        filterCondition = 'AND R.Наличие = 1';
       } else if (stockFilter === 'sold') {
-        filterCondition = 'AND Наличие = 0 AND Дата_продажи IS NOT NULL';
+        filterCondition = 'AND R.Наличие = 0 AND R.Дата_продажи IS NOT NULL';
       } else if (stockFilter === 'all') {
         filterCondition = ''; // No filter
       } else if (inStock) {
         // Legacy support
-        filterCondition = 'AND Наличие = 1';
+        filterCondition = 'AND R.Наличие = 1';
       }
 
       const selectColumns = groupByName
         ? `
-        MIN(ID) as id,
-        Наименование_расходника as name,
-        MIN(Цена_уе) as priceUsd,
-        MIN(Курс) as exchangeRate,
-        MIN(Вход) as costUah,
-        MIN(Сумма) as priceUah,
-        MIN(Доход) as profit,
-        MAX(Наличие) as inStock,
-        Поставщик as supplier,
-        MIN(Приход) as dateArrival,
-        MAX(Дата_продажи) as dateSold,
-        MIN(Квитанция) as receiptId,
-        MIN(Накладная) as invoice,
-        MIN(Код_товара) as productCode,
-        MIN(ШтрихКод) as barcode,
-        COUNT(*) as quantity
+        MIN(R.ID) as id,
+        R.Наименование_расходника as name,
+        MIN(R.Цена_уе) as priceUsd,
+        MIN(R.Курс) as exchangeRate,
+        MIN(R.Вход) as costUah,
+        MIN(R.Сумма) as priceUah,
+        MIN(R.Доход) as profit,
+        MAX(R.Наличие) as inStock,
+        R.Поставщик as supplier,
+        MIN(R.Приход) as dateArrival,
+        MAX(R.Дата_продажи) as dateSold,
+        MIN(R.Квитанция) as receiptId,
+        MIN(R.Накладная) as invoice,
+        MIN(R.Код_товара) as productCode,
+        MIN(R.ШтрихКод) as barcode,
+        COUNT(*) as quantity,
+        MAX(WL.MinQuantity) as minQuantity
       `
         : `
-        ID as id,
-        Наименование_расходника as name,
-        Цена_уе as priceUsd,
-        Курс as exchangeRate,
-        Вход as costUah,
-        Сумма as priceUah,
-        Доход as profit,
-        Наличие as inStock,
-        Поставщик as supplier,
-        Приход as dateArrival,
-        Дата_продажи as dateSold,
-        Квитанция as receiptId,
-        Накладная as invoice,
-        Код_товара as productCode,
-        ШтрихКод as barcode,
-        1 as quantity
+        R.ID as id,
+        R.Наименование_расходника as name,
+        R.Цена_уе as priceUsd,
+        R.Курс as exchangeRate,
+        R.Вход as costUah,
+        R.Сумма as priceUah,
+        R.Доход as profit,
+        R.Наличие as inStock,
+        R.Поставщик as supplier,
+        R.Приход as dateArrival,
+        R.Дата_продажи as dateSold,
+        R.Квитанция as receiptId,
+        R.Накладная as invoice,
+        R.Код_товара as productCode,
+        R.ШтрихКод as barcode,
+        1 as quantity,
+        WL.MinQuantity as minQuantity
       `;
 
-      let query = `SELECT ${selectColumns} FROM Расходники WHERE 1=1 ${filterCondition}`;
+      let query = `
+        SELECT ${selectColumns} 
+        FROM Расходники R
+        LEFT JOIN WarehouseLimits WL ON R.Код_товара = WL.ProductCode
+        WHERE 1=1 ${filterCondition}
+      `;
       const params: any[] = [];
 
       if (supplier) {
-        query += ` AND Поставщик = ?`;
+        query += ` AND R.Поставщик = ?`;
         params.push(supplier);
       }
 
       if (search) {
         if (args.exactName) {
-          query += ` AND Наименование_расходника = ?`;
+          query += ` AND R.Наименование_расходника = ?`;
           params.push(search);
         } else {
           query += ` AND (
-          Наименование_расходника LIKE ? OR 
-          Поставщик LIKE ? OR
-          Код_товара LIKE ?
+          R.Наименование_расходника LIKE ? OR 
+          R.Поставщик LIKE ? OR
+          R.Код_товара LIKE ?
         )`;
           const searchParam = `%${search}%`;
           params.push(searchParam, searchParam, searchParam);
@@ -1377,17 +1384,17 @@ export function registerIpcHandlers() {
       }
 
       if (dateArrivalStart) {
-        query += ` AND Приход >= ?`;
+        query += ` AND R.Приход >= ?`;
         params.push(toDelphiDate(dateArrivalStart));
       }
 
       if (dateArrivalEnd) {
-        query += ` AND Приход <= ?`;
+        query += ` AND R.Приход <= ?`;
         params.push(toDelphiDate(dateArrivalEnd));
       }
 
       if (groupByName) {
-        query += ` GROUP BY Наименование_расходника, Поставщик`;
+        query += ` GROUP BY R.Наименование_расходника, R.Поставщик`;
       }
 
       // Use the alias 'dateArrival' for ordering to be consistent
@@ -1867,6 +1874,61 @@ export function registerIpcHandlers() {
     triggerAutoBackup('barcode-update');
 
     return { success: true };
+  });
+
+  // --- WAREHOUSE LIMITS HANDLERS ---
+  ipcMain.handle('get-warehouse-limits', async () => {
+    const db = getDb();
+    return db.prepare('SELECT ID as id, ProductCode as productCode, MinQuantity as minQuantity FROM WarehouseLimits').all();
+  });
+
+  ipcMain.handle('save-warehouse-limit', async (_event, data: any) => {
+    const db = getDb();
+    const { id, productCode, minQuantity } = data;
+    if (id) {
+      db.prepare('UPDATE WarehouseLimits SET ProductCode = ?, MinQuantity = ? WHERE ID = ?')
+        .run(productCode, minQuantity, id);
+    } else {
+      db.prepare('INSERT OR REPLACE INTO WarehouseLimits (ProductCode, MinQuantity) VALUES (?, ?)')
+        .run(productCode, minQuantity);
+    }
+    return { success: true };
+  });
+
+  ipcMain.handle('delete-warehouse-limit', async (_event, id) => {
+    const db = getDb();
+    db.prepare('DELETE FROM WarehouseLimits WHERE ID = ?').run(id);
+    return { success: true };
+  });
+
+  ipcMain.handle('get-warehouse-deficit-count', async () => {
+    const db = getDb();
+    // Get all limits
+    const limits = db.prepare('SELECT ProductCode, MinQuantity FROM WarehouseLimits').all() as any[];
+    if (limits.length === 0) return 0;
+
+    // Get current stock counts by ProductCode
+    const stock = db.prepare(`
+      SELECT Код_товара as productCode, COUNT(*) as quantity
+      FROM Расходники
+      WHERE Наличие = 1 AND Код_товара IS NOT NULL AND Код_товара != ''
+      GROUP BY Код_товара
+    `).all() as any[];
+
+    const stockMap = new Map();
+    stock.forEach(s => {
+      stockMap.set(s.productCode, s.quantity);
+    });
+
+    let deficitCount = 0;
+    limits.forEach(limit => {
+      const current = stockMap.get(limit.ProductCode) || 0;
+      if (current < limit.MinQuantity) {
+        deficitCount += (limit.MinQuantity - current);
+      }
+    });
+
+    return deficitCount;
   });
 
   // Suppliers Management

@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import path from 'node:path';
-import { app, dialog } from 'electron';
+import { app } from 'electron';
 import fs from 'fs';
 
 let db: Database.Database | null = null;
@@ -39,144 +39,45 @@ export function initDatabase() {
     }
 
     console.log('Database path:', dbPath);
-    const DB_VERSION = 1;
+    const DB_VERSION = 2;
 
     try {
-        db = new Database(dbPath, { verbose: console.log });
-        db.pragma('journal_mode = WAL');
-        db.pragma('synchronous = NORMAL');
+        const database = new Database(dbPath, { verbose: console.log });
+        db = database;
+        database.pragma('journal_mode = WAL');
+        database.pragma('synchronous = NORMAL');
 
         // Check database version
-        const currentVersion = db.pragma('user_version', { simple: true }) as number;
+        let currentVersion = database.pragma('user_version', { simple: true }) as number;
+        console.log(`Current DB version: ${currentVersion}, Target version: ${DB_VERSION}`);
 
-        if (currentVersion < DB_VERSION && fs.existsSync(dbPath)) {
-            console.log(`Database version mismatch: current ${currentVersion}, target ${DB_VERSION}`);
-
-            // Warn user and perform migration
-            const choice = dialog.showMessageBoxSync({
-                type: 'info',
-                title: 'Оновлення бази даних',
-                message: 'Доступна нова версія структури бази даних.',
-                detail: 'Програма виконає оновлення та створить резервну копію перед початком. Це займе кілька секунд.',
-                buttons: ['Оновити', 'Вийти'],
-                defaultId: 0,
-                cancelId: 1
-            });
-
-            if (choice === 1) {
-                app.quit();
-                process.exit(0);
-            }
-
-            // Perform backup
-            try {
-                const { createSimpleBackupSync } = require('./backup');
-                const backupPath = createSimpleBackupSync();
-                console.log('Migration backup created:', backupPath);
-            } catch (backupError) {
-                console.error('Failed to create migration backup:', backupError);
-                const confirm = dialog.showMessageBoxSync({
-                    type: 'warning',
-                    title: 'Помилка бекапу',
-                    message: 'Не вдалося створити резервну копію. Продовжити оновлення без бекапу?',
-                    buttons: ['Так', 'Ні'],
-                    defaultId: 1
-                });
-                if (confirm === 1) {
-                    app.quit();
-                    process.exit(0);
-                }
-            }
-        }
-
-        // Create Suppliers table
-        db.prepare(`
+        // 1. Ensure core tables exist (Basic schema)
+        database.prepare(`
             CREATE TABLE IF NOT EXISTS Suppliers (
                 ID INTEGER PRIMARY KEY AUTOINCREMENT,
                 Name TEXT UNIQUE NOT NULL
             )
         `).run();
 
-        // Populate initial suppliers ONLY if table is empty
-        const supplierCount = db.prepare('SELECT COUNT(*) as count FROM Suppliers').get() as { count: number };
-
-        if (supplierCount.count === 0) {
-            const initialSuppliers = ['ARC', 'DFI', 'Послуга', 'Чипзона'];
-            const insertSupplier = db.prepare('INSERT OR IGNORE INTO Suppliers (Name) VALUES (?)');
-
-            initialSuppliers.forEach(name => {
-                insertSupplier.run(name);
-            });
-        }
-
-        // Import existing suppliers from Warehouse items
-        db.prepare(`
-            INSERT OR IGNORE INTO Suppliers (Name)
-            SELECT DISTINCT Поставщик
-            FROM Расходники
-            WHERE Поставщик IS NOT NULL AND Поставщик != ''
-        `).run();
-
-        // Create Executors table
-        db.prepare(`
+        database.prepare(`
             CREATE TABLE IF NOT EXISTS Executors (
                 ID INTEGER PRIMARY KEY AUTOINCREMENT,
                 Name TEXT UNIQUE NOT NULL,
                 SalaryPercent REAL NOT NULL DEFAULT 0,
-                ProductsPercent REAL NOT NULL DEFAULT 0
+                ProductsPercent REAL NOT NULL DEFAULT 0,
+                Password TEXT,
+                Role TEXT DEFAULT 'worker'
             )
         `).run();
 
-        const executorCount = db.prepare('SELECT COUNT(*) as count FROM Executors').get() as { count: number };
-        if (executorCount.count === 0) {
-            db.prepare('INSERT INTO Executors (Name, SalaryPercent, ProductsPercent) VALUES (?, ?, ?)').run('Андрій', 100.0, 100.0);
-        }
-
-        // Ad-hoc migrations (keeping them for safety, but integrated into the flow)
-        try {
-            const executorTableInfo = db.prepare('PRAGMA table_info(Executors)').all() as Array<{ name: string }>;
-            if (!executorTableInfo.some(col => col.name === 'ProductsPercent')) {
-                db.prepare('ALTER TABLE Executors ADD COLUMN ProductsPercent REAL NOT NULL DEFAULT 0').run();
-                db.prepare('UPDATE Executors SET ProductsPercent = 100.0 WHERE Name = ?').run('Андрій');
-            }
-        } catch (e) { }
-
-        try {
-            const executorTableInfo = db.prepare('PRAGMA table_info(Executors)').all() as Array<{ name: string }>;
-            if (!executorTableInfo.some(col => col.name === 'Password')) {
-                db.prepare('ALTER TABLE Executors ADD COLUMN Password TEXT').run();
-            }
-            if (!executorTableInfo.some(col => col.name === 'Role')) {
-                db.prepare("ALTER TABLE Executors ADD COLUMN Role TEXT DEFAULT 'worker'").run();
-                db.prepare("UPDATE Executors SET Role = 'admin' WHERE ID = (SELECT MIN(ID) FROM Executors)").run();
-            }
-        } catch (e) { }
-
-        try {
-            const tableInfo = db.prepare('PRAGMA table_info(Ремонт)').all() as Array<{ name: string }>;
-            if (!tableInfo.some(col => col.name === 'Виконавець')) {
-                db.prepare('ALTER TABLE Ремонт ADD COLUMN Виконавець TEXT DEFAULT \'Андрій\'').run();
-            }
-            if (!tableInfo.some(col => col.name === 'ТипОплати')) {
-                db.prepare('ALTER TABLE Ремонт ADD COLUMN ТипОплати TEXT DEFAULT \'Готівка\'').run();
-            }
-        } catch (e) { }
-
-        try {
-            const tableInfo = db.prepare('PRAGMA table_info(Расходники)').all() as Array<{ name: string }>;
-            if (!tableInfo.some(col => col.name === 'ШтрихКод')) {
-                db.prepare('ALTER TABLE Расходники ADD COLUMN ШтрихКод TEXT').run();
-            }
-        } catch (e) { }
-
-        db.prepare(`
+        database.prepare(`
             CREATE TABLE IF NOT EXISTS settings (
                 key TEXT PRIMARY KEY,
                 value TEXT
             )
         `).run();
 
-        db.prepare(`
+        database.prepare(`
             CREATE TABLE IF NOT EXISTS КатегоріїВитрат (
                 ID INTEGER PRIMARY KEY AUTOINCREMENT,
                 Назва TEXT NOT NULL UNIQUE,
@@ -184,7 +85,7 @@ export function initDatabase() {
             )
         `).run();
 
-        db.prepare(`
+        database.prepare(`
             CREATE TABLE IF NOT EXISTS КатегоріїПрибутків (
                 ID INTEGER PRIMARY KEY AUTOINCREMENT,
                 Назва TEXT NOT NULL UNIQUE,
@@ -192,16 +93,7 @@ export function initDatabase() {
             )
         `).run();
 
-        const incomeCategoryCount = db.prepare('SELECT COUNT(*) as count FROM КатегоріїПрибутків').get() as { count: number };
-        if (incomeCategoryCount.count === 0) {
-            const initialIncomeCategories = ['Ремонт', 'Продаж товару', 'Інший дохід'];
-            const insertIncomeCategory = db.prepare('INSERT OR IGNORE INTO КатегоріїПрибутків (Назва) VALUES (?)');
-            initialIncomeCategories.forEach(name => {
-                insertIncomeCategory.run(name);
-            });
-        }
-
-        db.prepare(`
+        database.prepare(`
             CREATE TABLE IF NOT EXISTS SyncLocks (
                 ID INTEGER PRIMARY KEY AUTOINCREMENT,
                 RecordID INTEGER,
@@ -210,31 +102,107 @@ export function initDatabase() {
             )
         `).run();
 
-        const tablesToUpdate = ['Ремонт', 'Каса', 'Расходники'];
-        tablesToUpdate.forEach(tableName => {
+        // 2. Run structured migrations
+        if (currentVersion < 1) {
+            // Initial data for version 1
+            const supplierCount = database.prepare('SELECT COUNT(*) as count FROM Suppliers').get() as { count: number };
+            if (supplierCount.count === 0) {
+                const initialSuppliers = ['ARC', 'DFI', 'Послуга', 'Чипзона'];
+                const insertSupplier = database.prepare('INSERT OR IGNORE INTO Suppliers (Name) VALUES (?)');
+                initialSuppliers.forEach(name => insertSupplier.run(name));
+            }
+
+            // Sync suppliers from existing warehouse items if any
             try {
-                if (!db) return;
-                const tableInfo = db.prepare(`PRAGMA table_info(${tableName})`).all() as any[];
-                if (!tableInfo.some(col => col.name === 'UpdateTimestamp')) {
-                    db.prepare(`ALTER TABLE ${tableName} ADD COLUMN UpdateTimestamp TEXT`).run();
-                    db.prepare(`UPDATE ${tableName} SET UpdateTimestamp = datetime('now')`).run();
+                database.prepare(`
+                    INSERT OR IGNORE INTO Suppliers (Name)
+                    SELECT DISTINCT Поставщик
+                    FROM Расходники
+                    WHERE Поставщик IS NOT NULL AND Поставщик != ''
+                `).run();
+            } catch (e) { /* Расходники might not exist yet if fresh install */ }
+
+            const executorCount = database.prepare('SELECT COUNT(*) as count FROM Executors').get() as { count: number };
+            if (executorCount.count === 0) {
+                database.prepare('INSERT INTO Executors (Name, SalaryPercent, ProductsPercent, Role) VALUES (?, ?, ?, ?)').run('Андрій', 100.0, 100.0, 'admin');
+            }
+
+            const incomeCategoryCount = database.prepare('SELECT COUNT(*) as count FROM КатегоріїПрибутків').get() as { count: number };
+            if (incomeCategoryCount.count === 0) {
+                const initialIncomeCategories = ['Ремонт', 'Продаж товару', 'Інший дохід'];
+                const insertIncomeCategory = database.prepare('INSERT OR IGNORE INTO КатегоріїПрибутків (Назва) VALUES (?)');
+                initialIncomeCategories.forEach(name => {
+                    insertIncomeCategory.run(name);
+                });
+            }
+
+            // Ensure columns in legacy tables
+            try {
+                const tableInfo = database.prepare('PRAGMA table_info(Ремонт)').all() as any[];
+                if (!tableInfo.some(col => col.name === 'Виконавець')) database.prepare("ALTER TABLE Ремонт ADD COLUMN Виконавець TEXT DEFAULT 'Андрій'").run();
+                if (!tableInfo.some(col => col.name === 'ТипОплати')) database.prepare("ALTER TABLE Ремонт ADD COLUMN ТипОплати TEXT DEFAULT 'Готівка'").run();
+            } catch (e) { }
+
+            try {
+                const tableInfo = database.prepare('PRAGMA table_info(Расходники)').all() as any[];
+                if (!tableInfo.some(col => col.name === 'ШтрихКод')) database.prepare("ALTER TABLE Расходники ADD COLUMN ШтрихКод TEXT").run();
+            } catch (e) { }
+
+            database.pragma('user_version = 1');
+            currentVersion = 1;
+        }
+
+        if (currentVersion < 2) {
+            console.log('Migrating to version 2: Warehouse Limits & Timestamps');
+
+            // WarehouseLimits migration (ProductCode instead of Name/Supplier)
+            try {
+                const tableInfo = database.prepare('PRAGMA table_info(WarehouseLimits)').all() as any[];
+                const hasProductCode = tableInfo.some(col => col.name === 'ProductCode');
+
+                if (!hasProductCode) {
+                    console.log('Recreating WarehouseLimits table for ProductCode tracking...');
+                    database.prepare('DROP TABLE IF EXISTS WarehouseLimits').run();
                 }
             } catch (e) { }
-        });
 
-        // PERFORMANCE INDEXES
-        db.prepare('CREATE INDEX IF NOT EXISTS idx_remont_kvitancia ON Ремонт(Квитанция)').run();
-        db.prepare('CREATE INDEX IF NOT EXISTS idx_remont_phone ON Ремонт(Телефон)').run();
-        db.prepare('CREATE INDEX IF NOT EXISTS idx_remont_status_kvit ON Ремонт(Состояние, Квитанция)').run();
-        db.prepare('CREATE INDEX IF NOT EXISTS idx_remont_executor_kvit ON Ремонт(Виконавець, Квитанция)').run();
-        db.prepare('CREATE INDEX IF NOT EXISTS idx_remont_shouldcall_kvit ON Ремонт(Перезвонить, Квитанция)').run();
-        db.prepare('CREATE INDEX IF NOT EXISTS idx_remont_start ON Ремонт(Начало_ремонта)').run();
-        db.prepare('CREATE INDEX IF NOT EXISTS idx_rashodniki_kvitancia ON Расходники(Квитанция)').run();
-        db.prepare('CREATE INDEX IF NOT EXISTS idx_rashodniki_barcode ON Расходники(ШтрихКод)').run();
+            database.prepare(`
+                CREATE TABLE IF NOT EXISTS WarehouseLimits (
+                    ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ProductCode TEXT NOT NULL UNIQUE,
+                    MinQuantity INTEGER NOT NULL DEFAULT 0,
+                    UpdateTimestamp TEXT
+                )
+            `).run();
 
-        // Finalize version update
+            // Add UpdateTimestamp to all tracking tables if missing
+            const tablesToTrack = ['Ремонт', 'Каса', 'Расходники', 'WarehouseLimits', 'Suppliers', 'Executors', 'КатегоріїВитрат', 'КатегоріїПрибутків'];
+            tablesToTrack.forEach(tableName => {
+                try {
+                    const tableInfo = database.prepare(`PRAGMA table_info(${tableName})`).all() as any[];
+                    if (!tableInfo.some(col => col.name === 'UpdateTimestamp')) {
+                        database.prepare(`ALTER TABLE ${tableName} ADD COLUMN UpdateTimestamp TEXT`).run();
+                        database.prepare(`UPDATE ${tableName} SET UpdateTimestamp = datetime('now')`).run();
+                    }
+                } catch (e) { }
+            });
+
+            database.pragma('user_version = 2');
+            currentVersion = 2;
+        }
+
+        // 3. Indexes for performance (Can run safely every time)
+        database.prepare('CREATE INDEX IF NOT EXISTS idx_remont_kvitancia ON Ремонт(Квитанция)').run();
+        database.prepare('CREATE INDEX IF NOT EXISTS idx_remont_phone ON Ремонт(Телефон)').run();
+        database.prepare('CREATE INDEX IF NOT EXISTS idx_remont_status_kvit ON Ремонт(Состояние, Квитанция)').run();
+        database.prepare('CREATE INDEX IF NOT EXISTS idx_remont_executor_kvit ON Ремонт(Виконавець, Квитанция)').run();
+        database.prepare('CREATE INDEX IF NOT EXISTS idx_remont_start ON Ремонт(Начало_ремонта)').run();
+        database.prepare('CREATE INDEX IF NOT EXISTS idx_rashodniki_kvitancia ON Расходники(Квитанция)').run();
+        database.prepare('CREATE INDEX IF NOT EXISTS idx_rashodniki_barcode ON Расходники(ШтрихКод)').run();
+        database.prepare('CREATE INDEX IF NOT EXISTS idx_warehouse_limits_code ON WarehouseLimits(ProductCode)').run();
+
         if (currentVersion < DB_VERSION) {
-            db.pragma(`user_version = ${DB_VERSION}`);
+            database.pragma(`user_version = ${DB_VERSION}`);
             console.log(`Database migrated to version ${DB_VERSION}`);
         }
 

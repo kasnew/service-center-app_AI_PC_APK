@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { clsx } from 'clsx';
 import { useHotkeys } from '../hooks/useHotkeys';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { warehouseApi } from '../api/warehouse';
 import { settingsApi } from '../api/settings';
-import { Part } from '../types/db';
-import { Package, Plus, Trash2, Search, Filter, ChevronDown, ChevronRight, Edit3, Check, RotateCcw, Save } from 'lucide-react';
+import { Part, WarehouseLimit } from '../types/db';
+import { Package, Plus, Trash2, Search, Filter, ChevronDown, ChevronRight, Edit3, Check, RotateCcw, Save, PackageSearch } from 'lucide-react';
 import { parseDFI, parseARC } from '../utils/parsers';
 import { ConfirmationModal } from '../components/ConfirmationModal';
 import { DeleteItemModal } from '../components/DeleteItemModal';
@@ -19,7 +20,12 @@ export default function Warehouse() {
     const queryClient = useQueryClient();
 
     useHotkeys('escape', () => {
-        if (showAddForm) {
+        if (showLimitsManager) {
+            setShowLimitsManager(false);
+            setLimitToEdit(null);
+            setNewLimitProductCode('');
+            setNewLimitMinQty(1);
+        } else if (showAddForm) {
             setShowAddForm(false);
             setSmartImportMode(false);
             setImportText('');
@@ -45,6 +51,13 @@ export default function Warehouse() {
     const [groupItemsCache, setGroupItemsCache] = useState<Record<string, Part[]>>({});
     const [editingBarcodeId, setEditingBarcodeId] = useState<number | null>(null);
     const [barcodeValue, setBarcodeValue] = useState('');
+
+    // Limits Management state
+    const [showLimitsManager, setShowLimitsManager] = useState(false);
+    const [limitToEdit, setLimitToEdit] = useState<WarehouseLimit | null>(null);
+    const [newLimitProductCode, setNewLimitProductCode] = useState('');
+    const [newLimitMinQty, setNewLimitMinQty] = useState(1);
+    const [limitToDelete, setLimitToDelete] = useState<{ id: number; productCode: string } | null>(null);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -109,6 +122,7 @@ export default function Warehouse() {
         mutationFn: (data: typeof formData) => warehouseApi.addWarehouseItem(data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['warehouse-items'] });
+            queryClient.invalidateQueries({ queryKey: ['warehouse-deficit-count'] });
             setShowAddForm(false);
             setFormData({
                 supplier: '',
@@ -138,6 +152,7 @@ export default function Warehouse() {
             warehouseApi.deleteWarehouseItem(id, isWriteOff),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['warehouse-items'] });
+            queryClient.invalidateQueries({ queryKey: ['warehouse-deficit-count'] });
             setItemToDelete(null);
         },
         onError: (error: any) => {
@@ -159,6 +174,36 @@ export default function Warehouse() {
         },
         onError: (error: any) => {
             setErrorMessage(error.message || 'Помилка при оновленні штрих-коду');
+        },
+    });
+
+    // Warehouse limits mutations
+    const { data: warehouseLimits = [], isLoading: isLoadingLimits } = useQuery({
+        queryKey: ['warehouse-limits'],
+        queryFn: () => warehouseApi.getWarehouseLimits(),
+    });
+
+    const saveLimitMutation = useMutation({
+        mutationFn: (data: Partial<WarehouseLimit>) => warehouseApi.saveWarehouseLimit(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['warehouse-limits'] });
+            queryClient.invalidateQueries({ queryKey: ['warehouse-deficit-count'] });
+            queryClient.invalidateQueries({ queryKey: ['warehouse-items'] });
+            setNewLimitProductCode('');
+            setNewLimitMinQty(1);
+            setLimitToEdit(null);
+            setSuccessMessage('Ліміт успішно збережено');
+        },
+    });
+
+    const deleteLimitMutation = useMutation({
+        mutationFn: (id: number) => warehouseApi.deleteWarehouseLimit(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['warehouse-limits'] });
+            queryClient.invalidateQueries({ queryKey: ['warehouse-deficit-count'] });
+            queryClient.invalidateQueries({ queryKey: ['warehouse-items'] });
+            setLimitToDelete(null);
+            setSuccessMessage('Ліміт видалено');
         },
     });
 
@@ -315,13 +360,22 @@ export default function Warehouse() {
                             <Package className="w-8 h-8 text-blue-500" />
                             <h1 className="text-2xl font-bold text-slate-100">Склад</h1>
                         </div>
-                        <button
-                            onClick={() => setShowAddForm(!showAddForm)}
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                        >
-                            <Plus className="w-5 h-5" />
-                            Додати товар
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setShowLimitsManager(true)}
+                                className="flex items-center gap-2 px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-lg transition-colors border border-slate-500/30"
+                            >
+                                <PackageSearch className="w-5 h-5" />
+                                Ліміти складу
+                            </button>
+                            <button
+                                onClick={() => setShowAddForm(!showAddForm)}
+                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-900/40"
+                            >
+                                <Plus className="w-5 h-5" />
+                                Додати товар
+                            </button>
+                        </div>
                     </div>
 
                     {/* Filters */}
@@ -815,7 +869,18 @@ export default function Warehouse() {
                                                     </div>
                                                 </td>
                                                 <td className="px-4 py-3 text-sm text-slate-200 text-center font-medium">
-                                                    {item.quantity || 1}
+                                                    <div className="flex flex-col items-center gap-0.5">
+                                                        <span className={clsx(
+                                                            item.minQuantity > 0 && item.quantity < item.minQuantity && "text-red-400 font-bold"
+                                                        )}>
+                                                            {item.quantity || 1}
+                                                        </span>
+                                                        {item.minQuantity > 0 && item.quantity < item.minQuantity && (
+                                                            <span className="text-[10px] text-red-500/80 font-semibold leading-none" title={`Мінімально потрібно: ${item.minQuantity}`}>
+                                                                (мін {item.minQuantity})
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </td>
                                                 <td className="px-4 py-3 text-sm text-slate-200 text-right">
                                                     {item.priceUsd?.toFixed(2) || '0.00'}
@@ -828,6 +893,19 @@ export default function Warehouse() {
                                                 </td>
                                                 <td className="px-4 py-3 text-sm text-center">
                                                     <div className="flex items-center justify-center gap-2">
+                                                        {item.productCode && (
+                                                            <button
+                                                                onClick={() => {
+                                                                    setNewLimitProductCode(item.productCode);
+                                                                    setNewLimitMinQty(item.minQuantity || 1);
+                                                                    setShowLimitsManager(true);
+                                                                }}
+                                                                className="text-blue-400 hover:text-blue-300"
+                                                                title="Встановити ліміт"
+                                                            >
+                                                                <PackageSearch className="w-4 h-4" />
+                                                            </button>
+                                                        )}
                                                         {item.inStock && !hasQuantity && (
                                                             <button
                                                                 onClick={() => handleDelete(item.id, item.name)}
@@ -943,6 +1021,141 @@ export default function Warehouse() {
                     </p>
                 </div>
             </div>
+
+            {/* Warehouse Limits Manager Modal */}
+            {showLimitsManager && (
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-in fade-in duration-200">
+                    <div className="bg-slate-800 rounded-2xl p-6 max-w-2xl w-full mx-4 border border-slate-600 shadow-2xl flex flex-col max-h-[85vh]">
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
+                                <PackageSearch className="w-6 h-6 text-blue-400" />
+                                Управління лімітами складу
+                            </h2>
+                            <button onClick={() => {
+                                setShowLimitsManager(false);
+                                setLimitToEdit(null);
+                                setNewLimitProductCode('');
+                                setNewLimitMinQty(1);
+                            }} className="p-2 hover:bg-slate-700 rounded-lg transition-colors">
+                                <RotateCcw className="w-6 h-6 text-slate-400" />
+                            </button>
+                        </div>
+
+                        <div className="bg-slate-700/50 rounded-xl p-4 border border-slate-600 mb-6">
+                            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">
+                                {limitToEdit ? 'Редагувати ліміт' : 'Додати новий ліміт'}
+                            </h3>
+                            <div className="flex flex-wrap gap-3">
+                                <div className="flex-1 min-w-[200px]">
+                                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Артикул (Код товару)</label>
+                                    <input
+                                        type="text"
+                                        value={newLimitProductCode}
+                                        onChange={(e) => setNewLimitProductCode(e.target.value)}
+                                        placeholder="Наприклад: 12345"
+                                        className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 outline-none"
+                                    />
+                                </div>
+                                <div className="w-32">
+                                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Мін. к-сть</label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        value={newLimitMinQty}
+                                        onChange={(e) => setNewLimitMinQty(parseInt(e.target.value) || 1)}
+                                        className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 outline-none"
+                                    />
+                                </div>
+                                <div className="flex items-end">
+                                    <button
+                                        onClick={() => {
+                                            if (!newLimitProductCode.trim()) return;
+                                            saveLimitMutation.mutate({
+                                                id: limitToEdit?.id,
+                                                productCode: newLimitProductCode.trim(),
+                                                minQuantity: newLimitMinQty
+                                            });
+                                        }}
+                                        disabled={saveLimitMutation.isPending || !newLimitProductCode.trim()}
+                                        className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold transition-all disabled:opacity-50"
+                                    >
+                                        {limitToEdit ? 'Оновити' : 'Додати'}
+                                    </button>
+                                    {limitToEdit && (
+                                        <button
+                                            onClick={() => {
+                                                setLimitToEdit(null);
+                                                setNewLimitProductCode('');
+                                                setNewLimitMinQty(1);
+                                            }}
+                                            className="ml-2 px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-lg font-bold transition-all"
+                                        >
+                                            Скасувати
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex-1 overflow-auto custom-scrollbar">
+                            <table className="w-full text-left">
+                                <thead className="sticky top-0 bg-slate-800 text-slate-400 text-xs font-bold uppercase tracking-widest border-b border-slate-700">
+                                    <tr>
+                                        <th className="px-4 py-3">Артикул</th>
+                                        <th className="px-4 py-3 text-center">Мін. кількість</th>
+                                        <th className="px-4 py-3 text-right">Дії</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-700">
+                                    {isLoadingLimits ? (
+                                        <tr><td colSpan={3} className="px-4 py-8 text-center text-slate-500">Завантаження...</td></tr>
+                                    ) : warehouseLimits.length === 0 ? (
+                                        <tr><td colSpan={3} className="px-4 py-8 text-center text-slate-500">Ліміти не встановлено</td></tr>
+                                    ) : (
+                                        warehouseLimits.map((limit: WarehouseLimit) => (
+                                            <tr key={limit.id} className="hover:bg-slate-700/30 group">
+                                                <td className="px-4 py-3 text-slate-200 font-medium">{limit.productCode}</td>
+                                                <td className="px-4 py-3 text-center text-blue-400 font-bold">{limit.minQuantity} од.</td>
+                                                <td className="px-4 py-3 text-right">
+                                                    <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <button
+                                                            onClick={() => {
+                                                                setLimitToEdit(limit);
+                                                                setNewLimitProductCode(limit.productCode);
+                                                                setNewLimitMinQty(limit.minQuantity);
+                                                            }}
+                                                            className="p-1.5 text-slate-400 hover:text-blue-400 hover:bg-slate-600 rounded transition-all"
+                                                        >
+                                                            <Edit3 className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setLimitToDelete({ id: limit.id, productCode: limit.productCode })}
+                                                            className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-600 rounded transition-all"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <ConfirmationModal
+                isOpen={!!limitToDelete}
+                onClose={() => setLimitToDelete(null)}
+                onConfirm={() => limitToDelete && deleteLimitMutation.mutate(limitToDelete.id)}
+                title="Видалити ліміт?"
+                message={`Ви впевнені, що хочете видалити ліміт для артикулу "${limitToDelete?.productCode}"?`}
+                confirmLabel="Видалити"
+                isDestructive={true}
+                isLoading={deleteLimitMutation.isPending}
+            />
 
             <DeleteItemModal
                 isOpen={!!itemToDelete}

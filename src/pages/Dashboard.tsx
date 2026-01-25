@@ -433,8 +433,11 @@ export const Dashboard: React.FC = () => {
     const handleFilterByPhone = () => {
         if (contextMenu) {
             const phone = contextMenu.repair.clientPhone;
+            const newParams = new URLSearchParams();
+            newParams.set('search', phone);
+            newParams.set('page', '1');
+            setSearchParams(newParams);
             setSearchInput(phone);
-            updateParams({ search: phone, page: '1' });
             setContextMenu(null);
         }
     };

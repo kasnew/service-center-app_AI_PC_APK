@@ -83,3 +83,8 @@ export interface CashRegisterSettings {
     cashRegisterEnabled: boolean;
     cashRegisterStartDate: string;
 }
+export interface WarehouseLimit {
+    id: number;
+    productCode: string;
+    minQuantity: number;
+}

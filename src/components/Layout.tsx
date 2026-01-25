@@ -11,6 +11,7 @@ import { useHotkeys } from '../hooks/useHotkeys';
 import { UpdateNotification } from './UpdateNotification';
 import { useUpdate } from '../contexts/UpdateContext';
 import { RefreshCw, AlertCircle } from 'lucide-react';
+import { warehouseApi } from '../api/warehouse';
 
 export const Layout: React.FC = () => {
     const { currentTheme } = useTheme();
@@ -76,6 +77,13 @@ export const Layout: React.FC = () => {
     useHotkeys('ctrl+f', () => {
         navigate('/');
         // The Dashboard component's own useHotkeys('ctrl+f') will handle the focus
+    });
+
+    // Fetch warehouse deficit count
+    const { data: deficitCount = 0 } = useQuery({
+        queryKey: ['warehouse-deficit-count'],
+        queryFn: () => warehouseApi.getWarehouseDeficitCount(),
+        refetchInterval: 30000, // Refresh every 30 seconds
     });
 
     // Check sync server status
@@ -178,7 +186,12 @@ export const Layout: React.FC = () => {
                                 }
                             >
                                 <ShoppingCart className="w-5 h-5" />
-                                Товари
+                                <span className="flex-1">Товари</span>
+                                {deficitCount > 0 && (
+                                    <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-black text-white bg-red-500 rounded-full animate-pulse shadow-lg shadow-red-500/50">
+                                        {deficitCount}
+                                    </span>
+                                )}
                             </NavLink>
                             <NavLink
                                 to="/cash-register"

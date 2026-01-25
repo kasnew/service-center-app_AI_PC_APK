@@ -1,4 +1,4 @@
-import { Part } from '../types/db';
+import { Part, WarehouseLimit } from '../types/db';
 
 export interface GetWarehouseItemsParams {
     inStock?: boolean; // Deprecated, use stockFilter instead
@@ -95,5 +95,21 @@ export const warehouseApi = {
             groupByName: false,
             exactName: true
         });
+    },
+
+    getWarehouseLimits: async (): Promise<WarehouseLimit[]> => {
+        return await window.ipcRenderer.invoke('get-warehouse-limits');
+    },
+
+    saveWarehouseLimit: async (limit: Partial<WarehouseLimit>): Promise<{ success: boolean }> => {
+        return await window.ipcRenderer.invoke('save-warehouse-limit', limit);
+    },
+
+    deleteWarehouseLimit: async (id: number): Promise<{ success: boolean }> => {
+        return await window.ipcRenderer.invoke('delete-warehouse-limit', id);
+    },
+
+    getWarehouseDeficitCount: async (): Promise<number> => {
+        return await window.ipcRenderer.invoke('get-warehouse-deficit-count');
     }
 };
