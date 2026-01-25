@@ -5,7 +5,7 @@ import { settingsApi, BackupInfo } from '../api/settings';
 import { executorsApi, Executor } from '../api/executors';
 import { expenseCategoriesApi, incomeCategoriesApi } from '../api/cashRegister';
 // import { warehouseApi } from '../api/warehouse';
-import { Part, ExpenseCategory, IncomeCategory } from '../types/db';
+import { ExpenseCategory, IncomeCategory } from '../types/db';
 import { Database, Download, Trash2, RotateCcw, AlertTriangle, HardDrive, Users, Plus, UserCog, Wifi, WifiOff, Copy, ChevronDown, ChevronRight, Check, X, Edit2 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { ConfirmationModal } from '../components/ConfirmationModal';
