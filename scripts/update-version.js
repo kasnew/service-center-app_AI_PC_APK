@@ -8,17 +8,18 @@ const __dirname = path.dirname(__filename);
 const packageJsonPath = path.join(__dirname, '..', 'package.json');
 const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
 
-// Formula matches Layout.tsx and updateChecker.ts
 const now = new Date();
-const start = new Date(now.getFullYear(), 0, 0);
-const diff = (now.getTime() - start.getTime()) + ((start.getTimezoneOffset() - now.getTimezoneOffset()) * 60 * 1000);
+// Generate version string: YYYY.DDD.MMMM (Day of Year and Minutes since day start)
+const startOfYear = new Date(now.getFullYear(), 0, 0);
+const diff = (now.getTime() - startOfYear.getTime()) + ((startOfYear.getTimezoneOffset() - now.getTimezoneOffset()) * 60 * 1000);
 const oneDay = 1000 * 60 * 60 * 24;
 const dayOfYear = Math.floor(diff / oneDay);
 const minutesSinceStartOfDay = now.getHours() * 60 + now.getMinutes();
 
 const newVersion = `${now.getFullYear()}.${dayOfYear}.${minutesSinceStartOfDay}`;
-const newVersionCode = parseInt(`${now.getFullYear() % 100}${dayOfYear < 100 ? '0' + dayOfYear : dayOfYear}${minutesSinceStartOfDay < 1000 ? (minutesSinceStartOfDay < 100 ? (minutesSinceStartOfDay < 10 ? '000' + minutesSinceStartOfDay : '00' + minutesSinceStartOfDay) : '0' + minutesSinceStartOfDay) : minutesSinceStartOfDay}`);
-// Simplified versionCode: YYDDDMMMM where DDD is day of year and MMMM is minutes since start of day
+
+// Generate a numeric version code for Android (and internal use)
+// YYYYDDDMM (Year, Day of Year, Minutes) - fits in 31-bit integer
 const finalVersionCode = (now.getFullYear() % 100) * 10000000 + dayOfYear * 10000 + minutesSinceStartOfDay;
 
 pkg.version = newVersion;
