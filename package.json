@@ -1,7 +1,7 @@
 {
   "name": "service-center-app",
   "private": true,
-  "version": "2026.25.1406",
+  "version": "2026.26.6",
   "description": "Service Center Management Application",
   "author": "Service Center Team",
   "type": "module",
