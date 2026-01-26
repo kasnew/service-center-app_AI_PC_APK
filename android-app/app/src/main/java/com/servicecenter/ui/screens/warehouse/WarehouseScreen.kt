@@ -310,12 +310,19 @@ fun WarehouseItemCard(
     item: WarehouseItem,
     onEditBarcode: () -> Unit = {}
 ) {
+    // Check if item is below minimum quantity (deficit)
+    val isDeficit = item.minQuantity != null && item.minQuantity > 0 && item.quantity < item.minQuantity
+    
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = if (item.quantity > 1) 4.dp else 2.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (item.quantity > 1) androidx.compose.ui.graphics.Color(0xFFF0F7FF) else androidx.compose.ui.graphics.Color.White
+            containerColor = when {
+                isDeficit -> Color(0xFFFFF3E0) // Orange tint for deficit
+                item.quantity > 1 -> Color(0xFFF0F7FF) // Light blue for grouped items
+                else -> Color.White
+            }
         )
     ) {
         Column(
@@ -334,20 +341,51 @@ fun WarehouseItemCard(
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f)
                 )
-                if (item.quantity > 1) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        shape = CircleShape,
-                        modifier = Modifier.padding(start = 8.dp)
-                    ) {
-                        Text(
-                            text = "x${item.quantity}",
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Black),
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Deficit warning indicator
+                    if (isDeficit) {
+                        Surface(
+                            color = Color(0xFFFF5722),
+                            shape = CircleShape
+                        ) {
+                            Text(
+                                text = "⚠️",
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        }
+                    }
+                    if (item.quantity > 1) {
+                        Surface(
+                            color = if (isDeficit) Color(0xFFFFE0B2) else MaterialTheme.colorScheme.primaryContainer,
+                            shape = CircleShape,
+                            modifier = Modifier.padding(start = 4.dp)
+                        ) {
+                            Text(
+                                text = "x${item.quantity}",
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Black),
+                                color = if (isDeficit) Color(0xFFE65100) else MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
                     }
                 }
+            }
+            
+            // Show minimum quantity info if set
+            if (item.minQuantity != null && item.minQuantity > 0) {
+                Text(
+                    text = if (isDeficit) 
+                        "⚠️ Дефіцит! Мін. залишок: ${item.minQuantity}" 
+                    else 
+                        "Мін. залишок: ${item.minQuantity}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (isDeficit) Color(0xFFD84315) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    fontWeight = if (isDeficit) FontWeight.Bold else FontWeight.Normal
+                )
             }
             Spacer(modifier = Modifier.height(4.dp))
             

@@ -36,7 +36,9 @@ data class WarehouseItem(
     val productCode: String? = null,
     @SerializedName("barcode")
     val barcode: String? = null,
-    val quantity: Int = 1
+    val quantity: Int = 1,
+    @SerializedName("minQuantity")
+    val minQuantity: Int? = null
 )
 
 

@@ -53,6 +53,7 @@ object AppModule {
         }
         
         return dbBuilder
+            .addMigrations(AppDatabase.MIGRATION_2_3) // Add migration for minQuantity column
             .fallbackToDestructiveMigration() // For development - will recreate DB on schema change
             .build()
     }
