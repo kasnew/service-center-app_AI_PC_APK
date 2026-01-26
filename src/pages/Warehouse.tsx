@@ -791,10 +791,14 @@ export default function Warehouse() {
                                     const isExpanded = expandedRows.has(groupKey);
                                     const subItems = groupItemsCache[groupKey] || [];
                                     const hasQuantity = item.quantity > 1;
+                                    const isDeficit = item.minQuantity > 0 && item.quantity < item.minQuantity;
 
                                     return (
                                         <React.Fragment key={item.id}>
-                                            <tr className={index % 2 === 0 ? 'bg-slate-700/50' : 'bg-slate-700'}>
+                                            <tr className={clsx(
+                                                index % 2 === 0 ? 'bg-slate-700/50' : 'bg-slate-700',
+                                                isDeficit && 'bg-red-900/30 border-l-4 border-red-500'
+                                            )}>
                                                 <td className="px-4 py-3 text-sm text-slate-200">
                                                     {formatDate(item.dateArrival)}
                                                 </td>
