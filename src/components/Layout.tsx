@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, ShoppingCart, Banknote, Settings } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, Banknote, Settings, X, AlertTriangle } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { syncApi } from '../api/sync';
@@ -19,6 +19,7 @@ export const Layout: React.FC = () => {
     const queryClient = useQueryClient();
     const navigate = useNavigate();
     const [isToggling, setIsToggling] = useState(false);
+    const [showDeficitModal, setShowDeficitModal] = useState(false);
 
     // Global drag and drop prevention
     useEffect(() => {
@@ -84,6 +85,13 @@ export const Layout: React.FC = () => {
         queryKey: ['warehouse-deficit-count'],
         queryFn: () => warehouseApi.getWarehouseDeficitCount(),
         refetchInterval: 30000, // Refresh every 30 seconds
+    });
+
+    // Fetch warehouse deficit list (only when modal is open)
+    const { data: deficitList = [] } = useQuery({
+        queryKey: ['warehouse-deficit-list'],
+        queryFn: () => warehouseApi.getWarehouseDeficitList(),
+        enabled: showDeficitModal,
     });
 
     // Check sync server status
@@ -187,12 +195,17 @@ export const Layout: React.FC = () => {
                             >
                                 <ShoppingCart className="w-5 h-5" />
                                 <span className="flex-1">Товари</span>
-                                {deficitCount > 0 && (
-                                    <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-black text-white bg-red-500 rounded-full animate-pulse shadow-lg shadow-red-500/50">
-                                        {deficitCount}
-                                    </span>
-                                )}
                             </NavLink>
+                            {deficitCount > 0 && (
+                                <button
+                                    onClick={() => setShowDeficitModal(true)}
+                                    className="flex items-center justify-center min-w-[20px] h-6 px-2 text-[11px] font-black text-white bg-red-500 rounded-full animate-pulse shadow-lg shadow-red-500/50 hover:bg-red-400 hover:scale-110 transition-all cursor-pointer -ml-2"
+                                    title="Показати товари для дозамовлення"
+                                >
+                                    <AlertTriangle className="w-3 h-3 mr-1" />
+                                    {deficitCount}
+                                </button>
+                            )}
                             <NavLink
                                 to="/cash-register"
                                 draggable="false"
@@ -386,6 +399,94 @@ export const Layout: React.FC = () => {
 
             {/* Update notification toast */}
             <UpdateNotification />
+
+            {/* Deficit Modal */}
+            {showDeficitModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                    <div className="bg-slate-800 rounded-2xl shadow-2xl border border-slate-600/50 w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                        <div className="flex items-center justify-between p-4 border-b border-slate-600/50 bg-gradient-to-r from-red-900/30 to-orange-900/20">
+                            <div className="flex items-center gap-3">
+                                <AlertTriangle className="w-6 h-6 text-red-400" />
+                                <h2 className="text-lg font-bold text-slate-100">Товари для дозамовлення</h2>
+                                <span className="px-2 py-0.5 text-xs font-bold bg-red-500 text-white rounded-full">
+                                    {deficitList.length}
+                                </span>
+                            </div>
+                            <button
+                                onClick={() => setShowDeficitModal(false)}
+                                className="p-1.5 rounded-lg hover:bg-slate-700/50 text-slate-400 hover:text-slate-100 transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-auto p-4">
+                            {deficitList.length === 0 ? (
+                                <div className="text-center text-slate-400 py-8">
+                                    Усі товари в достатній кількості
+                                </div>
+                            ) : (
+                                <table className="w-full">
+                                    <thead className="text-xs text-slate-400 uppercase tracking-wider sticky top-0 bg-slate-800">
+                                        <tr>
+                                            <th className="text-left py-2 px-3">Код</th>
+                                            <th className="text-left py-2 px-3">Назва</th>
+                                            <th className="text-center py-2 px-3">Є</th>
+                                            <th className="text-center py-2 px-3">Мін.</th>
+                                            <th className="text-center py-2 px-3">Дозамовити</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-700/50">
+                                        {deficitList.map((item, index) => (
+                                            <tr
+                                                key={item.productCode}
+                                                className={clsx(
+                                                    "hover:bg-slate-700/30 transition-colors",
+                                                    index % 2 === 0 ? "bg-slate-800/50" : ""
+                                                )}
+                                            >
+                                                <td className="py-3 px-3 text-sm font-mono text-blue-400">
+                                                    {item.productCode}
+                                                </td>
+                                                <td className="py-3 px-3 text-sm text-slate-200 max-w-[300px] truncate" title={item.name}>
+                                                    {item.name}
+                                                </td>
+                                                <td className="py-3 px-3 text-sm text-center text-red-400 font-bold">
+                                                    {item.currentQty}
+                                                </td>
+                                                <td className="py-3 px-3 text-sm text-center text-slate-400">
+                                                    {item.minQty}
+                                                </td>
+                                                <td className="py-3 px-3 text-center">
+                                                    <span className="inline-flex items-center justify-center px-2.5 py-1 text-xs font-bold bg-red-500/20 text-red-400 rounded-full border border-red-500/30">
+                                                        +{item.deficit}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+                        <div className="p-4 border-t border-slate-600/50 flex justify-end gap-3">
+                            <button
+                                onClick={() => {
+                                    setShowDeficitModal(false);
+                                    navigate('/inventory');
+                                }}
+                                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors"
+                            >
+                                Перейти на склад
+                            </button>
+                            <button
+                                onClick={() => setShowDeficitModal(false)}
+                                className="px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-lg font-medium transition-colors"
+                            >
+                                Закрити
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

@@ -1931,6 +1931,58 @@ export function registerIpcHandlers() {
     return deficitCount;
   });
 
+  ipcMain.handle('get-warehouse-deficit-list', async () => {
+    const db = getDb();
+    // Get all limits
+    const limits = db.prepare('SELECT ProductCode, MinQuantity FROM WarehouseLimits').all() as any[];
+    if (limits.length === 0) return [];
+
+    // Get current stock counts by ProductCode with product names
+    const stock = db.prepare(`
+      SELECT 
+        Код_товара as productCode, 
+        MIN(Наименование_расходника) as name,
+        COUNT(*) as quantity
+      FROM Расходники
+      WHERE Наличие = 1 AND Код_товара IS NOT NULL AND Код_товара != ''
+      GROUP BY Код_товара
+    `).all() as any[];
+
+    const stockMap = new Map();
+    stock.forEach(s => {
+      stockMap.set(s.productCode, { quantity: s.quantity, name: s.name });
+    });
+
+    // Get names for products that are not in stock (need to find from sold items)
+    const allProducts = db.prepare(`
+      SELECT DISTINCT Код_товара as productCode, Наименование_расходника as name
+      FROM Расходники
+      WHERE Код_товара IS NOT NULL AND Код_товара != ''
+    `).all() as any[];
+
+    const productNames = new Map();
+    allProducts.forEach(p => {
+      productNames.set(p.productCode, p.name);
+    });
+
+    const deficitList: any[] = [];
+    limits.forEach(limit => {
+      const stockInfo = stockMap.get(limit.ProductCode);
+      const current = stockInfo?.quantity || 0;
+      if (current < limit.MinQuantity) {
+        deficitList.push({
+          productCode: limit.ProductCode,
+          name: stockInfo?.name || productNames.get(limit.ProductCode) || 'Невідомий товар',
+          currentQty: current,
+          minQty: limit.MinQuantity,
+          deficit: limit.MinQuantity - current
+        });
+      }
+    });
+
+    return deficitList;
+  });
+
   // Suppliers Management
   ipcMain.handle('get-suppliers', async () => {
     const db = getDb();

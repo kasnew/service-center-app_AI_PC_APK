@@ -111,5 +111,15 @@ export const warehouseApi = {
 
     getWarehouseDeficitCount: async (): Promise<number> => {
         return await window.ipcRenderer.invoke('get-warehouse-deficit-count');
+    },
+
+    getWarehouseDeficitList: async (): Promise<Array<{
+        productCode: string;
+        name: string;
+        currentQty: number;
+        minQty: number;
+        deficit: number;
+    }>> => {
+        return await window.ipcRenderer.invoke('get-warehouse-deficit-list');
     }
 };
