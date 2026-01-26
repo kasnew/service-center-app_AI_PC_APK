@@ -80,6 +80,12 @@ export const Layout: React.FC = () => {
         // The Dashboard component's own useHotkeys('ctrl+f') will handle the focus
     });
 
+    useHotkeys('escape', () => {
+        if (showDeficitModal) {
+            setShowDeficitModal(false);
+        }
+    });
+
     // Fetch warehouse deficit count
     const { data: deficitCount = 0 } = useQuery({
         queryKey: ['warehouse-deficit-count'],

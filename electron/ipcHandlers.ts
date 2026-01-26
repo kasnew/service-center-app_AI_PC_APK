@@ -1907,12 +1907,14 @@ export function registerIpcHandlers() {
     const limits = db.prepare('SELECT ProductCode, MinQuantity FROM WarehouseLimits').all() as any[];
     if (limits.length === 0) return 0;
 
-    // Get current stock counts by ProductCode
+    // Get current stock counts by ProductCode (normalized)
     const stock = db.prepare(`
-      SELECT Код_товара as productCode, COUNT(*) as quantity
+      SELECT 
+        TRIM(REPLACE(REPLACE(Код_товара, CHAR(10), ''), CHAR(13), '')) as productCode, 
+        COUNT(*) as quantity
       FROM Расходники
-      WHERE Наличие = 1 AND Код_товара IS NOT NULL AND Код_товара != ''
-      GROUP BY Код_товара
+      WHERE Наличие = 1 AND Код_товара IS NOT NULL AND TRIM(Код_товара) != ''
+      GROUP BY productCode
     `).all() as any[];
 
     const stockMap = new Map();
@@ -1922,7 +1924,8 @@ export function registerIpcHandlers() {
 
     let deficitCount = 0;
     limits.forEach(limit => {
-      const current = stockMap.get(limit.ProductCode) || 0;
+      const normalizedLimitCode = limit.ProductCode.trim().replace(/\r?\n|\r/g, "");
+      const current = stockMap.get(normalizedLimitCode) || 0;
       if (current < limit.MinQuantity) {
         deficitCount += (limit.MinQuantity - current);
       }
@@ -1937,15 +1940,15 @@ export function registerIpcHandlers() {
     const limits = db.prepare('SELECT ProductCode, MinQuantity FROM WarehouseLimits').all() as any[];
     if (limits.length === 0) return [];
 
-    // Get current stock counts by ProductCode with product names
+    // Get current stock counts by ProductCode with product names (normalized)
     const stock = db.prepare(`
       SELECT 
-        Код_товара as productCode, 
+        TRIM(REPLACE(REPLACE(Код_товара, CHAR(10), ''), CHAR(13), '')) as productCode, 
         MIN(Наименование_расходника) as name,
         COUNT(*) as quantity
       FROM Расходники
-      WHERE Наличие = 1 AND Код_товара IS NOT NULL AND Код_товара != ''
-      GROUP BY Код_товара
+      WHERE Наличие = 1 AND Код_товара IS NOT NULL AND TRIM(Код_товара) != ''
+      GROUP BY productCode
     `).all() as any[];
 
     const stockMap = new Map();
@@ -1955,9 +1958,11 @@ export function registerIpcHandlers() {
 
     // Get names for products that are not in stock (need to find from sold items)
     const allProducts = db.prepare(`
-      SELECT DISTINCT Код_товара as productCode, Наименование_расходника as name
+      SELECT DISTINCT 
+        TRIM(REPLACE(REPLACE(Код_товара, CHAR(10), ''), CHAR(13), '')) as productCode, 
+        Наименование_расходника as name
       FROM Расходники
-      WHERE Код_товара IS NOT NULL AND Код_товара != ''
+      WHERE Код_товара IS NOT NULL AND TRIM(Код_товара) != ''
     `).all() as any[];
 
     const productNames = new Map();
@@ -1967,12 +1972,13 @@ export function registerIpcHandlers() {
 
     const deficitList: any[] = [];
     limits.forEach(limit => {
-      const stockInfo = stockMap.get(limit.ProductCode);
+      const normalizedLimitCode = limit.ProductCode.trim().replace(/\r?\n|\r/g, "");
+      const stockInfo = stockMap.get(normalizedLimitCode);
       const current = stockInfo?.quantity || 0;
       if (current < limit.MinQuantity) {
         deficitList.push({
-          productCode: limit.ProductCode,
-          name: stockInfo?.name || productNames.get(limit.ProductCode) || 'Невідомий товар',
+          productCode: normalizedLimitCode,
+          name: stockInfo?.name || productNames.get(normalizedLimitCode) || 'Невідомий товар',
           currentQty: current,
           minQty: limit.MinQuantity,
           deficit: limit.MinQuantity - current
