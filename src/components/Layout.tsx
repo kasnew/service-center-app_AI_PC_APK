@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, ShoppingCart, Banknote, Settings, X, AlertTriangle } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, Banknote, Settings, X, AlertTriangle, Globe } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { syncApi } from '../api/sync';
@@ -258,7 +258,7 @@ export const Layout: React.FC = () => {
                         <button
                             onClick={handleToggleServer}
                             disabled={isToggling}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all duration-200 disabled:opacity-50"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all duration-200 disabled:opacity-50 h-10"
                             style={{
                                 backgroundColor: isServerRunning ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
                                 border: `1px solid ${isServerRunning ? '#10b981' : '#ef4444'}`,
@@ -314,7 +314,7 @@ export const Layout: React.FC = () => {
                                     const url = `http://${executorWebIp}:${executorWebPort}`;
                                     navigator.clipboard.writeText(url);
                                 }}
-                                className="flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors cursor-pointer"
+                                className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs transition-colors cursor-pointer h-10"
                                 style={{
                                     color: '#818cf8',
                                     backgroundColor: 'rgba(99, 102, 241, 0.1)',
@@ -322,17 +322,18 @@ export const Layout: React.FC = () => {
                                 }}
                                 title="Натисніть щоб скопіювати адресу"
                             >
-                                🌐 {executorWebIp}:{executorWebPort}
+                                <Globe className="w-3.5 h-3.5" />
+                                {executorWebIp}:{executorWebPort}
                             </button>
                         )}
 
-                        <div className="h-6 w-px bg-slate-700 mx-2" />
+                        <div className="h-8 w-px bg-slate-700/50 mx-1" />
 
                         <div className="flex items-center gap-3">
                             <button
                                 onClick={() => checkUpdates(true)}
                                 disabled={isChecking}
-                                className={`group relative flex items-center gap-2 px-2 py-1 rounded-md transition-all
+                                className={`group relative flex items-center gap-2 px-3 py-1 rounded-lg transition-all h-10
                                     ${updateResult?.hasUpdate
                                         ? 'bg-orange-500/10 text-orange-400 hover:bg-orange-500/20'
                                         : manualCheckResult === 'no-update'
@@ -363,34 +364,24 @@ export const Layout: React.FC = () => {
                                 </span>
 
                                 {isChecking ? (
-                                    <RefreshCw className="w-3 h-3 animate-spin opacity-50" />
+                                    <RefreshCw className="w-3.5 h-3.5 animate-spin opacity-50" />
                                 ) : updateResult?.hasUpdate ? (
                                     <div className="relative">
-                                        <AlertCircle className="w-3 h-3 text-orange-400 animate-pulse" />
+                                        <AlertCircle className="w-3.5 h-3.5 text-orange-400 animate-pulse" />
                                         <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border border-slate-900 shadow-sm shadow-red-500/50" />
                                     </div>
                                 ) : manualCheckResult === 'no-update' ? (
-                                    <svg className="w-3 h-3 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <svg className="w-3.5 h-3.5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                     </svg>
                                 ) : manualCheckResult === 'error' ? (
-                                    <AlertCircle className="w-3 h-3 text-red-400" />
+                                    <AlertCircle className="w-3.5 h-3.5 text-red-400" />
                                 ) : null}
                             </button>
                             <button
                                 onClick={() => window.close()}
-                                className="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm font-medium"
-                                style={{
-                                    color: '#f87171',
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
-                                    e.currentTarget.style.color = '#fca5a5';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.backgroundColor = 'transparent';
-                                    e.currentTarget.style.color = '#f87171';
-                                }}
+                                className="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm font-medium h-10 text-red-400 hover:bg-red-500/10"
+                                title="Завершити роботу"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
                                 Вихід

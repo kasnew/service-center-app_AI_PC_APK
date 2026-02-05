@@ -58,6 +58,13 @@ export const settingsApi = {
     },
 
     /**
+     * Delete all backup files except for the most recent one
+     */
+    deleteOldBackups: async (): Promise<{ success: boolean }> => {
+        return window.ipcRenderer.invoke('delete-old-backups');
+    },
+
+    /**
      * Delete all backup files
      */
     deleteAllBackups: async (): Promise<{ success: boolean }> => {

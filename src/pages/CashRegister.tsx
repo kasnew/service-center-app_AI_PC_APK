@@ -190,14 +190,15 @@ export default function CashRegister() {
                             <p className="text-xs text-slate-400 mb-1">Готівка</p>
                             <p className={`text-xl font-bold ${greenColor}`}>{balances.cash.toFixed(2)} ₴</p>
                         </div>
-                        <div className="bg-slate-700/50 rounded-lg p-3 border border-slate-600/50 shadow-sm rainbow-groupbox flex flex-col justify-between">
-                            <div>
-                                <p className="text-xs text-slate-400 mb-1">Картка (Доступно)</p>
-                                <p className={`text-xl font-bold ${blueColor}`}>{(balances.card - (balances.cardPending || 0)).toFixed(2)} ₴</p>
-                            </div>
-                            <div className="mt-2 pt-2 border-t border-slate-600/30 flex justify-between items-end">
-                                <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Очікується:</p>
-                                <p className="text-sm font-semibold text-slate-400">{(balances.cardPending || 0).toFixed(2)} ₴</p>
+                        <div className="bg-slate-700/50 rounded-lg p-3 border border-slate-600/50 shadow-sm rainbow-groupbox flex flex-col justify-center">
+                            <p className="text-xs text-slate-400 mb-1">Картка Доступно</p>
+                            <div className="flex items-baseline gap-2">
+                                <p className={`text-xl font-bold ${blueColor}`}>
+                                    {(balances.card - (balances.cardPending || 0)).toFixed(2)} ₴
+                                </p>
+                                <p className="text-sm font-medium text-slate-400">
+                                    (Очікується: {(balances.cardPending || 0).toFixed(2)} ₴)
+                                </p>
                             </div>
                         </div>
                     </>
@@ -351,14 +352,14 @@ export default function CashRegister() {
                             <table className="w-full">
                                 <thead className="bg-slate-800/50 border-b border-slate-600 sticky top-0">
                                     <tr>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Дата</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Категорія</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Опис</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Виконавець</th>
-                                        <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase tracking-wider">Сума</th>
-                                        <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase tracking-wider">Готівка</th>
-                                        <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase tracking-wider">Картка</th>
-                                        <th className="px-4 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-wider">Дії</th>
+                                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Дата</th>
+                                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Категорія</th>
+                                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Опис</th>
+                                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Виконавець</th>
+                                        <th className="px-4 py-2 text-right text-xs font-medium text-slate-400 uppercase tracking-wider">Сума</th>
+                                        <th className="px-4 py-2 text-right text-xs font-medium text-slate-400 uppercase tracking-wider">Готівка</th>
+                                        <th className="px-4 py-2 text-right text-xs font-medium text-slate-400 uppercase tracking-wider">Картка</th>
+                                        <th className="px-4 py-2 text-center text-xs font-medium text-slate-400 uppercase tracking-wider">Дії</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-600">
@@ -373,12 +374,12 @@ export default function CashRegister() {
                                     ) : (
                                         transactions.map((tx: any) => (
                                             <tr key={tx.id} className="hover:bg-slate-600/30 transition-colors">
-                                                <td className="px-4 py-3 text-sm text-slate-300">
+                                                <td className="px-4 py-1 text-sm text-slate-300">
                                                     {new Date(tx.dateExecuted).toLocaleString('uk-UA')}
                                                 </td>
-                                                <td className="px-4 py-3 text-sm">
+                                                <td className="px-4 py-1 text-sm">
                                                     <span className={clsx(
-                                                        "px-2 py-1 rounded-full text-xs font-medium",
+                                                        "px-2 py-0.5 rounded-full text-xs font-medium",
                                                         tx.category === 'Прибуток' ? `${isLight ? 'bg-green-100' : 'bg-green-900/50'} ${greenColor} ${isLight ? 'border-green-300' : 'border-green-800'} border` :
                                                             tx.category === 'Покупка' ? `${isLight ? 'bg-blue-100' : 'bg-blue-900/50'} ${blueColor} ${isLight ? 'border-blue-300' : 'border-blue-800'} border` :
                                                                 tx.category === 'Скасування' ? `${isLight ? 'bg-red-100' : 'bg-red-900/50'} ${isLight ? 'text-red-800' : 'text-red-400'} ${isLight ? 'border-red-300' : 'border-red-800'} border` :
@@ -390,17 +391,18 @@ export default function CashRegister() {
                                                         {tx.category}
                                                     </span>
                                                 </td>
-                                                <td className="px-4 py-3 text-sm text-slate-200">{tx.description}</td>
-                                                <td className="px-4 py-3 text-sm text-slate-300">{tx.executorName || '-'}</td>
+                                                <td className="px-4 py-1 text-sm text-slate-200">{tx.description}</td>
+                                                <td className="px-4 py-1 text-sm text-slate-300">{tx.executorName || '-'}</td>
                                                 <td className={clsx(
+                                                    "px-4 py-1 text-sm text-right",
                                                     tx.amount > 0 ? (isLight ? 'text-green-800' : 'text-green-400') : (isLight ? 'text-red-800' : 'text-red-400')
                                                 )}>
                                                     {tx.amount > 0 ? '+' : ''}{tx.amount.toFixed(2)}
 
                                                 </td>
-                                                <td className="px-4 py-3 text-sm text-right text-slate-400">{tx.cash.toFixed(2)}</td>
-                                                <td className="px-4 py-3 text-sm text-right text-slate-400">{tx.card.toFixed(2)}</td>
-                                                <td className="px-4 py-3 text-center">
+                                                <td className="px-4 py-1 text-sm text-right text-slate-400">{tx.cash.toFixed(2)}</td>
+                                                <td className="px-4 py-1 text-sm text-right text-slate-400">{tx.card.toFixed(2)}</td>
+                                                <td className="px-4 py-1 text-center">
                                                     <button
                                                         onClick={() => setTransactionToDelete({ id: tx.id, description: tx.description })}
                                                         className="text-slate-500 hover:text-red-400 transition-colors"

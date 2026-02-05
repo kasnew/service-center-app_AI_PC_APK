@@ -12,7 +12,8 @@ import { ConfirmationModal } from '../components/ConfirmationModal';
 import { clsx } from 'clsx';
 import { formatPhoneNumber } from '../utils/formatters';
 import { useTheme } from '../contexts/ThemeContext';
-import { Cpu, Zap, Settings as SettingsIcon } from 'lucide-react';
+import { User } from 'lucide-react';
+import { EXECUTOR_ICONS } from '../constants/executors';
 import { useHotkeys } from '../hooks/useHotkeys';
 import { fuzzySearch } from '../utils/fuzzySearch';
 import { QRCodeModal } from '../components/QRCodeModal';
@@ -104,7 +105,7 @@ export const Dashboard: React.FC = () => {
     const advancedFiltersStr = searchParams.get('adv') || '';
     const advancedFilters: AdvancedFilterRule[] = React.useMemo(() => {
         try {
-            return advancedFiltersStr ? JSON.parse(atob(advancedFiltersStr)) : [];
+            return advancedFiltersStr ? JSON.parse(decodeURIComponent(atob(advancedFiltersStr))) : [];
         } catch (e) {
             return [];
         }
@@ -135,7 +136,7 @@ export const Dashboard: React.FC = () => {
     });
 
     const { data, isLoading, isError } = useQuery<GetRepairsResponse>({
-        queryKey: ['repairs', page, search, statusFilter, shouldCall, executorFilter, dateStart, dateEnd, paymentDateStart, paymentDateEnd],
+        queryKey: ['repairs', page, search, statusFilter, shouldCall, executorFilter, dateStart, dateEnd, paymentDateStart, paymentDateEnd, advancedFilters],
         queryFn: () => repairApi.getRepairs({
             page,
             search,
@@ -383,7 +384,7 @@ export const Dashboard: React.FC = () => {
                     updates.dateEnd = new Date().toISOString();
                 }
 
-                // If status is Issued, mark as paid and set dateEnd
+                // Handle payment status based on Issued state
                 if (status === RepairStatus.Issued) {
                     updates.isPaid = true;
                     updates.dateEnd = new Date().toISOString();
@@ -396,6 +397,9 @@ export const Dashboard: React.FC = () => {
                         isPaid: true,
                         dateEnd: updates.dateEnd
                     });
+                } else {
+                    // If moving away from Issued, mark as unpaid
+                    updates.isPaid = false;
                 }
 
                 return repairApi.saveRepair(updates);
@@ -737,17 +741,17 @@ export const Dashboard: React.FC = () => {
                             }}
                         >
                             <tr>
-                                <th className="px-4 py-4 text-center" style={{ width: '75px' }}>Квитанція</th>
-                                <th className="px-6 py-4" style={{ width: 'auto', minWidth: '150px' }}>Техніка</th>
-                                <th className="px-6 py-4 w-[190px] text-center">Клієнт</th>
-                                <th className="px-4 py-4 w-[80px] text-center">Дзвінок</th>
-                                <th className="px-4 py-4 text-center" style={{ width: '210px' }}>Статус</th>
-                                <th className="px-4 py-4 text-center w-[125px]">Вартість</th>
-                                <th className="px-4 py-4 text-center w-[110px]">Дата прийому</th>
-                                <th className="px-4 py-4 text-center w-[110px]">Дата видачі</th>
-                                <th className="px-4 py-4 text-center" style={{ width: '150px' }}>Виконавець</th>
-                                <th className="px-6 py-4 w-[200px] text-center">Примітки</th>
-                                <th className="px-4 py-4 text-center w-[80px]">Дії</th>
+                                <th className="px-4 py-1 text-center" style={{ width: '75px' }}>Квитанція</th>
+                                <th className="px-6 py-1" style={{ width: 'auto', minWidth: '150px' }}>Техніка</th>
+                                <th className="px-6 py-1 w-[190px] text-center">Клієнт</th>
+                                <th className="px-4 py-1 w-[80px] text-center">Дзвінок</th>
+                                <th className="px-4 py-1 text-center" style={{ width: '210px' }}>Статус</th>
+                                <th className="px-4 py-1 text-center w-[125px]">Вартість</th>
+                                <th className="px-4 py-1 text-center w-[110px]">Дата прийому</th>
+                                <th className="px-4 py-1 text-center w-[110px]">Дата видачі</th>
+                                <th className="px-4 py-1 text-center" style={{ width: '150px' }}>Виконавець</th>
+                                <th className="px-6 py-1 w-[200px] text-center">Примітки</th>
+                                <th className="px-4 py-1 text-center w-[80px]">Дії</th>
                             </tr>
                         </thead>
                     </table>
@@ -798,6 +802,8 @@ export const Dashboard: React.FC = () => {
                                     </td>
                                 </tr>
                             ) : (
+                                // ТУТ РЕДАГУЮТЬСЯ ВІДСТУПИ: Класи 'py-2' у <td> нижче визначають вертикальні відступи між записами. 
+                                // Змініть py-2 на py-3 або py-4 для більших відступів.
                                 displayedRepairs.map((repair: any) => (
                                     <tr
                                         id={`repair-${repair.id}`}
@@ -809,20 +815,20 @@ export const Dashboard: React.FC = () => {
                                             repair.shouldCall && 'ring-2 ring-pink-500 ring-inset'
                                         )}>
                                         <td
-                                            className="px-4 py-4 font-medium text-slate-100 cursor-pointer hover:text-blue-400 text-center"
+                                            className="px-4 py-2 font-medium text-slate-100 cursor-pointer hover:text-blue-400 text-center"
                                             onClick={() => navigate(`/repair/${repair.id}`)}
                                         >
                                             #{repair.receiptId}
                                         </td>
                                         <td
-                                            className="px-6 py-4 cursor-pointer"
+                                            className="px-6 py-2 cursor-pointer"
                                             onClick={() => navigate(`/repair/${repair.id}`)}
                                         >
                                             <div className="font-medium text-slate-100">{repair.deviceName}</div>
                                             <div className="text-xs text-slate-200 whitespace-pre-wrap">{repair.faultDesc}</div>
                                         </td>
                                         <td
-                                            className="px-6 py-4 cursor-pointer text-center group"
+                                            className="px-6 py-2 cursor-pointer text-center group"
                                             onClick={() => navigate(`/repair/${repair.id}`)}
                                         >
                                             <div className="text-slate-100">{repair.clientName}</div>
@@ -847,7 +853,7 @@ export const Dashboard: React.FC = () => {
                                             </div>
                                         </td>
                                         <td
-                                            className="px-4 py-4 text-center"
+                                            className="px-4 py-2 text-center"
                                             onClick={(e) => e.stopPropagation()}
                                         >
                                             <input
@@ -864,7 +870,7 @@ export const Dashboard: React.FC = () => {
                                             />
                                         </td>
                                         <td
-                                            className="px-4 py-4 cursor-pointer"
+                                            className="px-4 py-2 cursor-pointer"
                                             onClick={(e) => e.stopPropagation()}
                                         >
                                             <div className="relative group">
@@ -928,7 +934,7 @@ export const Dashboard: React.FC = () => {
                                             </div>
                                         </td>
                                         <td
-                                            className="px-4 py-4 font-medium cursor-pointer text-center"
+                                            className="px-4 py-2 font-medium cursor-pointer text-center"
                                             onClick={() => navigate(`/repair/${repair.id}`)}
                                         >
                                             <div className="text-slate-100">{repair.totalCost.toFixed(0)} ₴</div>
@@ -938,7 +944,7 @@ export const Dashboard: React.FC = () => {
                                             </div>
                                         </td>
                                         <td
-                                            className="px-4 py-4 text-slate-200 cursor-pointer text-center"
+                                            className="px-4 py-2 text-slate-200 cursor-pointer text-center"
                                             onClick={() => navigate(`/repair/${repair.id}`)}
                                         >
                                             {repair.dateStart ? new Date(repair.dateStart).toLocaleString('uk-UA', {
@@ -948,7 +954,7 @@ export const Dashboard: React.FC = () => {
                                             }) : '-'}
                                         </td>
                                         <td
-                                            className="px-4 py-4 text-slate-200 cursor-pointer text-center"
+                                            className="px-4 py-2 text-slate-200 cursor-pointer text-center"
                                             onClick={() => navigate(`/repair/${repair.id}`)}
                                         >
                                             {repair.dateEnd ? new Date(repair.dateEnd).toLocaleString('uk-UA', {
@@ -957,14 +963,15 @@ export const Dashboard: React.FC = () => {
                                                 day: '2-digit'
                                             }) : '-'}
                                         </td>
-                                        <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
+                                        <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
                                             <div className="flex items-center gap-2">
                                                 <div className="flex-shrink-0">
                                                     {(() => {
-                                                        const name = repair.executor?.toLowerCase() || '';
-                                                        if (name.includes('андрій')) return <Cpu className="w-4 h-4 text-blue-500" />;
-                                                        if (name.includes('юрій')) return <Zap className="w-4 h-4 text-amber-500" />;
-                                                        return <SettingsIcon className="w-4 h-4 text-slate-500" />;
+                                                        const executorName = repair.executor;
+                                                        const executorData = executors.find((e: any) => e.Name === executorName);
+                                                        const matchingIcon = EXECUTOR_ICONS.find(i => i.name === executorData?.Icon);
+                                                        const IconComp = matchingIcon ? matchingIcon.Icon : User;
+                                                        return <IconComp className="w-4 h-4" style={{ color: executorData?.Color || '#64748b' }} />;
                                                     })()}
                                                 </div>
                                                 <select
@@ -989,14 +996,14 @@ export const Dashboard: React.FC = () => {
                                             </div>
                                         </td>
                                         <td
-                                            className="px-6 py-4 text-xs text-slate-300 cursor-pointer italic text-center"
+                                            className="px-6 py-2 text-xs text-slate-300 cursor-pointer italic text-center"
                                             onClick={() => navigate(`/repair/${repair.id}`)}
                                         >
                                             <div className="line-clamp-2" title={repair.note}>
                                                 {repair.note || '-'}
                                             </div>
                                         </td>
-                                        <td className="px-4 py-4 text-center" onClick={(e) => e.stopPropagation()}>
+                                        <td className="px-4 py-2 text-center" onClick={(e) => e.stopPropagation()}>
                                             <div className="flex items-center justify-center gap-1">
                                                 <div className="w-8 flex justify-center">
                                                     {Boolean(repair.isPaid) && (
@@ -1186,7 +1193,7 @@ export const Dashboard: React.FC = () => {
                     if (rules.length === 0) {
                         updateParams({ adv: null, page: '1' });
                     } else {
-                        updateParams({ adv: btoa(JSON.stringify(rules)), page: '1' });
+                        updateParams({ adv: btoa(encodeURIComponent(JSON.stringify(rules))), page: '1' });
                     }
                     setIsAdvancedModalOpen(false);
                 }}

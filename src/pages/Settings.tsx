@@ -6,7 +6,7 @@ import { executorsApi, Executor } from '../api/executors';
 import { expenseCategoriesApi, incomeCategoriesApi } from '../api/cashRegister';
 // import { warehouseApi } from '../api/warehouse';
 import { ExpenseCategory, IncomeCategory } from '../types/db';
-import { Database, Download, Trash2, RotateCcw, AlertTriangle, HardDrive, Users, Plus, UserCog, Wifi, WifiOff, Copy, ChevronDown, ChevronRight, Check, X, Edit2 } from 'lucide-react';
+import { Database, Download, Trash2, RotateCcw, AlertTriangle, HardDrive, Users, Plus, UserCog, Wifi, WifiOff, Copy, ChevronDown, ChevronRight, Check, X, Edit2, User } from 'lucide-react';
 import { clsx } from 'clsx';
 import { ConfirmationModal } from '../components/ConfirmationModal';
 import { normalizeMoneyInput, parseMoneyValue } from '../utils/formatters';
@@ -14,6 +14,7 @@ import { CashRegisterSettings } from '../components/CashRegisterSettings';
 
 import { ThemeSettings } from '../components/ThemeSettings';
 import { syncApi } from '../api/sync';
+import { EXECUTOR_ICONS, EXECUTOR_COLORS } from '../constants/executors';
 // import { GoogleDriveSettings } from '../components/GoogleDriveSettings';
 
 type MainCategory = 'database' | 'business' | 'appearance' | 'sync';
@@ -27,11 +28,13 @@ export default function Settings() {
 
     const [syncPort, setSyncPort] = useState(3000);
     const [showClearConfirm, setShowClearConfirm] = useState(false);
-    const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+    const [showPruneConfirm, setShowPruneConfirm] = useState(false);
     const [newSupplierName, setNewSupplierName] = useState('');
     const [newExecutorName, setNewExecutorName] = useState('');
     const [newExecutorPercent, setNewExecutorPercent] = useState(50);
     const [newExecutorProductsPercent, setNewExecutorProductsPercent] = useState(0);
+    const [newExecutorIcon, setNewExecutorIcon] = useState('User');
+    const [newExecutorColor, setNewExecutorColor] = useState('#3b82f6');
     const [editingExecutor, setEditingExecutor] = useState<Executor | null>(null);
 
     // New modal states
@@ -45,6 +48,12 @@ export default function Settings() {
     const [showRestoreConfirm, setShowRestoreConfirm] = useState<{ name: string, type: 'manual' | 'auto' } | null>(null);
     const [manualBackupsExpanded, setManualBackupsExpanded] = useState(false);
     const [autoBackupsExpanded, setAutoBackupsExpanded] = useState(false);
+
+    const renderExecutorIcon = (iconName: string | undefined, color: string | undefined, className: string = "w-4 h-4") => {
+        const IconData = EXECUTOR_ICONS.find(i => i.name === iconName);
+        const Icon = IconData ? IconData.Icon : User;
+        return <Icon className={className} style={{ color: color || '#64748b' }} />;
+    };
 
     // Categories State
     const [newCategoryName, setNewCategoryName] = useState('');
@@ -152,15 +161,16 @@ export default function Settings() {
     });
 
     // Delete all backups mutation
-    const deleteAllBackupsMutation = useMutation({
-        mutationFn: () => settingsApi.deleteAllBackups(),
+    // Delete old backups mutation
+    const deleteOldBackupsMutation = useMutation({
+        mutationFn: () => settingsApi.deleteOldBackups(),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['backups'] });
-            setShowDeleteAllConfirm(false);
+            setShowPruneConfirm(false);
         },
         onError: (error: any) => {
-            console.error('Delete all backups error:', error);
-            setShowDeleteAllConfirm(false);
+            console.error('Prune backups error:', error);
+            setShowPruneConfirm(false);
         },
     });
 
@@ -207,12 +217,14 @@ export default function Settings() {
 
     // Add executor mutation
     const addExecutorMutation = useMutation({
-        mutationFn: (data: { name: string; salaryPercent: number; productsPercent: number }) => executorsApi.addExecutor(data),
+        mutationFn: (data: { name: string; salaryPercent: number; productsPercent: number; icon?: string; color?: string }) => executorsApi.addExecutor(data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['executors'] });
             setNewExecutorName('');
             setNewExecutorPercent(50);
             setNewExecutorProductsPercent(0);
+            setNewExecutorIcon('User');
+            setNewExecutorColor('#3b82f6');
         },
         onError: (error: any) => {
             console.error('Add executor error:', error);
@@ -221,7 +233,7 @@ export default function Settings() {
 
     // Update executor mutation
     const updateExecutorMutation = useMutation({
-        mutationFn: (data: { id: number; name: string; salaryPercent: number; productsPercent: number }) => executorsApi.updateExecutor(data),
+        mutationFn: (data: { id: number; name: string; salaryPercent: number; productsPercent: number; icon?: string; color?: string }) => executorsApi.updateExecutor(data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['executors'] });
             setEditingExecutor(null);
@@ -379,7 +391,9 @@ export default function Settings() {
         addExecutorMutation.mutate({
             name: newExecutorName.trim(),
             salaryPercent: newExecutorPercent,
-            productsPercent: newExecutorProductsPercent
+            productsPercent: newExecutorProductsPercent,
+            icon: newExecutorIcon,
+            color: newExecutorColor
         });
     };
 
@@ -389,7 +403,9 @@ export default function Settings() {
             id: executor.ID,
             name: editingExecutor.Name,
             salaryPercent: editingExecutor.SalaryPercent,
-            productsPercent: editingExecutor.ProductsPercent
+            productsPercent: editingExecutor.ProductsPercent,
+            icon: editingExecutor.Icon,
+            color: editingExecutor.Color
         });
     };
 
@@ -577,6 +593,16 @@ export default function Settings() {
                         >
                             <Trash2 className="w-4 h-4" />
                             Очистити базу даних
+                        </button>
+
+                        <button
+                            onClick={() => setShowPruneConfirm(true)}
+                            disabled={deleteOldBackupsMutation.isPending || backups.length <= 1}
+                            className="flex items-center gap-2 px-4 py-2 bg-amber-600/20 text-amber-400 border border-amber-600/30 rounded-lg hover:bg-amber-600/30 transition-colors disabled:opacity-50"
+                            title="Видалити всі копії, крім останньої"
+                        >
+                            <RotateCcw className="w-4 h-4" />
+                            Очистити старі копії
                         </button>
 
                         <div className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-slate-300 rounded-lg border border-slate-600">
@@ -860,50 +886,87 @@ export default function Settings() {
                                 <UserCog className="w-5 h-5 flex-shrink-0" />
                                 <span className="truncate">Виконавці</span>
                             </h3>
-                            <form onSubmit={handleAddExecutor} className="mb-3 grid grid-cols-[1fr_auto] gap-2">
-                                <div className="grid grid-cols-2 gap-1.5">
-                                    <input
-                                        type="text"
-                                        value={newExecutorName}
-                                        onChange={(e) => setNewExecutorName(e.target.value)}
-                                        placeholder="Ім'я"
-                                        className="bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500 min-w-0 col-span-2"
-                                    />
-                                    <input
-                                        type="text"
-                                        inputMode="decimal"
-                                        value={newExecutorPercent || ''}
-                                        onChange={(e) => {
-                                            const normalized = normalizeMoneyInput(e.target.value);
-                                            const parsed = parseMoneyValue(normalized);
-                                            setNewExecutorPercent(parsed);
-                                        }}
-                                        placeholder="%п"
-                                        title="% послуг"
-                                        className="bg-slate-800 border border-slate-600 rounded px-1 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-blue-500 text-center"
-                                    />
-                                    <input
-                                        type="text"
-                                        inputMode="decimal"
-                                        value={newExecutorProductsPercent || ''}
-                                        onChange={(e) => {
-                                            const normalized = normalizeMoneyInput(e.target.value);
-                                            const parsed = parseMoneyValue(normalized);
-                                            setNewExecutorProductsPercent(parsed);
-                                        }}
-                                        placeholder="%т"
-                                        title="% товарів"
-                                        className="bg-slate-800 border border-slate-600 rounded px-1 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-blue-500 text-center"
-                                    />
-                                </div>
-                                <div className="flex items-center">
-                                    <button
-                                        type="submit"
-                                        disabled={!newExecutorName.trim() || addExecutorMutation.isPending}
-                                        className="px-2 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:opacity-50 h-full"
-                                    >
-                                        <Plus className="w-4 h-4" />
-                                    </button>
+                            <form onSubmit={handleAddExecutor} className="mb-4 bg-slate-800/30 p-3 rounded-lg border border-slate-600/50">
+                                <div className="grid grid-cols-1 gap-3">
+                                    <div className="grid grid-cols-[1fr_auto_auto] gap-2">
+                                        <input
+                                            type="text"
+                                            value={newExecutorName}
+                                            onChange={(e) => setNewExecutorName(e.target.value)}
+                                            placeholder="Ім'я виконавця"
+                                            className="bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500 min-w-0"
+                                        />
+                                        <input
+                                            type="text"
+                                            inputMode="decimal"
+                                            value={newExecutorPercent || ''}
+                                            onChange={(e) => {
+                                                const normalized = normalizeMoneyInput(e.target.value);
+                                                const parsed = parseMoneyValue(normalized);
+                                                setNewExecutorPercent(parsed);
+                                            }}
+                                            placeholder="% послуг"
+                                            title="% послуг"
+                                            className="w-16 bg-slate-800 border border-slate-600 rounded px-1 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-blue-500 text-center"
+                                        />
+                                        <input
+                                            type="text"
+                                            inputMode="decimal"
+                                            value={newExecutorProductsPercent || ''}
+                                            onChange={(e) => {
+                                                const normalized = normalizeMoneyInput(e.target.value);
+                                                const parsed = parseMoneyValue(normalized);
+                                                setNewExecutorProductsPercent(parsed);
+                                            }}
+                                            placeholder="% товарів"
+                                            title="% товарів"
+                                            className="w-16 bg-slate-800 border border-slate-600 rounded px-1 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-blue-500 text-center"
+                                        />
+                                    </div>
+
+                                    {/* Icon Picker */}
+                                    <div className="flex flex-wrap gap-1.5 border-t border-slate-600/30 pt-2">
+                                        {EXECUTOR_ICONS.map(({ name, Icon }) => (
+                                            <button
+                                                key={name}
+                                                type="button"
+                                                onClick={() => setNewExecutorIcon(name)}
+                                                className={clsx(
+                                                    "p-1.5 rounded-md transition-all border",
+                                                    newExecutorIcon === name
+                                                        ? "bg-blue-600/20 border-blue-500 text-blue-400"
+                                                        : "border-transparent text-slate-500 hover:bg-slate-700 hover:text-slate-300"
+                                                )}
+                                                title={name}
+                                            >
+                                                <Icon className="w-4 h-4" />
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* Color Picker */}
+                                    <div className="flex flex-wrap gap-2 border-t border-slate-600/30 pt-2 items-center">
+                                        {EXECUTOR_COLORS.map(color => (
+                                            <button
+                                                key={color}
+                                                type="button"
+                                                onClick={() => setNewExecutorColor(color)}
+                                                className={clsx(
+                                                    "w-6 h-6 rounded-full border-2 transition-all",
+                                                    newExecutorColor === color ? "border-white scale-110 shadow-lg" : "border-transparent opacity-60 hover:opacity-100"
+                                                )}
+                                                style={{ backgroundColor: color }}
+                                            />
+                                        ))}
+                                        <div className="flex-1" />
+                                        <button
+                                            type="submit"
+                                            disabled={!newExecutorName.trim() || addExecutorMutation.isPending}
+                                            className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 font-bold"
+                                        >
+                                            {addExecutorMutation.isPending ? '...' : <Plus className="w-4 h-4" />}
+                                        </button>
+                                    </div>
                                 </div>
                             </form>
                             <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar min-h-[200px] max-h-[400px]">
@@ -915,52 +978,88 @@ export default function Settings() {
                                     executors.map((executor: Executor) => (
                                         <div key={executor.ID} className="bg-slate-800/50 rounded p-2 border border-slate-600">
                                             {editingExecutor?.ID === executor.ID ? (
-                                                <div className="flex items-center gap-1.5">
-                                                    <input
-                                                        type="text"
-                                                        value={editingExecutor.Name}
-                                                        onChange={(e) => setEditingExecutor({ ...editingExecutor, Name: e.target.value })}
-                                                        className="flex-1 bg-slate-700 border border-slate-600 rounded px-1 py-1 text-xs text-slate-100 min-w-0"
-                                                    />
-                                                    <input
-                                                        type="text"
-                                                        inputMode="decimal"
-                                                        value={editingExecutor.SalaryPercent || ''}
-                                                        onChange={(e) => {
-                                                            const normalized = normalizeMoneyInput(e.target.value);
-                                                            const parsed = parseMoneyValue(normalized);
-                                                            setEditingExecutor({ ...editingExecutor, SalaryPercent: parsed });
-                                                        }}
-                                                        className="w-8 bg-slate-700 border border-slate-600 rounded px-1 py-1 text-xs text-slate-100 text-center"
-                                                        placeholder="П"
-                                                    />
-                                                    <input
-                                                        type="text"
-                                                        inputMode="decimal"
-                                                        value={editingExecutor.ProductsPercent || ''}
-                                                        onChange={(e) => {
-                                                            const normalized = normalizeMoneyInput(e.target.value);
-                                                            const parsed = parseMoneyValue(normalized);
-                                                            setEditingExecutor({ ...editingExecutor, ProductsPercent: parsed });
-                                                        }}
-                                                        className="w-8 bg-slate-700 border border-slate-600 rounded px-1 py-1 text-xs text-slate-100 text-center"
-                                                        placeholder="Т"
-                                                    />
-                                                    <button onClick={() => handleUpdateExecutor(executor)} className="p-0.5 text-green-400 flex-shrink-0"><Check className="w-3 h-3" /></button>
-                                                    <button onClick={() => setEditingExecutor(null)} className="p-0.5 text-slate-400 flex-shrink-0"><X className="w-3 h-3" /></button>
+                                                <div className="flex flex-col gap-2">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <input
+                                                            type="text"
+                                                            value={editingExecutor.Name}
+                                                            onChange={(e) => setEditingExecutor({ ...editingExecutor, Name: e.target.value })}
+                                                            className="flex-1 bg-slate-700 border border-slate-600 rounded px-1 py-1 text-xs text-slate-100 min-w-0"
+                                                        />
+                                                        <input
+                                                            type="text"
+                                                            inputMode="decimal"
+                                                            value={editingExecutor.SalaryPercent || ''}
+                                                            onChange={(e) => {
+                                                                const normalized = normalizeMoneyInput(e.target.value);
+                                                                const parsed = parseMoneyValue(normalized);
+                                                                setEditingExecutor({ ...editingExecutor, SalaryPercent: parsed });
+                                                            }}
+                                                            className="w-10 bg-slate-700 border border-slate-600 rounded px-1 py-1 text-xs text-slate-100 text-center"
+                                                            placeholder="П"
+                                                            title="% послуг"
+                                                        />
+                                                        <input
+                                                            type="text"
+                                                            inputMode="decimal"
+                                                            value={editingExecutor.ProductsPercent || ''}
+                                                            onChange={(e) => {
+                                                                const normalized = normalizeMoneyInput(e.target.value);
+                                                                const parsed = parseMoneyValue(normalized);
+                                                                setEditingExecutor({ ...editingExecutor, ProductsPercent: parsed });
+                                                            }}
+                                                            className="w-10 bg-slate-700 border border-slate-600 rounded px-1 py-1 text-xs text-slate-100 text-center"
+                                                            placeholder="Т"
+                                                            title="% товарів"
+                                                        />
+                                                        <button onClick={() => handleUpdateExecutor(executor)} className="p-0.5 text-green-400 flex-shrink-0"><Check className="w-4 h-4" /></button>
+                                                        <button onClick={() => setEditingExecutor(null)} className="p-0.5 text-slate-400 flex-shrink-0"><X className="w-4 h-4" /></button>
+                                                    </div>
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {EXECUTOR_ICONS.map(({ name, Icon }) => (
+                                                            <button
+                                                                key={name}
+                                                                onClick={() => setEditingExecutor({ ...editingExecutor, Icon: name })}
+                                                                className={clsx(
+                                                                    "p-1 rounded transition-colors",
+                                                                    editingExecutor.Icon === name ? "bg-blue-600/30 text-blue-400" : "text-slate-500 hover:text-slate-300"
+                                                                )}
+                                                            >
+                                                                <Icon className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                    <div className="flex flex-wrap gap-1.5">
+                                                        {EXECUTOR_COLORS.map(color => (
+                                                            <button
+                                                                key={color}
+                                                                onClick={() => setEditingExecutor({ ...editingExecutor, Color: color })}
+                                                                className={clsx(
+                                                                    "w-4 h-4 rounded-full border transition-all",
+                                                                    editingExecutor.Color === color ? "border-white scale-110" : "border-transparent opacity-60 hover:opacity-100"
+                                                                )}
+                                                                style={{ backgroundColor: color }}
+                                                            />
+                                                        ))}
+                                                    </div>
                                                 </div>
                                             ) : (
                                                 <div className="flex items-center justify-between group gap-2">
-                                                    <div className="flex flex-col min-w-0">
-                                                        <span className="text-sm text-slate-200 truncate font-medium">{executor.Name}</span>
-                                                        <div className="flex gap-2">
-                                                            <span className="text-[10px] text-slate-400" title="Відсоток від послуг">{executor.SalaryPercent}%п</span>
-                                                            <span className="text-[10px] text-slate-400" title="Відсоток від товарів">{executor.ProductsPercent}%т</span>
+                                                    <div className="flex items-center gap-3 min-w-0">
+                                                        <div className="flex-shrink-0 p-1.5 rounded-lg bg-white/5 border border-white/10">
+                                                            {renderExecutorIcon(executor.Icon, executor.Color, "w-5 h-5")}
+                                                        </div>
+                                                        <div className="flex flex-col min-w-0">
+                                                            <span className="text-sm text-slate-200 truncate font-semibold">{executor.Name}</span>
+                                                            <div className="flex gap-2">
+                                                                <span className="text-[10px] text-slate-400" title="Відсоток від послуг">{executor.SalaryPercent}%п</span>
+                                                                <span className="text-[10px] text-slate-400" title="Відсоток від товарів">{executor.ProductsPercent}%т</span>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 items-center">
-                                                        <button onClick={() => setEditingExecutor(executor)} className="p-1 text-slate-400 hover:text-blue-400"><Edit2 className="w-3.5 h-3.5" /></button>
-                                                        <button onClick={() => setExecutorToDelete({ id: executor.ID, name: executor.Name })} className="p-1 text-slate-400 hover:text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                                                        <button onClick={() => setEditingExecutor(executor)} className="p-1.5 text-slate-400 hover:text-blue-400 hover:bg-slate-700/50 rounded-md transition-colors"><Edit2 className="w-3.5 h-3.5" /></button>
+                                                        <button onClick={() => setExecutorToDelete({ id: executor.ID, name: executor.Name })} className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-700/50 rounded-md transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
                                                     </div>
                                                 </div>
                                             )}
@@ -1270,14 +1369,14 @@ export default function Settings() {
             />
 
             <ConfirmationModal
-                isOpen={showDeleteAllConfirm}
-                onClose={() => setShowDeleteAllConfirm(false)}
-                onConfirm={() => deleteAllBackupsMutation.mutate()}
-                title="Видалити всі резервні копії?"
-                message="Ви впевнені, що хочете остаточно видалити ВСІ резервні копії (і ручні, і автоматичні)? Цю дію неможливо скасувати."
-                confirmLabel="Видалити все"
+                isOpen={showPruneConfirm}
+                onClose={() => setShowPruneConfirm(false)}
+                onConfirm={() => deleteOldBackupsMutation.mutate()}
+                title="Очистити старі копії?"
+                message="Ви впевнені, що хочете видалити всі резервні копії, крім ОДНІЄЇ останньої? Це допоможе звільнити місце на диску."
+                confirmLabel="Залишити тільки одну"
                 isDestructive={true}
-                isLoading={deleteAllBackupsMutation.isPending}
+                isLoading={deleteOldBackupsMutation.isPending}
             />
         </div >
     );

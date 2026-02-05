@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
-import { X, Phone, Smartphone } from 'lucide-react';
+import { X, Smartphone } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
 import { useHotkeys } from '../hooks/useHotkeys';
@@ -121,17 +121,6 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({ isOpen, onClose, phone
                         )}
                     </div>
 
-                    <div className="w-full flex gap-3">
-                        <a
-                            href={`tel:${phoneNumber.replace(/\D/g, '')}`}
-                            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold transition-all
-                            ${isLight ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200' : 'bg-blue-500 hover:bg-blue-600 text-white shadow-blue-900/40'}
-                            shadow-lg active:scale-[0.98]`}
-                        >
-                            <Phone className="w-4 h-4" />
-                            ОК
-                        </a>
-                    </div>
                 </div>
             </div>
         </div>

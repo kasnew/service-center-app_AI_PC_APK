@@ -82,7 +82,7 @@ export const SystemStats: React.FC = () => {
 
     return (
         <div
-            className="flex items-center gap-4 px-3 py-1 rounded-lg border backdrop-blur-md shadow-sm"
+            className="flex items-center gap-4 px-3 py-1.5 rounded-lg border backdrop-blur-md shadow-sm h-10"
             style={containerStyle}
         >
             {/* CPU */}

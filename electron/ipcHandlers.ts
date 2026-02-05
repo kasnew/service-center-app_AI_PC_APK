@@ -106,7 +106,7 @@ function triggerAutoBackup(tag?: string) {
         const limit = limitVal ? parseInt(limitVal.value) : 30;
 
         const files = fs.readdirSync(autoDir)
-          .filter(f => f.includes('_auto_'))
+          .filter(f => f.includes('auto_'))
           .map(f => ({ name: f, time: fs.statSync(path.join(autoDir, f)).mtime.getTime() }))
           .sort((a, b) => b.time - a.time);
 
@@ -981,7 +981,7 @@ export function registerIpcHandlers() {
             let newCash = balances.cash;
             let newCard = balances.card;
 
-            // Refund FULL amount (including commission)
+            // Refund FULL amount
             if (original.ТипОплати === 'Картка') {
               newCard -= original.Сума;
             } else {
@@ -1000,6 +1000,32 @@ export function registerIpcHandlers() {
               paymentType: original.ТипОплати,
               relatedTransactionId: original.ID
             });
+
+            // ALSO reverse bank commission if it was card payment
+            if (original.ТипОплати === 'Картка') {
+              const existingCommission = db.prepare(`
+                SELECT * FROM Каса 
+                WHERE КвитанціяID = ? AND Категорія = 'Комісія банку'
+                ORDER BY ID DESC LIMIT 1
+              `).get(resultId) as any;
+
+              if (existingCommission) {
+                const commissionBalances = getBalances(db);
+                const commissionAmount = Math.abs(existingCommission.Сума);
+                const newCardBalance = commissionBalances.card + commissionAmount;
+
+                createTransaction(db, {
+                  category: 'Скасування',
+                  description: `Скасування комісії банку за квитанцію #${receiptId} (повернення)`,
+                  amount: commissionAmount,
+                  cash: commissionBalances.cash,
+                  card: newCardBalance,
+                  receiptId: resultId,
+                  paymentType: 'Картка',
+                  relatedTransactionId: existingCommission.ID
+                });
+              }
+            }
           }
         }
       }
@@ -1879,7 +1905,14 @@ export function registerIpcHandlers() {
   // --- WAREHOUSE LIMITS HANDLERS ---
   ipcMain.handle('get-warehouse-limits', async () => {
     const db = getDb();
-    return db.prepare('SELECT ID as id, ProductCode as productCode, MinQuantity as minQuantity FROM WarehouseLimits').all();
+    return db.prepare(`
+      SELECT 
+        l.ID as id, 
+        l.ProductCode as productCode, 
+        l.MinQuantity as minQuantity,
+        (SELECT MIN(Наименование_расходника) FROM Расходники WHERE TRIM(REPLACE(REPLACE(Код_товара, CHAR(10), ''), CHAR(13), '')) = TRIM(l.ProductCode)) as name
+      FROM WarehouseLimits l
+    `).all();
   });
 
   ipcMain.handle('save-warehouse-limit', async (_event, data: any) => {
@@ -2025,10 +2058,16 @@ export function registerIpcHandlers() {
   });
 
   // Add executor
-  ipcMain.handle('add-executor', async (_event, data: { name: string; salaryPercent: number; productsPercent: number }) => {
+  ipcMain.handle('add-executor', async (_event, data: { name: string; salaryPercent: number; productsPercent: number; icon?: string; color?: string }) => {
     const db = getDb();
     try {
-      const result = db.prepare('INSERT INTO Executors (Name, SalaryPercent, ProductsPercent) VALUES (?, ?, ?)').run(data.name, data.salaryPercent, data.productsPercent);
+      const result = db.prepare('INSERT INTO Executors (Name, SalaryPercent, ProductsPercent, Icon, Color) VALUES (?, ?, ?, ?, ?)').run(
+        data.name,
+        data.salaryPercent,
+        data.productsPercent,
+        data.icon || 'Settings',
+        data.color || '#64748b'
+      );
       triggerAutoBackup('executor-add');
       return { success: true, id: result.lastInsertRowid };
     } catch (error: any) {
@@ -2040,10 +2079,17 @@ export function registerIpcHandlers() {
   });
 
   // Update executor
-  ipcMain.handle('update-executor', async (_event, data: { id: number; name: string; salaryPercent: number; productsPercent: number }) => {
+  ipcMain.handle('update-executor', async (_event, data: { id: number; name: string; salaryPercent: number; productsPercent: number; icon?: string; color?: string }) => {
     const db = getDb();
     try {
-      db.prepare('UPDATE Executors SET Name = ?, SalaryPercent = ?, ProductsPercent = ? WHERE ID = ?').run(data.name, data.salaryPercent, data.productsPercent, data.id);
+      db.prepare('UPDATE Executors SET Name = ?, SalaryPercent = ?, ProductsPercent = ?, Icon = ?, Color = ? WHERE ID = ?').run(
+        data.name,
+        data.salaryPercent,
+        data.productsPercent,
+        data.icon || 'Settings',
+        data.color || '#64748b',
+        data.id
+      );
       triggerAutoBackup('executor-update');
       return { success: true };
     } catch (error: any) {
@@ -2224,6 +2270,48 @@ export function registerIpcHandlers() {
     } catch (error: any) {
       console.error('Delete all backups failed:', error);
       throw new Error(`Помилка видалення усіх резервних копій: ${error.message} `);
+    }
+  });
+
+  // Delete all EXCEPT one latest backup
+  ipcMain.handle('delete-old-backups', async () => {
+    try {
+      const dbPath = getDbPath();
+      const dbDir = path.dirname(dbPath);
+      const backupsRoot = path.join(dbDir, 'backups');
+      const types = ['manual', 'auto'];
+      const allFiles: { path: string, time: number }[] = [];
+
+      for (const type of types) {
+        const dir = path.join(backupsRoot, type);
+        if (fs.existsSync(dir)) {
+          const files = fs.readdirSync(dir);
+          for (const file of files) {
+            const filePath = path.join(dir, file);
+            if (fs.statSync(filePath).isFile()) {
+              allFiles.push({
+                path: filePath,
+                time: fs.statSync(filePath).mtime.getTime()
+              });
+            }
+          }
+        }
+      }
+
+      // Sort by time descending
+      allFiles.sort((a, b) => b.time - a.time);
+
+      // Keep the first (latest), delete rest
+      if (allFiles.length > 1) {
+        for (let i = 1; i < allFiles.length; i++) {
+          fs.unlinkSync(allFiles[i].path);
+        }
+      }
+
+      return { success: true };
+    } catch (error: any) {
+      console.error('Pruning backups failed:', error);
+      throw new Error(`Помилка очистки старих копій: ${error.message} `);
     }
   });
 

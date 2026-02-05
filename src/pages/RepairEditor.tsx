@@ -5,7 +5,8 @@ import { repairApi } from '../api/repairs';
 import { warehouseApi } from '../api/warehouse';
 import { executorsApi } from '../api/executors';
 import { RepairStatus } from '../types/db';
-import { Save, X, Trash2, Calendar, User, Laptop, Package, DollarSign, FileText, Cpu, Zap, Settings as SettingsIcon, Phone, Smartphone, RotateCcw } from 'lucide-react';
+import { Save, X, Trash2, Calendar, User, Laptop, Package, DollarSign, FileText, Phone, Smartphone, RotateCcw } from 'lucide-react';
+import { EXECUTOR_ICONS } from '../constants/executors';
 import PartsManager from '../components/PartsManager';
 import { formatPhoneNumber, normalizeMoneyInput, parseMoneyValue } from '../utils/formatters';
 import { ConfirmationModal } from '../components/ConfirmationModal';
@@ -373,7 +374,7 @@ export const RepairEditor: React.FC = () => {
                 } else if (isDirty) {
                     setIsSaveOnExitModalOpen(true);
                 } else {
-                    navigate('/');
+                    handleCancel();
                 }
             }
         };
@@ -391,7 +392,7 @@ export const RepairEditor: React.FC = () => {
         setIsDeleteModalOpen(false);
     };
 
-    const handlePartsChange = async () => {
+    const handlePartsChange = React.useCallback(async () => {
         // Invalidate and refetch bits more aggressively to ensure total sum updates
         // We refetch both the parts AND the repair itself (since it might have updated sums in DB)
         await Promise.all([
@@ -402,7 +403,7 @@ export const RepairEditor: React.FC = () => {
             refetch() // Refetch the main repair data if it exists
         ]);
         setHasPartsChanged(true);
-    };
+    }, [queryClient, effectiveRepairId, refetchParts, refetch]);
 
     const handleAutoSave = async (): Promise<number> => {
         return new Promise((resolve, reject) => {
@@ -452,7 +453,11 @@ export const RepairEditor: React.FC = () => {
             }));
             setIsPaymentDateModalOpen(true);
         } else {
-            setFormData(prev => ({ ...prev, isPaid: false }));
+            setFormData(prev => ({
+                ...prev,
+                isPaid: false,
+                status: prev.status === RepairStatus.Issued ? RepairStatus.Ready : prev.status
+            }));
         }
     };
 
@@ -462,6 +467,7 @@ export const RepairEditor: React.FC = () => {
             setFormData(prev => ({
                 ...prev,
                 status: newStatus,
+                isPaid: false,
                 dateEnd: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)
             }));
         } else if (newStatus === RepairStatus.Issued && !formData.isPaid) {
@@ -472,10 +478,21 @@ export const RepairEditor: React.FC = () => {
                 dateEnd: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)
             }));
             setIsPaymentDateModalOpen(true);
+        } else if (newStatus !== RepairStatus.Issued) {
+            // If moving to any other status and it's not Issued, it should probably be unpaid
+            setFormData(prev => ({ ...prev, status: newStatus, isPaid: false }));
         } else {
             setFormData(prev => ({ ...prev, status: newStatus }));
         }
     };
+
+    const partsTotal = React.useMemo(() => {
+        return currentParts.reduce((sum: number, part: any) => sum + (part.priceUah || 0), 0);
+    }, [currentParts]);
+
+    const grandTotal = React.useMemo(() => {
+        return formData.costLabor + partsTotal;
+    }, [formData.costLabor, partsTotal]);
 
     if (!isNew && isLoading) {
         return (
@@ -485,12 +502,9 @@ export const RepairEditor: React.FC = () => {
         );
     }
 
-    const partsTotal = parts.reduce((sum: number, part: any) => sum + (part.priceUah || 0), 0);
-    const grandTotal = formData.costLabor + partsTotal;
-
     return (
-        <div className="p-6 max-w-full mx-auto h-full overflow-auto">
-            <div className="mb-4">
+        <div className="p-3 max-w-full mx-auto h-full overflow-auto">
+            <div className="mb-2">
                 <h2 className="text-2xl font-bold text-slate-100">
                     {isNew ? `Новий ремонт #${formData.receiptId}` : `Ремонт #${formData.receiptId}`}
                 </h2>
@@ -505,45 +519,45 @@ export const RepairEditor: React.FC = () => {
                 )}
             </div>
 
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[0.8fr_1.2fr_1fr] gap-8">
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[0.8fr_1.2fr_1fr] gap-4">
                 {/* Column 1: Dates, Client Info & Status */}
-                <div className="space-y-4">
-                    <div className="bg-purple-900/20 rounded-lg p-5 border-2 border-purple-700/50 rainbow-groupbox">
-                        <h3 className="text-xl font-bold text-slate-100 mb-4 flex items-center gap-2">
+                <div className="space-y-3">
+                    <div className="bg-purple-900/20 rounded-lg p-3 border-2 border-purple-700/50 rainbow-groupbox">
+                        <h3 className="text-xl font-bold text-slate-100 mb-2 flex items-center gap-2">
                             <Calendar className={`w-5 h-5 ${purpleColor}`} />
                             Дати
                         </h3>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-2 gap-2">
                             <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-1.5">Дата прийому *</label>
+                                <label className="block text-sm font-medium text-slate-300 mb-0.5">Дата прийому *</label>
                                 <input
                                     type="datetime-local"
                                     value={formData.dateStart}
                                     onChange={(e) => setFormData({ ...formData, dateStart: e.target.value })}
-                                    className="w-full bg-slate-800 border-2 border-slate-600 rounded-lg px-4 py-2.5 text-base focus:outline-none focus:border-blue-500 shadow-sm"
+                                    className="w-full bg-slate-800 border-2 border-slate-600 rounded-lg px-4 py-1.5 text-base focus:outline-none focus:border-blue-500 shadow-sm"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-1.5">Дата видачі</label>
+                                <label className="block text-sm font-medium text-slate-300 mb-0.5">Дата видачі</label>
                                 <input
                                     type="datetime-local"
                                     value={formData.dateEnd}
                                     onChange={(e) => setFormData({ ...formData, dateEnd: e.target.value })}
-                                    className="w-full bg-slate-800 border-2 border-slate-600 rounded-lg px-4 py-2.5 text-base focus:outline-none focus:border-blue-500 shadow-sm"
+                                    className="w-full bg-slate-800 border-2 border-slate-600 rounded-lg px-4 py-1.5 text-base focus:outline-none focus:border-blue-500 shadow-sm"
                                 />
                             </div>
                         </div>
                     </div>
 
-                    <div className="bg-green-900/20 rounded-lg p-5 border-2 border-green-700/50 rainbow-groupbox">
-                        <h3 className="text-xl font-bold text-slate-100 mb-4 flex items-center gap-2">
+                    <div className="bg-green-900/20 rounded-lg p-3 border-2 border-green-700/50 rainbow-groupbox">
+                        <h3 className="text-xl font-bold text-slate-100 mb-2 flex items-center gap-2">
                             <User className={`w-5 h-5 ${greenColor}`} />
                             Клієнт та Статус
                         </h3>
                         <div className="space-y-3">
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-2 gap-2">
                                 <div>
-                                    <div className="flex items-center h-6 mb-1.5">
+                                    <div className="flex items-center h-6 mb-0.5">
                                         <label className="block text-sm font-medium text-slate-300">Ім'я клієнта</label>
                                     </div>
                                     <input
@@ -551,12 +565,12 @@ export const RepairEditor: React.FC = () => {
                                         type="text"
                                         value={formData.clientName}
                                         onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
-                                        className="w-full bg-slate-800 border-2 border-slate-600 rounded-lg px-4 py-2.5 text-base focus:outline-none focus:border-blue-500 shadow-sm"
+                                        className="w-full bg-slate-800 border-2 border-slate-600 rounded-lg px-4 py-1.5 text-base focus:outline-none focus:border-blue-500 shadow-sm"
                                         tabIndex={1}
                                     />
                                 </div>
                                 <div>
-                                    <div className="flex items-center gap-2 h-6 mb-1.5">
+                                    <div className="flex items-center gap-2 h-6 mb-0.5">
                                         <label className="block text-sm font-medium text-slate-300">Телефон</label>
                                         {formData.clientPhone && (
                                             <button
@@ -573,7 +587,7 @@ export const RepairEditor: React.FC = () => {
                                         type="text"
                                         value={formData.clientPhone}
                                         onChange={(e) => setFormData({ ...formData, clientPhone: formatPhoneNumber(e.target.value) })}
-                                        className="w-full bg-slate-800 border-2 border-slate-600 rounded-lg px-4 py-2.5 text-base focus:outline-none focus:border-blue-500 shadow-sm"
+                                        className="w-full bg-slate-800 border-2 border-slate-600 rounded-lg px-4 py-1.5 text-base focus:outline-none focus:border-blue-500 shadow-sm"
                                         tabIndex={2}
                                         placeholder="+38 (0XX) XXX-XX-XX"
                                     />
@@ -581,11 +595,11 @@ export const RepairEditor: React.FC = () => {
                             </div>
                             <div className="grid grid-cols-2 gap-2">
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-300 mb-1.5">Статус</label>
+                                    <label className="block text-sm font-medium text-slate-300 mb-0.5">Статус</label>
                                     <select
                                         value={formData.status}
                                         onChange={handleStatusChange}
-                                        className="w-full bg-slate-800 border-2 border-slate-600 rounded-lg px-4 py-2.5 text-base focus:outline-none focus:border-blue-500 shadow-sm"
+                                        className="w-full bg-slate-800 border-2 border-slate-600 rounded-lg px-4 py-1.5 text-base focus:outline-none focus:border-blue-500 shadow-sm"
                                         tabIndex={5}
                                     >
                                         <option value={RepairStatus.Queue}>У черзі</option>
@@ -598,20 +612,21 @@ export const RepairEditor: React.FC = () => {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-300 mb-1.5">Виконавець</label>
+                                    <label className="block text-sm font-medium text-slate-300 mb-0.5">Виконавець</label>
                                     <div className="flex items-center gap-2">
                                         <div className="flex-shrink-0 mt-1">
                                             {(() => {
-                                                const name = formData.executor?.toLowerCase() || '';
-                                                if (name.includes('андрій')) return <Cpu className={`w-5 h-5 ${isLight ? 'text-blue-700' : 'text-blue-500'}`} />;
-                                                if (name.includes('юрій')) return <Zap className={`w-5 h-5 ${isLight ? 'text-amber-700' : 'text-amber-500'}`} />;
-                                                return <SettingsIcon className={`w-5 h-5 ${isLight ? 'text-slate-700' : 'text-slate-500'}`} />;
+                                                const executorName = formData.executor;
+                                                const executorData = executors.find((e: any) => e.Name === executorName);
+                                                const matchingIcon = EXECUTOR_ICONS.find(i => i.name === executorData?.Icon);
+                                                const IconComp = matchingIcon ? matchingIcon.Icon : User;
+                                                return <IconComp className="w-5 h-5 transition-colors" style={{ color: executorData?.Color || (isLight ? '#334155' : '#94a3b8') }} />;
                                             })()}
                                         </div>
                                         <select
                                             value={formData.executor}
                                             onChange={(e) => setFormData({ ...formData, executor: e.target.value })}
-                                            className="w-full bg-slate-800 border-2 border-slate-600 rounded-lg px-4 py-2.5 text-base focus:outline-none focus:border-blue-500 shadow-sm"
+                                            className="w-full bg-slate-800 border-2 border-slate-600 rounded-lg px-4 py-1.5 text-base focus:outline-none focus:border-blue-500 shadow-sm"
                                             tabIndex={6}
                                         >
                                             {executors
@@ -655,15 +670,15 @@ export const RepairEditor: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="bg-emerald-900/20 rounded-lg p-5 border-2 border-emerald-700/50 rainbow-groupbox">
-                        <h3 className="text-xl font-bold text-slate-100 mb-4 flex items-center gap-2">
+                    <div className="bg-emerald-900/20 rounded-lg p-3 border-2 border-emerald-700/50 rainbow-groupbox">
+                        <h3 className="text-xl font-bold text-slate-100 mb-2 flex items-center gap-2">
                             <DollarSign className={`w-5 h-5 ${emeraldColor}`} />
                             Вартість
                         </h3>
                         <div className="space-y-3">
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-2 gap-2">
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-300 mb-1.5">Робота (₴)</label>
+                                    <label className="block text-sm font-medium text-slate-300 mb-0.5">Робота (₴)</label>
                                     <input
                                         type="text"
                                         value={formData.costLabor ?? ''}
@@ -672,16 +687,16 @@ export const RepairEditor: React.FC = () => {
                                             const parsed = parseMoneyValue(normalized);
                                             setFormData({ ...formData, costLabor: parsed });
                                         }}
-                                        className="w-full bg-slate-800 border-2 border-slate-600 rounded-lg px-4 py-2.5 text-base focus:outline-none focus:border-blue-500 shadow-sm"
+                                        className="w-full bg-slate-800 border-2 border-slate-600 rounded-lg px-4 py-1.5 text-base focus:outline-none focus:border-blue-500 shadow-sm"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-300 mb-1.5">Всього (₴)</label>
+                                    <label className="block text-sm font-medium text-slate-300 mb-0.5">Всього (₴)</label>
                                     <input
                                         type="number"
                                         value={grandTotal}
                                         readOnly
-                                        className="w-full bg-slate-800 border-2 border-slate-600 rounded-lg px-4 py-2.5 text-base text-slate-400"
+                                        className="w-full bg-slate-800 border-2 border-slate-600 rounded-lg px-4 py-1.5 text-base text-slate-400"
                                     />
                                 </div>
                             </div>
@@ -707,7 +722,7 @@ export const RepairEditor: React.FC = () => {
                             )}
 
                             {!isNew && partsTotal > 0 && (
-                                <div className={`mt-4 p-4 rounded-xl border-2 animate-in fade-in zoom-in duration-300 ${isLight ? 'bg-blue-50 border-blue-100' : 'bg-blue-500/5 border-blue-500/20 shadow-lg shadow-blue-500/5'}`}>
+                                <div className={`mt-2 p-3 rounded-xl border-2 animate-in fade-in zoom-in duration-300 ${isLight ? 'bg-blue-50 border-blue-100' : 'bg-blue-500/5 border-blue-500/20 shadow-lg shadow-blue-500/5'}`}>
                                     <h3 className={`text-[10px] font-bold uppercase tracking-widest mb-3 ${isLight ? 'text-blue-700' : 'text-blue-400'}`}>Деталізація вартості</h3>
                                     <div className="space-y-2">
                                         <div className="flex justify-between items-center px-1">
@@ -728,11 +743,11 @@ export const RepairEditor: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="space-y-3 pt-2">
+                    <div className="space-y-2 pt-1">
                         <button
                             type="submit"
                             disabled={saveMutation.isPending || !isDirty || (isNew && formData.receiptId === 0)}
-                            className={`w-full px-6 py-4 rounded-lg font-bold text-lg transition-all flex items-center justify-center gap-2 shadow-lg ${(!isDirty || (isNew && formData.receiptId === 0))
+                            className={`w-full px-6 py-2 rounded-lg font-bold text-lg transition-all flex items-center justify-center gap-2 shadow-lg ${(!isDirty || (isNew && formData.receiptId === 0))
                                 ? 'bg-slate-700 text-slate-500 cursor-not-allowed border-2 border-slate-600'
                                 : 'bg-blue-600 hover:bg-blue-500 text-white border-2 border-blue-400/30'
                                 }`}

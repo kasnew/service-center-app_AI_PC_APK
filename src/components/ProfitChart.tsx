@@ -7,7 +7,10 @@ import {
     CartesianGrid,
     Tooltip,
     Legend,
-    ResponsiveContainer
+    ResponsiveContainer,
+    ReferenceLine,
+    Label,
+    LabelList
 } from 'recharts';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -85,20 +88,27 @@ export const ProfitChart: React.FC<ProfitChartProps> = ({ receipts, groupBy }) =
             .sort((a, b) => a.rawDate.getTime() - b.rawDate.getTime());
     }, [receipts, groupBy]);
 
+    const averageService = useMemo(() => {
+        if (sortedData.length === 0) return 0;
+        const total = sortedData.reduce((acc, curr) => acc + curr.service, 0);
+        return total / sortedData.length;
+    }, [sortedData]);
+
     const textColor = isLight ? '#1e293b' : '#f1f5f9';
     const gridColor = isLight ? '#e2e8f0' : '#334155';
 
     return (
-        <div className="w-full h-[300px] mt-4">
+        <div className="w-full h-full min-h-[300px] mt-4">
             <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={sortedData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
+                <LineChart data={sortedData} margin={{ top: 25, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} opacity={0.5} />
                     <XAxis
                         dataKey="date"
                         stroke={textColor}
                         fontSize={12}
                         tickLine={false}
                         axisLine={false}
+                        dy={10}
                     />
                     <YAxis
                         stroke={textColor}
@@ -109,23 +119,55 @@ export const ProfitChart: React.FC<ProfitChartProps> = ({ receipts, groupBy }) =
                     />
                     <Tooltip
                         contentStyle={{
-                            backgroundColor: isLight ? '#fff' : '#1e293b',
+                            backgroundColor: isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(30, 41, 59, 0.95)',
                             border: `1px solid ${gridColor}`,
-                            borderRadius: '8px',
-                            color: textColor
+                            borderRadius: '12px',
+                            color: textColor,
+                            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
                         }}
-                        itemStyle={{ fontSize: '12px' }}
+                        itemStyle={{ fontSize: '13px', fontWeight: '600' }}
+                        formatter={(value: number) => [`${value.toFixed(2)} ₴`, 'Чистий прибуток']}
                     />
-                    <Legend iconType="circle" />
+                    <Legend verticalAlign="top" height={36} iconType="circle" />
+
+                    {sortedData.length > 0 && (
+                        <ReferenceLine
+                            y={averageService}
+                            stroke="#3b82f6"
+                            strokeDasharray="5 5"
+                            strokeWidth={2}
+                        >
+                            <Label
+                                value={`Середнє: ${averageService.toFixed(0)} ₴`}
+                                position="top"
+                                offset={10}
+                                fill="#3b82f6"
+                                fontSize={13}
+                                fontWeight="800"
+                            />
+                        </ReferenceLine>
+                    )}
+
                     <Line
                         type="monotone"
                         dataKey="service"
                         name="Чистий прибуток"
                         stroke="#10b981"
-                        strokeWidth={3}
-                        dot={{ r: 4, fill: '#10b981' }}
-                        activeDot={{ r: 6 }}
-                    />
+                        strokeWidth={4}
+                        dot={{ r: 5, fill: '#10b981', strokeWidth: 2, stroke: isLight ? '#fff' : '#1e293b' }}
+                        activeDot={{ r: 8, strokeWidth: 0 }}
+                        animationDuration={1500}
+                    >
+                        <LabelList
+                            dataKey="service"
+                            position="top"
+                            offset={15}
+                            fill={textColor}
+                            fontSize={11}
+                            fontWeight="600"
+                            formatter={(value: number) => value > 0 ? `${value.toFixed(0)}` : ''}
+                        />
+                    </Line>
                 </LineChart>
             </ResponsiveContainer>
         </div>

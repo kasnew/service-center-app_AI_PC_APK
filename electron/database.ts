@@ -39,7 +39,7 @@ export function initDatabase() {
     }
 
     console.log('Database path:', dbPath);
-    const DB_VERSION = 2;
+    const DB_VERSION = 3;
 
     try {
         const database = new Database(dbPath, { verbose: console.log });
@@ -66,7 +66,9 @@ export function initDatabase() {
                 SalaryPercent REAL NOT NULL DEFAULT 0,
                 ProductsPercent REAL NOT NULL DEFAULT 0,
                 Password TEXT,
-                Role TEXT DEFAULT 'worker'
+                Role TEXT DEFAULT 'worker',
+                Icon TEXT,
+                Color TEXT
             )
         `).run();
 
@@ -189,6 +191,28 @@ export function initDatabase() {
 
             database.pragma('user_version = 2');
             currentVersion = 2;
+        }
+
+        if (currentVersion < 3) {
+            console.log('Migrating to version 3: Executor Icons & Colors');
+            try {
+                const tableInfo = database.prepare('PRAGMA table_info(Executors)').all() as any[];
+                if (!tableInfo.some(col => col.name === 'Icon')) {
+                    database.prepare("ALTER TABLE Executors ADD COLUMN Icon TEXT").run();
+                }
+                if (!tableInfo.some(col => col.name === 'Color')) {
+                    database.prepare("ALTER TABLE Executors ADD COLUMN Color TEXT").run();
+                }
+
+                // Set defaults for existing executors
+                database.prepare("UPDATE Executors SET Icon = 'Cpu', Color = '#3b82f6' WHERE Name LIKE '%андрій%'").run();
+                database.prepare("UPDATE Executors SET Icon = 'Zap', Color = '#f59e0b' WHERE Name LIKE '%юрій%'").run();
+                database.prepare("UPDATE Executors SET Icon = 'Settings', Color = '#64748b' WHERE Icon IS NULL").run();
+            } catch (e) {
+                console.error('Migration to v3 failed:', e);
+            }
+            database.pragma('user_version = 3');
+            currentVersion = 3;
         }
 
         // 3. Indexes for performance (Can run safely every time)

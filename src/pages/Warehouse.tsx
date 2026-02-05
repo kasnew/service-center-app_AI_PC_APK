@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { warehouseApi } from '../api/warehouse';
 import { settingsApi } from '../api/settings';
 import { Part, WarehouseLimit } from '../types/db';
-import { Package, Plus, Trash2, Search, Filter, ChevronDown, ChevronRight, Edit3, Check, RotateCcw, Save, PackageSearch } from 'lucide-react';
+import { Package, Plus, Trash2, Search, Filter, ChevronDown, ChevronRight, Edit3, Check, RotateCcw, Save, PackageSearch, X } from 'lucide-react';
 import { parseDFI, parseARC } from '../utils/parsers';
 import { ConfirmationModal } from '../components/ConfirmationModal';
 import { DeleteItemModal } from '../components/DeleteItemModal';
@@ -21,10 +21,15 @@ export default function Warehouse() {
 
     useHotkeys('escape', () => {
         if (showLimitsManager) {
-            setShowLimitsManager(false);
-            setLimitToEdit(null);
-            setNewLimitProductCode('');
-            setNewLimitMinQty(1);
+            if (newLimitProductCode) {
+                setNewLimitProductCode('');
+                setLimitToEdit(null);
+            } else {
+                setShowLimitsManager(false);
+                setLimitToEdit(null);
+                setNewLimitProductCode('');
+                setNewLimitMinQty(1);
+            }
         } else if (showAddForm) {
             setShowAddForm(false);
             setSmartImportMode(false);
@@ -206,6 +211,14 @@ export default function Warehouse() {
             setSuccessMessage('Ліміт видалено');
         },
     });
+
+    const filteredLimits = React.useMemo(() => {
+        if (!newLimitProductCode.trim()) return warehouseLimits;
+        return warehouseLimits.filter((limit: WarehouseLimit) =>
+            limit.productCode.toLowerCase().includes(newLimitProductCode.trim().toLowerCase()) ||
+            (limit.name && limit.name.toLowerCase().includes(newLimitProductCode.trim().toLowerCase()))
+        );
+    }, [warehouseLimits, newLimitProductCode]);
 
     const toggleRow = async (item: Part) => {
         const key = `${item.name}-${item.supplier}`;
@@ -714,17 +727,17 @@ export default function Warehouse() {
                 <div className="overflow-auto flex-1 relative">
                     <table className="w-full border-collapse">
                         <colgroup>
-                            <col style={{ width: '120px' }} />
-                            <col style={{ width: '150px' }} />
-                            <col style={{ width: '120px' }} />
+                            <col style={{ width: '100px' }} />
+                            <col style={{ width: '130px' }} />
                             <col style={{ width: '180px' }} />
-                            {stockFilter === 'sold' && <col style={{ width: '100px' }} />}
+                            <col style={{ width: '160px' }} />
+                            {stockFilter === 'sold' && <col style={{ width: '90px' }} />}
                             <col />
-                            <col style={{ width: '100px' }} />
-                            <col style={{ width: '100px' }} />
-                            <col style={{ width: '100px' }} />
-                            <col style={{ width: '120px' }} />
-                            <col style={{ width: '100px' }} />
+                            <col style={{ width: '85px' }} />
+                            <col style={{ width: '85px' }} />
+                            <col style={{ width: '85px' }} />
+                            <col style={{ width: '105px' }} />
+                            <col style={{ width: '80px' }} />
                         </colgroup>
                         <thead
                             className="sticky top-0 z-20 font-medium shadow-sm"
@@ -734,39 +747,39 @@ export default function Warehouse() {
                             }}
                         >
                             <tr>
-                                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                                <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider">
                                     Дата приходу
                                 </th>
-                                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                                <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider">
                                     Постачальник
                                 </th>
-                                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                                <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider">
                                     Накладна
                                 </th>
-                                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                                <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider">
                                     Код товару / Штрих-код
                                 </th>
                                 {stockFilter === 'sold' && (
-                                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                                    <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider">
                                         Квитанція
                                     </th>
                                 )}
-                                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                                <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider">
                                     Назва товару
                                 </th>
-                                <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider">
+                                <th className="px-4 py-2 text-center text-xs font-medium uppercase tracking-wider">
                                     Кількість
                                 </th>
-                                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider">
+                                <th className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider">
                                     Ціна, $
                                 </th>
-                                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider">
+                                <th className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider">
                                     Курс
                                 </th>
-                                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider">
+                                <th className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider">
                                     Вхід, грн
                                 </th>
-                                <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider">
+                                <th className="px-4 py-2 text-center text-xs font-medium uppercase tracking-wider">
                                     Дії
                                 </th>
                             </tr>
@@ -799,16 +812,16 @@ export default function Warehouse() {
                                                 index % 2 === 0 ? 'bg-slate-700/50' : 'bg-slate-700',
                                                 isDeficit && 'bg-red-900/30 border-l-4 border-red-500'
                                             )}>
-                                                <td className="px-4 py-3 text-sm text-slate-200">
+                                                <td className="px-4 py-1.5 text-sm text-slate-200">
                                                     {formatDate(item.dateArrival)}
                                                 </td>
-                                                <td className="px-4 py-3 text-sm text-slate-200">
+                                                <td className="px-4 py-1.5 text-sm text-slate-200">
                                                     {item.supplier}
                                                 </td>
-                                                <td className="px-4 py-3 text-sm text-slate-200">
+                                                <td className="px-4 py-1.5 text-sm text-slate-200">
                                                     {(!hasQuantity && item.invoice) ? item.invoice : '-'}
                                                 </td>
-                                                <td className="px-4 py-3 text-sm text-slate-200">
+                                                <td className="px-4 py-1.5 text-sm text-slate-200">
                                                     <div className="flex items-center gap-2">
                                                         <span>{item.productCode || '-'}</span>
                                                         {!hasQuantity && (
@@ -851,11 +864,11 @@ export default function Warehouse() {
                                                     </div>
                                                 </td>
                                                 {stockFilter === 'sold' && (
-                                                    <td className="px-4 py-3 text-sm text-slate-200">
+                                                    <td className="px-4 py-1.5 text-sm text-slate-200">
                                                         {item.receiptId ? `#${item.receiptId}` : '-'}
                                                     </td>
                                                 )}
-                                                <td className="px-4 py-3 text-sm text-slate-200">
+                                                <td className="px-4 py-1.5 text-sm text-slate-200">
                                                     <div className="flex items-center gap-2">
                                                         {hasQuantity && (
                                                             <button
@@ -872,7 +885,7 @@ export default function Warehouse() {
                                                         {item.name}
                                                     </div>
                                                 </td>
-                                                <td className="px-4 py-3 text-sm text-slate-200 text-center font-medium">
+                                                <td className="px-4 py-1.5 text-sm text-slate-200 text-center font-medium">
                                                     <div className="flex flex-col items-center gap-0.5">
                                                         <span className={clsx(
                                                             item.minQuantity > 0 && item.quantity < item.minQuantity && "text-red-400 font-bold"
@@ -886,16 +899,16 @@ export default function Warehouse() {
                                                         )}
                                                     </div>
                                                 </td>
-                                                <td className="px-4 py-3 text-sm text-slate-200 text-right">
+                                                <td className="px-4 py-1.5 text-sm text-slate-200 text-right">
                                                     {item.priceUsd?.toFixed(2) || '0.00'}
                                                 </td>
-                                                <td className="px-4 py-3 text-sm text-slate-200 text-right">
+                                                <td className="px-4 py-1.5 text-sm text-slate-200 text-right">
                                                     {item.exchangeRate?.toFixed(2) || '0.00'}
                                                 </td>
-                                                <td className="px-4 py-3 text-sm text-slate-200 text-right">
+                                                <td className="px-4 py-1.5 text-sm text-slate-200 text-right">
                                                     {item.costUah?.toFixed(2) || '0.00'}
                                                 </td>
-                                                <td className="px-4 py-3 text-sm text-center">
+                                                <td className="px-4 py-1.5 text-sm text-center">
                                                     <div className="flex items-center justify-center gap-2">
                                                         {item.productCode && (
                                                             <button
@@ -925,16 +938,16 @@ export default function Warehouse() {
                                             </tr>
                                             {isExpanded && subItems.map((subItem: Part) => (
                                                 <tr key={`sub-${subItem.id}`} className="bg-slate-800/40 border-l-4 border-blue-500/70">
-                                                    <td className="px-4 py-2 text-[11px] text-slate-400 italic">
+                                                    <td className="px-4 py-1 text-[11px] text-slate-400 italic">
                                                         {formatDate(subItem.dateArrival)}
                                                     </td>
-                                                    <td className="px-4 py-2 text-[11px] text-slate-500">
+                                                    <td className="px-4 py-1 text-[11px] text-slate-500">
                                                         {subItem.supplier}
                                                     </td>
-                                                    <td className="px-4 py-2 text-[11px] text-slate-300">
+                                                    <td className="px-4 py-1 text-[11px] text-slate-300">
                                                         {subItem.invoice || '-'}
                                                     </td>
-                                                    <td className="px-4 py-2 text-[11px] text-slate-300">
+                                                    <td className="px-4 py-1 text-[11px] text-slate-300">
                                                         <div className="flex flex-col gap-1">
                                                             <div className="flex items-center gap-1">
                                                                 <span className="text-slate-500 font-mono">{subItem.productCode || '-'}</span>
@@ -1029,7 +1042,7 @@ export default function Warehouse() {
             {/* Warehouse Limits Manager Modal */}
             {showLimitsManager && (
                 <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-in fade-in duration-200">
-                    <div className="bg-slate-800 rounded-2xl p-6 max-w-2xl w-full mx-4 border border-slate-600 shadow-2xl flex flex-col max-h-[85vh]">
+                    <div className="bg-slate-800 rounded-2xl p-6 max-w-4xl w-full mx-4 border border-slate-600 shadow-2xl flex flex-col max-h-[85vh]">
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
                                 <PackageSearch className="w-6 h-6 text-blue-400" />
@@ -1041,7 +1054,7 @@ export default function Warehouse() {
                                 setNewLimitProductCode('');
                                 setNewLimitMinQty(1);
                             }} className="p-2 hover:bg-slate-700 rounded-lg transition-colors">
-                                <RotateCcw className="w-6 h-6 text-slate-400" />
+                                <X className="w-6 h-6 text-slate-400" />
                             </button>
                         </div>
 
@@ -1103,40 +1116,48 @@ export default function Warehouse() {
 
                         <div className="flex-1 overflow-auto custom-scrollbar">
                             <table className="w-full text-left">
+                                <colgroup>
+                                    <col style={{ width: '120px' }} />
+                                    <col />
+                                    <col style={{ width: '80px' }} />
+                                    <col style={{ width: '80px' }} />
+                                </colgroup>
                                 <thead className="sticky top-0 bg-slate-800 text-slate-400 text-xs font-bold uppercase tracking-widest border-b border-slate-700">
                                     <tr>
-                                        <th className="px-4 py-3">Артикул</th>
-                                        <th className="px-4 py-3 text-center">Мін. кількість</th>
-                                        <th className="px-4 py-3 text-right">Дії</th>
+                                        <th className="px-4 py-2">Артикул</th>
+                                        <th className="px-4 py-2">Назва товару</th>
+                                        <th className="px-4 py-2 text-center">Мін. кількість</th>
+                                        <th className="px-4 py-2 text-right">Дії</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-700">
                                     {isLoadingLimits ? (
-                                        <tr><td colSpan={3} className="px-4 py-8 text-center text-slate-500">Завантаження...</td></tr>
-                                    ) : warehouseLimits.length === 0 ? (
-                                        <tr><td colSpan={3} className="px-4 py-8 text-center text-slate-500">Ліміти не встановлено</td></tr>
+                                        <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-500">Завантаження...</td></tr>
+                                    ) : filteredLimits.length === 0 ? (
+                                        <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-500">{newLimitProductCode.trim() ? 'Нічого не знайдено за вашим запитом' : 'Ліміти не встановлено'}</td></tr>
                                     ) : (
-                                        warehouseLimits.map((limit: WarehouseLimit) => (
+                                        filteredLimits.map((limit: WarehouseLimit) => (
                                             <tr key={limit.id} className="hover:bg-slate-700/30 group">
-                                                <td className="px-4 py-3 text-slate-200 font-medium">{limit.productCode}</td>
-                                                <td className="px-4 py-3 text-center text-blue-400 font-bold">{limit.minQuantity} од.</td>
-                                                <td className="px-4 py-3 text-right">
-                                                    <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <td className="px-4 py-1.5 text-blue-400 font-mono text-sm">{limit.productCode}</td>
+                                                <td className="px-4 py-1.5 text-slate-200 text-xs truncate" title={limit.name}>{limit.name || <span className="text-slate-500 italic">не знайдено</span>}</td>
+                                                <td className="px-4 py-1.5 text-center text-slate-200 font-bold">{limit.minQuantity} од.</td>
+                                                <td className="px-4 py-1.5 text-right">
+                                                    <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                         <button
                                                             onClick={() => {
                                                                 setLimitToEdit(limit);
                                                                 setNewLimitProductCode(limit.productCode);
                                                                 setNewLimitMinQty(limit.minQuantity);
                                                             }}
-                                                            className="p-1.5 text-slate-400 hover:text-blue-400 hover:bg-slate-600 rounded transition-all"
+                                                            className="p-1 px-2 text-slate-400 hover:text-blue-400 hover:bg-slate-600 rounded transition-all"
                                                         >
-                                                            <Edit3 className="w-4 h-4" />
+                                                            <Edit3 className="w-3.5 h-3.5" />
                                                         </button>
                                                         <button
                                                             onClick={() => setLimitToDelete({ id: limit.id, productCode: limit.productCode })}
-                                                            className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-600 rounded transition-all"
+                                                            className="p-1 px-2 text-slate-400 hover:text-red-400 hover:bg-slate-600 rounded transition-all"
                                                         >
-                                                            <Trash2 className="w-4 h-4" />
+                                                            <Trash2 className="w-3.5 h-3.5" />
                                                         </button>
                                                     </div>
                                                 </td>

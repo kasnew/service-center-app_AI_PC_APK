@@ -12,7 +12,7 @@ export default function ProfitsTab() {
     const location = useLocation();
     const { currentTheme } = useTheme();
     const isLight = currentTheme.type === 'light';
-    const [chartGroupBy, setChartGroupBy] = useState<'day' | 'week' | 'month'>('week');
+    const [chartGroupBy, setChartGroupBy] = useState<'day' | 'week' | 'month'>('day');
 
     // Use darker colors for light themes
     const greenColor = isLight ? 'text-green-800' : 'text-green-400';
@@ -39,18 +39,8 @@ export default function ProfitsTab() {
     };
 
     // Load date range from localStorage or use default
+    // For consistency with user request: ALWAYS use current month on startup
     const loadDateRange = () => {
-        const saved = localStorage.getItem('profits-tab-date-range');
-        if (saved) {
-            try {
-                const parsed = JSON.parse(saved);
-                if (parsed.start && parsed.end) {
-                    return parsed;
-                }
-            } catch (e) {
-                console.error('Error loading date range from localStorage:', e);
-            }
-        }
         return getDefaultDateRange();
     };
 
@@ -59,9 +49,10 @@ export default function ProfitsTab() {
     const [activeSubTab, setActiveSubTab] = useState<'details' | 'analytics'>('details');
     const [printData, setPrintData] = useState<any>(null);
 
-    // Save date range to localStorage whenever it changes
+    // Note: We no longer save to localStorage to ensure fresh current month on every restart
+    // as per user request "після перезапуску програми завжди обирати діапазон поточного місяця"
     useEffect(() => {
-        localStorage.setItem('profits-tab-date-range', JSON.stringify(dateRange));
+        // localStorage.setItem('profits-tab-date-range', JSON.stringify(dateRange));
     }, [dateRange]);
 
     // Check if we're returning from a repair editor

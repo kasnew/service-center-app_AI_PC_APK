@@ -87,4 +87,5 @@ export interface WarehouseLimit {
     id: number;
     productCode: string;
     minQuantity: number;
+    name?: string;
 }

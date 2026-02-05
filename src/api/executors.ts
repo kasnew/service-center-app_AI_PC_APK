@@ -3,6 +3,8 @@ export interface Executor {
     Name: string;
     SalaryPercent: number;
     ProductsPercent: number;
+    Icon?: string;
+    Color?: string;
 }
 
 export const executorsApi = {
@@ -10,11 +12,11 @@ export const executorsApi = {
         return await window.ipcRenderer.invoke('get-executors');
     },
 
-    addExecutor: async (data: { name: string; salaryPercent: number; productsPercent: number }): Promise<{ success: boolean; id: number }> => {
+    addExecutor: async (data: { name: string; salaryPercent: number; productsPercent: number; icon?: string; color?: string }): Promise<{ success: boolean; id: number }> => {
         return await window.ipcRenderer.invoke('add-executor', data);
     },
 
-    updateExecutor: async (data: { id: number; name: string; salaryPercent: number; productsPercent: number }): Promise<{ success: boolean }> => {
+    updateExecutor: async (data: { id: number; name: string; salaryPercent: number; productsPercent: number; icon?: string; color?: string }): Promise<{ success: boolean }> => {
         return await window.ipcRenderer.invoke('update-executor', data);
     },
 

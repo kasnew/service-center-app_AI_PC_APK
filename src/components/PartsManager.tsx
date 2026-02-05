@@ -94,14 +94,18 @@ export default function PartsManager({
                 dateEnd,
             });
         },
-        onSuccess: (_data, variables) => {
-            queryClient.invalidateQueries({ queryKey: ['repair-parts', variables.repairId] });
-            queryClient.invalidateQueries({ queryKey: ['warehouse-items'] });
-            queryClient.invalidateQueries({ queryKey: ['warehouse-items-for-repair'] });
+        onSuccess: async (_data, variables) => {
+            await Promise.all([
+                queryClient.invalidateQueries({ queryKey: ['repair-parts', variables.repairId] }),
+                queryClient.invalidateQueries({ queryKey: ['warehouse-items'] }),
+                queryClient.invalidateQueries({ queryKey: ['warehouse-items-for-repair'] })
+            ]);
             setShowAddForm(false);
             setIsManualEntry(false);
             setFormData({ partId: 0, supplier: '', name: '', priceUah: 0, costUah: 0 });
-            onPartsChange?.();
+            if (onPartsChange) {
+                await onPartsChange();
+            }
         },
         onError: (error: any) => {
             setErrorMessage(`Помилка при додаванні товару: ${error.message || 'Невідома помилка'}`);
@@ -280,12 +284,12 @@ export default function PartsManager({
     const totalPartsProfit = parts.reduce((sum: number, part: Part) => sum + (part.profit || 0), 0);
 
     return (
-        <div className="p-3">
+        <div className="p-1">
             <div className="flex items-center justify-end mb-4">
                 <button
                     type="button"
                     onClick={() => setShowAddForm(!showAddForm)}
-                    className="flex items-center gap-2 px-3 py-1.5 text-sm bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors"
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors mr-3"
                 >
                     <Plus className="w-5 h-5" />
                     <span className="text-base font-bold">Додати товар</span>
@@ -485,22 +489,22 @@ export default function PartsManager({
                         <table className="w-full text-sm">
                             <thead className={`border-b ${isLight ? 'bg-slate-200 border-slate-300' : 'bg-slate-800 border-slate-600'}`}>
                                 <tr>
-                                    <th className={`px-2 py-3 text-left text-sm font-bold uppercase tracking-wider w-16 ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                                    <th className={`px-2 py-1 text-left text-sm font-bold uppercase tracking-wider w-16 ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
                                         Пост.
                                     </th>
-                                    <th className={`px-3 py-3 text-left text-sm font-bold uppercase tracking-wider ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                                    <th className={`px-3 py-1 text-left text-sm font-bold uppercase tracking-wider ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
                                         Назва
                                     </th>
-                                    <th className={`px-3 py-3 text-right text-sm font-bold uppercase tracking-wider ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                                    <th className={`px-3 py-1 text-right text-sm font-bold uppercase tracking-wider ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
                                         Ціна, грн
                                     </th>
-                                    <th className={`px-3 py-3 text-right text-sm font-bold uppercase tracking-wider ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                                    <th className={`px-3 py-1 text-right text-sm font-bold uppercase tracking-wider ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
                                         Вхід, грн
                                     </th>
-                                    <th className={`px-3 py-3 text-right text-sm font-bold uppercase tracking-wider ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                                    <th className={`px-3 py-1 text-right text-sm font-bold uppercase tracking-wider ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
                                         Дохід, грн
                                     </th>
-                                    <th className={`px-3 py-3 text-center text-sm font-bold uppercase tracking-wider ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                                    <th className={`px-3 py-1 text-center text-sm font-bold uppercase tracking-wider ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
 
                                         Дії
                                     </th>
@@ -512,9 +516,9 @@ export default function PartsManager({
                                         key={part.id}
                                         className={`hover:bg-gray-100/10 ${editingPart?.id === part.id ? 'bg-blue-500/10 border-l-4 border-l-blue-500' : ''}`}
                                     >
-                                        <td className={`px-2 py-4 font-medium truncate max-w-[80px] ${isLight ? 'text-slate-800' : 'text-slate-100'}`} title={part.supplier}>{part.supplier}</td>
-                                        <td className={`px-3 py-4 ${isLight ? 'text-slate-800' : 'text-slate-100'}`}>{part.name}</td>
-                                        <td className={`px-3 py-4 text-right ${isLight ? 'text-slate-800' : 'text-slate-100'}`}>
+                                        <td className={`px-2 py-1 font-medium truncate max-w-[80px] ${isLight ? 'text-slate-800' : 'text-slate-100'}`} title={part.supplier}>{part.supplier}</td>
+                                        <td className={`px-3 py-1 ${isLight ? 'text-slate-800' : 'text-slate-100'}`}>{part.name}</td>
+                                        <td className={`px-3 py-1 text-right ${isLight ? 'text-slate-800' : 'text-slate-100'}`}>
                                             {editingPart?.id === part.id ? (
                                                 <input
                                                     type="text"
@@ -546,7 +550,7 @@ export default function PartsManager({
                                                 </span>
                                             )}
                                         </td>
-                                        <td className={`px-3 py-4 text-right ${isLight ? 'text-slate-800' : 'text-slate-100'}`}>
+                                        <td className={`px-3 py-1 text-right ${isLight ? 'text-slate-800' : 'text-slate-100'}`}>
                                             {editingPart?.id === part.id ? (
                                                 <input
                                                     type="text"
@@ -577,7 +581,7 @@ export default function PartsManager({
                                                 </span>
                                             )}
                                         </td>
-                                        <td className={`px-3 py-4 text-right font-medium ${isLight ? 'text-slate-800' : 'text-slate-100'}`}>
+                                        <td className={`px-3 py-1 text-right font-medium ${isLight ? 'text-slate-800' : 'text-slate-100'}`}>
                                             {editingPart?.id === part.id ? (
                                                 <span className={isLight ? 'text-green-800 font-bold' : 'text-green-400 font-semibold'}>
                                                     {((parseMoneyValue(normalizeMoneyInput(editPrice)) || 0) - (parseMoneyValue(normalizeMoneyInput(editCost)) || 0)).toFixed(2)}
@@ -589,7 +593,7 @@ export default function PartsManager({
                                             )}
 
                                         </td>
-                                        <td className="px-3 py-4 text-center">
+                                        <td className="px-3 py-1 text-center">
                                             <div className="flex items-center justify-center gap-2">
                                                 {editingPart?.id === part.id ? (
                                                     <>

@@ -69,7 +69,7 @@ export const ShutdownTimer: React.FC = () => {
 
     return (
         <div className={clsx(
-            "flex items-center gap-4 px-4 py-2 rounded-xl transition-all duration-300 border shadow-sm",
+            "flex items-center gap-4 px-4 py-1 rounded-lg transition-all duration-300 border shadow-sm h-10",
             settings.enabled
                 ? "bg-slate-800/60 border-blue-500/30 shadow-blue-900/10"
                 : "bg-slate-800/30 border-slate-700/50 grayscale opacity-70"
@@ -79,32 +79,32 @@ export const ShutdownTimer: React.FC = () => {
                 <button
                     onClick={() => updateMutation.mutate({ enabled: !settings.enabled })}
                     className={clsx(
-                        "p-2 rounded-lg transition-all duration-300 transform hover:scale-105 active:scale-95",
+                        "p-1.5 rounded-lg transition-all duration-300 transform hover:scale-105 active:scale-95",
                         settings.enabled
                             ? "bg-gradient-to-br from-red-500/20 to-orange-500/20 text-red-400 border border-red-500/30 shadow-lg shadow-red-900/20"
                             : "bg-slate-700/50 text-slate-500 border border-slate-600/50"
                     )}
                     title={settings.enabled ? "Вимкнути автозавершення" : "Увімкнути автозавершення"}
                 >
-                    <Power className={clsx("w-5 h-5", settings.enabled && "animate-pulse")} />
+                    <Power className={clsx("w-4 h-4", settings.enabled && "animate-pulse")} />
                 </button>
 
-                <div className="flex flex-col">
+                <div className="flex flex-col justify-center">
                     <span className={clsx(
-                        "text-[10px] font-bold uppercase tracking-widest leading-none mb-1",
+                        "text-[9px] font-bold uppercase tracking-widest leading-none mb-0.5",
                         settings.enabled ? "text-blue-400" : "text-slate-500"
                     )}>
                         Авто-вимкнення
                     </span>
-                    <div className="flex items-center gap-2">
-                        <Clock className={clsx("w-4 h-4", settings.enabled ? "text-slate-200" : "text-slate-500")} />
+                    <div className="flex items-center gap-1.5">
+                        <Clock className={clsx("w-3.5 h-3.5", settings.enabled ? "text-slate-200" : "text-slate-500")} />
                         <input
                             type="time"
                             value={settings.time || '21:00'}
                             onChange={(e) => updateMutation.mutate({ time: e.target.value })}
                             disabled={!settings.enabled}
                             className={clsx(
-                                "bg-transparent border-none p-0 text-lg font-bold focus:ring-0 w-24 transition-colors leading-none",
+                                "bg-transparent border-none p-0 text-base font-bold focus:ring-0 w-24 transition-colors leading-none",
                                 settings.enabled ? "text-white" : "text-slate-500 cursor-not-allowed"
                             )}
                         />
@@ -114,24 +114,24 @@ export const ShutdownTimer: React.FC = () => {
 
             {/* Time Remaining Indicator */}
             {settings.enabled && timeRemaining && (
-                <div className="hidden lg:flex flex-col border-l border-slate-700/50 pl-4 min-w-[100px]">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1 flex items-center gap-1">
-                        <Timer className="w-3 h-3" /> залишилось
+                <div className="hidden lg:flex flex-col border-l border-slate-700/50 pl-3 justify-center min-w-[90px]">
+                    <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-0.5 flex items-center gap-1">
+                        <Timer className="w-2.5 h-2.5" /> залишилось
                     </span>
-                    <div className="text-sm font-mono font-medium text-blue-400 flex items-baseline gap-1">
+                    <div className="text-xs font-mono font-medium text-blue-400 flex items-baseline gap-1">
                         {timeRemaining.totalMs < 3600000 ? (
                             <>
-                                <span className="text-lg font-bold">{timeRemaining.mins}</span>
-                                <span className="text-[10px] text-slate-500 uppercase">хв</span>
-                                <span className="text-lg font-bold ml-1">{timeRemaining.secs.toString().padStart(2, '0')}</span>
-                                <span className="text-[10px] text-slate-500 uppercase">с</span>
+                                <span className="text-base font-bold">{timeRemaining.mins}</span>
+                                <span className="text-[9px] text-slate-500 uppercase">хв</span>
+                                <span className="text-base font-bold ml-1">{timeRemaining.secs.toString().padStart(2, '0')}</span>
+                                <span className="text-[9px] text-slate-500 uppercase">с</span>
                             </>
                         ) : (
                             <>
-                                <span className="text-lg font-bold">{timeRemaining.hours}</span>
-                                <span className="text-[10px] text-slate-500 uppercase">год</span>
-                                <span className="text-lg font-bold ml-1">{timeRemaining.mins.toString().padStart(2, '0')}</span>
-                                <span className="text-[10px] text-slate-500 uppercase">хв</span>
+                                <span className="text-base font-bold">{timeRemaining.hours}</span>
+                                <span className="text-[9px] text-slate-500 uppercase">год</span>
+                                <span className="text-base font-bold ml-1">{timeRemaining.mins.toString().padStart(2, '0')}</span>
+                                <span className="text-[9px] text-slate-500 uppercase">хв</span>
                             </>
                         )}
                     </div>
