@@ -40,7 +40,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose, childre
     return createPortal(
         <div
             ref={menuRef}
-            className="fixed z-50 bg-slate-800 border border-slate-600 rounded-lg shadow-xl py-1 min-w-[200px]"
+            className="fixed z-50 bg-slate-800 border border-slate-600 rounded-lg shadow-2xl py-1.5 min-w-[220px] animate-in fade-in zoom-in-95 duration-200"
             style={style}
             onClick={(e) => e.stopPropagation()}
         >
@@ -60,14 +60,29 @@ interface ContextMenuItemProps {
 
 export const ContextMenuItem: React.FC<ContextMenuItemProps> = ({ onClick, icon, label, danger, children }) => {
     const [isSubmenuOpen, setIsSubmenuOpen] = useState(false);
+    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const handleMouseEnter = () => {
+        if (timeoutRef.current) {
+            clearTimeout(timeoutRef.current);
+            timeoutRef.current = null;
+        }
         if (children) setIsSubmenuOpen(true);
     };
 
     const handleMouseLeave = () => {
-        if (children) setIsSubmenuOpen(false);
+        if (children) {
+            timeoutRef.current = setTimeout(() => {
+                setIsSubmenuOpen(false);
+            }, 300); // 300ms grace period
+        }
     };
+
+    useEffect(() => {
+        return () => {
+            if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        };
+    }, []);
 
     return (
         <div
@@ -80,17 +95,21 @@ export const ContextMenuItem: React.FC<ContextMenuItemProps> = ({ onClick, icon,
                     e.stopPropagation();
                     if (onClick) onClick();
                 }}
-                className={`w-full px-4 py-2 text-sm text-left flex items-center gap-2 hover:bg-slate-700 transition-colors ${danger ? 'text-red-400' : 'text-slate-200'
+                className={`w-full px-4 py-2.5 text-sm text-left flex items-center gap-2.5 hover:bg-slate-700/80 transition-all duration-200 ${danger ? 'text-red-400' : 'text-slate-200'
                     }`}
             >
-                {icon && <span className="w-4 h-4 flex items-center justify-center">{icon}</span>}
-                <span className="flex-1">{label}</span>
+                {icon && <span className="w-4 h-4 flex items-center justify-center opacity-80">{icon}</span>}
+                <span className="flex-1 font-medium">{label}</span>
                 {children && <ChevronRight className="w-4 h-4 text-slate-500" />}
             </button>
 
             {children && isSubmenuOpen && (
-                <div className="absolute left-full top-0 ml-1 bg-slate-800 border border-slate-600 rounded-lg shadow-xl py-1 min-w-[200px]">
-                    {children}
+                <div className="absolute left-full top-0 -ml-1 pl-2 -mt-1 group z-50">
+                    {/* Invisible bridge to prevent closing when moving mouse to submenu */}
+                    <div className="absolute top-0 -left-4 w-4 h-full" />
+                    <div className="bg-slate-800 border border-slate-600 rounded-lg shadow-2xl py-1.5 min-w-[210px] animate-in fade-in slide-in-from-left-1 duration-200">
+                        {children}
+                    </div>
                 </div>
             )}
         </div>

@@ -14,7 +14,7 @@ import { parseMoneyValue, limitDecimalPlaces } from '../utils/formatters';
 import { useTheme } from '../contexts/ThemeContext';
 
 export default function Warehouse() {
-    const { currentTheme } = useTheme();
+    const { currentTheme, matrixEnabled, snowflakesEnabled, celestialEnabled } = useTheme();
     const isLightGray = currentTheme.id === 'light-gray';
     const navigate = useNavigate();
     const queryClient = useQueryClient();
@@ -383,7 +383,12 @@ export default function Warehouse() {
                             </button>
                             <button
                                 onClick={() => setShowAddForm(!showAddForm)}
-                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-900/40"
+                                className={clsx(
+                                    "flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-300 shadow-lg",
+                                    (matrixEnabled || snowflakesEnabled || celestialEnabled)
+                                        ? "bg-blue-600/20 border border-blue-500 text-blue-400 hover:bg-blue-600/30 shadow-blue-500/10"
+                                        : "bg-blue-600 text-white hover:bg-blue-700 shadow-blue-900/40"
+                                )}
                             >
                                 <Plus className="w-5 h-5" />
                                 Додати товар
@@ -486,7 +491,8 @@ export default function Warehouse() {
                                                     setParsedItems([]);
                                                 }
                                             }}
-                                            className="w-4 h-4 text-purple-500 rounded border-purple-500/50 bg-slate-800"
+                                            className="w-4 h-4 rounded cursor-pointer transition-all"
+                                            style={{ backgroundColor: 'var(--theme-surface)', borderColor: 'var(--theme-border)' }}
                                         />
                                         <span className="text-sm font-semibold text-purple-400">Розумний імпорт</span>
                                     </label>

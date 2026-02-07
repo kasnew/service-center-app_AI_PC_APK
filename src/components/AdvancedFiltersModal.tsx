@@ -14,6 +14,7 @@ interface AdvancedFiltersModalProps {
     onClose: () => void;
     onApply: (rules: AdvancedFilterRule[]) => void;
     initialRules: AdvancedFilterRule[];
+    executors: any[];
 }
 
 const FIELDS = [
@@ -43,7 +44,7 @@ const OPERATORS = [
 ];
 
 export const AdvancedFiltersModal: React.FC<AdvancedFiltersModalProps> = ({
-    isOpen, onClose, onApply, initialRules
+    isOpen, onClose, onApply, initialRules, executors
 }) => {
     const { currentTheme } = useTheme();
     const isLight = currentTheme.type === 'light';
@@ -125,14 +126,30 @@ export const AdvancedFiltersModal: React.FC<AdvancedFiltersModalProps> = ({
                                 {OPERATORS.map(op => <option key={op.id} value={op.id}>{op.label}</option>)}
                             </select>
 
-                            <input
-                                type="text"
-                                value={rule.value}
-                                onChange={(e) => updateRule(index, { value: e.target.value })}
-                                placeholder="Значення..."
-                                className={`flex-[1.5] px-3 py-2 rounded-lg text-sm border-2 transition-all focus:outline-none
-                                    ${isLight ? 'bg-white border-slate-200 focus:border-blue-500' : 'bg-slate-900 border-slate-700 focus:border-blue-500 text-slate-200'}`}
-                            />
+                            {rule.field === 'executor' ? (
+                                <select
+                                    value={rule.value}
+                                    onChange={(e) => updateRule(index, { value: e.target.value })}
+                                    className={`flex-[1.5] px-3 py-2 rounded-lg text-sm border-2 transition-all focus:outline-none
+                                        ${isLight ? 'bg-white border-slate-200 focus:border-blue-500' : 'bg-slate-900 border-slate-700 focus:border-blue-500 text-slate-200'}`}
+                                >
+                                    <option value="">Оберіть виконавця...</option>
+                                    {executors
+                                        .filter(e => !(e.SalaryPercent === 0 && e.ProductsPercent === 0))
+                                        .map(e => (
+                                            <option key={e.ID} value={e.Name}>{e.Name}</option>
+                                        ))}
+                                </select>
+                            ) : (
+                                <input
+                                    type="text"
+                                    value={rule.value}
+                                    onChange={(e) => updateRule(index, { value: e.target.value })}
+                                    placeholder="Значення..."
+                                    className={`flex-[1.5] px-3 py-2 rounded-lg text-sm border-2 transition-all focus:outline-none
+                                        ${isLight ? 'bg-white border-slate-200 focus:border-blue-500' : 'bg-slate-900 border-slate-700 focus:border-blue-500 text-slate-200'}`}
+                                />
+                            )}
 
                             <button
                                 onClick={() => removeRule(index)}

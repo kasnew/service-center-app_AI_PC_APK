@@ -6,13 +6,12 @@ import { executorsApi } from '../api/executors';
 import { warehouseApi } from '../api/warehouse';
 import { profitsApi } from '../api/cashRegister';
 import { RepairStatus } from '../types/db';
-import { Search, Loader2, Copy, Trash2, Phone, Check, Clock, Play, XCircle, MapPin, CheckCircle, X, Eye, EyeOff, RotateCcw } from 'lucide-react';
+import { Search, Loader2, Copy, Trash2, Phone, Check, Clock, Play, XCircle, MapPin, CheckCircle, X, Eye, EyeOff, RotateCcw, ChevronDown, User } from 'lucide-react';
 import { ContextMenu, ContextMenuItem } from '../components/ContextMenu';
 import { ConfirmationModal } from '../components/ConfirmationModal';
 import { clsx } from 'clsx';
 import { formatPhoneNumber } from '../utils/formatters';
 import { useTheme } from '../contexts/ThemeContext';
-import { User } from 'lucide-react';
 import { EXECUTOR_ICONS } from '../constants/executors';
 import { useHotkeys } from '../hooks/useHotkeys';
 import { fuzzySearch } from '../utils/fuzzySearch';
@@ -20,9 +19,11 @@ import { QRCodeModal } from '../components/QRCodeModal';
 import { Smartphone, Filter } from 'lucide-react';
 import { AdvancedFiltersModal, AdvancedFilterRule } from '../components/AdvancedFiltersModal';
 import { RefundModal, RefundData } from '../components/RefundModal';
+import { WeatherWidget } from '../components/WeatherWidget';
+import { createPortal } from 'react-dom';
 
 export const Dashboard: React.FC = () => {
-    const { currentTheme } = useTheme();
+    const { currentTheme, matrixEnabled, snowflakesEnabled, celestialEnabled, rainEnabled, weatherEnabled } = useTheme();
     const isLight = currentTheme.type === 'light';
     const navigate = useNavigate();
     const location = useLocation();
@@ -35,6 +36,12 @@ export const Dashboard: React.FC = () => {
     const [qrModalData, setQrModalData] = React.useState<{ phoneNumber: string; clientName: string; workDone?: string } | null>(null);
     const [isAdvancedModalOpen, setIsAdvancedModalOpen] = React.useState(false);
     const [refundModal, setRefundModal] = React.useState<{ repair: any } | null>(null);
+    const [showExecutorDropdown, setShowExecutorDropdown] = React.useState(false);
+    const [openRowExecutorDropdownId, setOpenRowExecutorDropdownId] = React.useState<number | null>(null);
+    const executorDropdownRef = React.useRef<HTMLDivElement>(null);
+    const executorButtonRef = React.useRef<HTMLButtonElement>(null);
+    const executorDropdownContentRef = React.useRef<HTMLDivElement>(null);
+    const rowExecutorDropdownRef = React.useRef<HTMLDivElement>(null);
     const queryClient = useQueryClient();
     const searchInputRef = React.useRef<HTMLInputElement>(null);
     const [showFinancialStats, setShowFinancialStats] = React.useState(() => {
@@ -55,9 +62,34 @@ export const Dashboard: React.FC = () => {
         }
     });
 
-    // Esc to clear filters when QR modal is not shown
+    // Esc to clear filters or close modals
     useHotkeys('escape', () => {
-        if (!qrModalData && (statusFilter.length > 0 || shouldCall || search || executorFilter || dateStart || dateEnd || paymentDateStart || paymentDateEnd || advancedFilters.length > 0)) {
+        if (contextMenu) {
+            setContextMenu(null);
+            return;
+        }
+        if (isAdvancedModalOpen) {
+            setIsAdvancedModalOpen(false);
+            return;
+        }
+        if (paymentModal) {
+            setPaymentModal(null);
+            return;
+        }
+        if (qrModalData) {
+            setQrModalData(null);
+            return;
+        }
+        if (refundModal) {
+            setRefundModal(null);
+            return;
+        }
+        if (deleteId) {
+            setDeleteId(null);
+            return;
+        }
+
+        if (statusFilter.length > 0 || shouldCall || search || executorFilter || dateStart || dateEnd || paymentDateStart || paymentDateEnd || advancedFilters.length > 0) {
             handleReset();
         }
     });
@@ -222,6 +254,23 @@ export const Dashboard: React.FC = () => {
     const todayStats = calculateExecutorStats(todayProfits);
     const monthStats = calculateExecutorStats(monthProfits);
     // ---------------------------------
+
+    // Handle click outside for executor dropdowns
+    React.useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            const target = event.target as Node;
+            // Check if click is outside both the button container AND the dropdown content
+            if (executorDropdownRef.current && !executorDropdownRef.current.contains(target) &&
+                executorDropdownContentRef.current && !executorDropdownContentRef.current.contains(target)) {
+                setShowExecutorDropdown(false);
+            }
+            if (rowExecutorDropdownRef.current && !rowExecutorDropdownRef.current.contains(target)) {
+                setOpenRowExecutorDropdownId(null);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     // Scroll to last modified repair
     React.useEffect(() => {
@@ -530,7 +579,7 @@ export const Dashboard: React.FC = () => {
 
     return (
         <div className="h-full flex flex-col p-6 space-y-6 overflow-hidden">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-4 relative z-30">
                 <div className="flex items-center gap-6">
                     <div className="flex items-center gap-3">
                         <h2 className="text-2xl font-bold text-slate-100">Активні ремонти</h2>
@@ -577,17 +626,40 @@ export const Dashboard: React.FC = () => {
                     )}
                 </div>
 
-                <button
-                    onClick={() => navigate('/repair/new')}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors">
-                    Новий ремонт
-                </button>
+                <div className="flex items-center gap-4">
+                    <button
+                        onClick={() => navigate('/repair/new')}
+                        className={clsx(
+                            "px-4 py-2 rounded-lg font-medium transition-all duration-300 shadow-lg whitespace-nowrap",
+                            (matrixEnabled || snowflakesEnabled || celestialEnabled || rainEnabled)
+                                ? "bg-blue-600/20 border border-blue-500 text-blue-400 hover:bg-blue-600/30"
+                                : "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/40"
+                        )}
+                    >
+                        Новий ремонт
+                    </button>
+                </div>
             </div>
 
+            {/* WeatherWidget moved to absolute to prevent layout shifting */}
+            {weatherEnabled && (
+                <div className="fixed top-24 right-10 z-[40] pointer-events-none">
+                    <div className="pointer-events-auto">
+                        <WeatherWidget />
+                    </div>
+                </div>
+            )}
+
             {/* Filters */}
-            <div className="space-y-4 bg-slate-700 p-4 rounded-lg border border-slate-600 rainbow-groupbox">
+            <div className={clsx(
+                "space-y-4 bg-slate-700 p-4 rounded-lg border border-slate-600 rainbow-groupbox relative overflow-visible",
+                (showExecutorDropdown || isAdvancedModalOpen) ? "z-[100]" : "z-[10]"
+            )}>
                 {/* Search and Date Filters in one row */}
-                <div className="flex flex-wrap items-center gap-4">
+                <div className={clsx(
+                    "flex flex-wrap items-center gap-4 overflow-visible relative",
+                    (showExecutorDropdown || isAdvancedModalOpen) ? "z-[30]" : "z-[1]"
+                )}>
                     <div className="relative flex-1 min-w-[200px]">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                         <input
@@ -638,7 +710,7 @@ export const Dashboard: React.FC = () => {
                 </div>
 
                 {/* Status buttons with counts */}
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3 overflow-visible">
                     <div className="text-sm text-slate-400 font-medium">Стан:</div>
                     {statusBarStatuses.map(status => {
                         const count = statusCounts[status] || 0;
@@ -668,7 +740,7 @@ export const Dashboard: React.FC = () => {
                 </div>
 
                 {/* Other filters */}
-                <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-600">
+                <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-600 overflow-visible">
                     {/* Дзвінок Filter Button */}
                     <button
                         onClick={handleCallFilterClick}
@@ -683,20 +755,112 @@ export const Dashboard: React.FC = () => {
                         Дзвінок
                     </button>
 
-                    <select
-                        value={executorFilter}
-                        onChange={(e) => handleExecutorFilterChange(e.target.value)}
-                        className="px-4 py-2 rounded-lg text-sm font-medium border-2 bg-slate-800 border-slate-600 text-slate-300 hover:border-slate-500 transition-all focus:outline-none focus:border-blue-500"
-                    >
-                        <option value="">Всі виконавці</option>
-                        {executors
-                            .filter((executor: any) => !(executor.SalaryPercent === 0 && executor.ProductsPercent === 0))
-                            .map((executor: any) => (
-                                <option key={executor.ID} value={executor.Name}>
-                                    {executor.Name}
-                                </option>
-                            ))}
-                    </select>
+                    <div className="relative" ref={executorDropdownRef}>
+                        <button
+                            ref={executorButtonRef}
+                            type="button"
+                            onClick={() => setShowExecutorDropdown(!showExecutorDropdown)}
+                            className={clsx(
+                                "flex items-center justify-between gap-2 px-4 py-2 rounded-lg text-sm font-medium border-2 transition-all shadow-sm min-w-[180px]",
+                                showExecutorDropdown
+                                    ? "bg-slate-700 border-blue-500 ring-2 ring-blue-500/20"
+                                    : "bg-slate-800 border-slate-600 hover:border-slate-500 text-slate-300"
+                            )}
+                        >
+                            <div className="flex items-center gap-2 overflow-hidden">
+                                {(() => {
+                                    if (!executorFilter) {
+                                        return (
+                                            <>
+                                                <User className="w-4 h-4 text-slate-500" />
+                                                <span className="truncate">Всі виконавці</span>
+                                            </>
+                                        );
+                                    }
+                                    const executorData = executors.find((e: any) => e.Name === executorFilter);
+                                    const matchingIcon = EXECUTOR_ICONS.find(i => i.name === executorData?.Icon);
+                                    const IconComp = matchingIcon ? matchingIcon.Icon : User;
+                                    return (
+                                        <>
+                                            <IconComp
+                                                className="w-4 h-4 flex-shrink-0"
+                                                style={{ color: executorData?.Color || (isLight ? '#334155' : '#94a3b8') }}
+                                            />
+                                            <span className="truncate">{executorFilter}</span>
+                                        </>
+                                    );
+                                })()}
+                            </div>
+                            <ChevronDown className={clsx("w-4 h-4 text-slate-400 transition-transform duration-300", showExecutorDropdown && "rotate-180")} />
+                        </button>
+
+                        {showExecutorDropdown && executorButtonRef.current && createPortal(
+                            <div
+                                ref={executorDropdownContentRef}
+                                className="fixed rounded-xl border-2 border-slate-500 shadow-[0_30px_90px_rgba(0,0,0,1)] overflow-hidden"
+                                style={{
+                                    backgroundColor: isLight ? '#ffffff' : '#0f172a',
+                                    opacity: 1,
+                                    zIndex: 99999,
+                                    top: `${executorButtonRef.current.getBoundingClientRect().bottom + 8}px`,
+                                    left: `${executorButtonRef.current.getBoundingClientRect().left}px`,
+                                    width: `${Math.max(executorButtonRef.current.getBoundingClientRect().width, 200)}px`
+                                }}
+                            >
+                                <div className="max-h-60 overflow-y-auto py-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            handleExecutorFilterChange('');
+                                            setShowExecutorDropdown(false);
+                                        }}
+                                        className={clsx(
+                                            "w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors",
+                                            !executorFilter ? "bg-blue-600/20 text-blue-400" : "hover:bg-white/5"
+                                        )}
+                                    >
+                                        <User className="w-4 h-4 text-slate-500" />
+                                        <span className="text-sm font-medium">Всі виконавці</span>
+                                        {!executorFilter && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />}
+                                    </button>
+
+                                    {executors
+                                        .filter((executor: any) => (Number(executor.SalaryPercent || 0) > 0 || Number(executor.ProductsPercent || 0) > 0))
+                                        .map((executor: any) => {
+                                            const matchingIcon = EXECUTOR_ICONS.find(i => i.name === executor.Icon);
+                                            const IconComp = matchingIcon ? matchingIcon.Icon : User;
+                                            const isSelected = executorFilter === executor.Name;
+
+                                            return (
+                                                <button
+                                                    key={executor.ID}
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleExecutorFilterChange(executor.Name);
+                                                        setShowExecutorDropdown(false);
+                                                    }}
+                                                    className={clsx(
+                                                        "w-full flex items-center gap-3 px-4 py-2.5 text-left transition-all duration-200",
+                                                        isSelected
+                                                            ? "bg-blue-600/30 text-blue-400"
+                                                            : (isLight ? "text-slate-800 hover:bg-slate-100" : "text-slate-200 hover:bg-white/10")
+                                                    )}
+                                                >
+                                                    <IconComp
+                                                        className="w-4 h-4"
+                                                        style={{ color: executor.color || executor.Color || (isLight ? '#334155' : '#94a3b8') }}
+                                                    />
+                                                    <span className="text-sm font-semibold">{executor.Name}</span>
+                                                    {isSelected && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />}
+                                                </button>
+                                            );
+                                        })}
+                                </div>
+                            </div>,
+                            document.body
+                        )}
+                    </div>
 
                     <button
                         onClick={() => setIsAdvancedModalOpen(true)}
@@ -729,10 +893,32 @@ export const Dashboard: React.FC = () => {
             </div>
 
             {/* Table */}
-            <div className="bg-slate-700 rounded-lg border border-slate-600 overflow-hidden flex flex-col flex-1 rainbow-groupbox">
+            <div className={clsx(
+                "bg-slate-700 rounded-lg border border-slate-600 overflow-visible flex flex-col flex-1 rainbow-groupbox relative",
+                openRowExecutorDropdownId ? "z-[100]" : "z-[1]"
+            )}>
                 {/* Fixed Header */}
-                <div className="overflow-x-auto border-b flex-shrink-0" style={{ borderColor: 'var(--theme-border)' }}>
-                    <table className="w-full text-left text-sm">
+                <div
+                    className={clsx(
+                        "overflow-x-auto overflow-y-scroll border-b flex-shrink-0 relative",
+                        openRowExecutorDropdownId ? "z-[30]" : "z-[1]"
+                    )}
+                    style={{ borderColor: 'var(--theme-border)' }}
+                >
+                    <table className="w-full text-left text-sm" style={{ tableLayout: 'fixed', width: '100%' }}>
+                        <colgroup>
+                            <col style={{ width: '75px' }} />
+                            <col style={{ width: 'auto', minWidth: '150px' }} />
+                            <col style={{ width: '190px' }} />
+                            <col style={{ width: '80px' }} />
+                            <col style={{ width: '210px' }} />
+                            <col style={{ width: '125px' }} />
+                            <col style={{ width: '110px' }} />
+                            <col style={{ width: '110px' }} />
+                            <col style={{ width: '150px' }} />
+                            <col style={{ width: '200px' }} />
+                            <col style={{ width: '80px' }} />
+                        </colgroup>
                         <thead
                             className="font-medium"
                             style={{
@@ -742,7 +928,7 @@ export const Dashboard: React.FC = () => {
                         >
                             <tr>
                                 <th className="px-4 py-1 text-center" style={{ width: '75px' }}>Квитанція</th>
-                                <th className="px-6 py-1" style={{ width: 'auto', minWidth: '150px' }}>Техніка</th>
+                                <th className="px-6 py-1 text-center" style={{ width: 'auto', minWidth: '150px' }}>Техніка</th>
                                 <th className="px-6 py-1 w-[190px] text-center">Клієнт</th>
                                 <th className="px-4 py-1 w-[80px] text-center">Дзвінок</th>
                                 <th className="px-4 py-1 text-center" style={{ width: '210px' }}>Статус</th>
@@ -757,8 +943,11 @@ export const Dashboard: React.FC = () => {
                     </table>
                 </div>
                 {/* Scrollable Body */}
-                <div className="overflow-x-auto overflow-y-auto flex-1">
-                    <table className="w-full text-left text-sm">
+                <div className={clsx(
+                    "overflow-x-auto overflow-y-auto flex-1 relative",
+                    openRowExecutorDropdownId ? "z-[30]" : "z-[1]"
+                )}>
+                    <table className="w-full text-left text-sm" style={{ tableLayout: 'fixed', width: '100%' }}>
                         <colgroup>
                             <col style={{ width: '75px' }} />
                             <col style={{ width: 'auto', minWidth: '150px' }} />
@@ -821,7 +1010,7 @@ export const Dashboard: React.FC = () => {
                                             #{repair.receiptId}
                                         </td>
                                         <td
-                                            className="px-6 py-2 cursor-pointer"
+                                            className="px-6 py-2 cursor-pointer text-center"
                                             onClick={() => navigate(`/repair/${repair.id}`)}
                                         >
                                             <div className="font-medium text-slate-100">{repair.deviceName}</div>
@@ -838,6 +1027,7 @@ export const Dashboard: React.FC = () => {
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
+                                                            (e.currentTarget as HTMLButtonElement).blur();
                                                             setQrModalData({
                                                                 phoneNumber: formatPhoneNumber(repair.clientPhone),
                                                                 clientName: repair.clientName,
@@ -866,11 +1056,12 @@ export const Dashboard: React.FC = () => {
                                                         shouldCall: e.target.checked
                                                     });
                                                 }}
-                                                className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                                className="w-4 h-4 rounded cursor-pointer transition-all"
+                                                style={{ backgroundColor: 'var(--theme-surface)', borderColor: 'var(--theme-border)' }}
                                             />
                                         </td>
                                         <td
-                                            className="px-4 py-2 cursor-pointer"
+                                            className="px-4 py-2 cursor-pointer text-center"
                                             onClick={(e) => e.stopPropagation()}
                                         >
                                             <div className="relative group">
@@ -963,36 +1154,82 @@ export const Dashboard: React.FC = () => {
                                                 day: '2-digit'
                                             }) : '-'}
                                         </td>
-                                        <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
-                                            <div className="flex items-center gap-2">
-                                                <div className="flex-shrink-0">
+                                        <td className="px-4 py-2 text-center" onClick={(e) => e.stopPropagation()}>
+                                            <div className="relative" ref={repair.id === openRowExecutorDropdownId ? rowExecutorDropdownRef : null}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setOpenRowExecutorDropdownId(openRowExecutorDropdownId === repair.id ? null : repair.id)}
+                                                    className={clsx(
+                                                        "w-full flex items-center justify-between gap-2 px-3 py-1.5 rounded border transition-all shadow-sm",
+                                                        openRowExecutorDropdownId === repair.id
+                                                            ? "bg-slate-700 border-blue-500 ring-2 ring-blue-500/20"
+                                                            : (isLight ? "bg-white border-slate-300 hover:border-slate-400" : "bg-slate-800 border-slate-600 hover:border-slate-500")
+                                                    )}
+                                                >
                                                     {(() => {
                                                         const executorName = repair.executor;
                                                         const executorData = executors.find((e: any) => e.Name === executorName);
                                                         const matchingIcon = EXECUTOR_ICONS.find(i => i.name === executorData?.Icon);
                                                         const IconComp = matchingIcon ? matchingIcon.Icon : User;
-                                                        return <IconComp className="w-4 h-4" style={{ color: executorData?.Color || '#64748b' }} />;
+                                                        return (
+                                                            <>
+                                                                <IconComp
+                                                                    className="w-3.5 h-3.5 flex-shrink-0"
+                                                                    style={{ color: executorData?.Color || (isLight ? '#334155' : '#94a3b8') }}
+                                                                />
+                                                                <span className={clsx("truncate text-[11px] font-medium flex-1", isLight ? "text-slate-900" : "text-slate-100")}>
+                                                                    {executorName || (executors.length > 0 ? executors[0].Name : '')}
+                                                                </span>
+                                                                <ChevronDown className={clsx("w-3 h-3 text-slate-400 transition-transform duration-300 flex-shrink-0", openRowExecutorDropdownId === repair.id && "rotate-180")} />
+                                                            </>
+                                                        );
                                                     })()}
-                                                </div>
-                                                <select
-                                                    value={repair.executor || (executors.length > 0 ? executors[0].Name : '')}
-                                                    onChange={(e) => {
-                                                        e.stopPropagation();
-                                                        updateExecutorMutation.mutate({ id: repair.id, executor: e.target.value });
-                                                    }}
-                                                    className={`w-full bg-transparent border rounded px-2 py-1 text-xs focus:outline-none focus:border-blue-500 transition-colors ${isLight
-                                                        ? 'border-slate-300 text-slate-900 bg-white/50'
-                                                        : 'border-slate-600 text-slate-200 bg-slate-700'
-                                                        }`}
-                                                >
-                                                    {executors
-                                                        .filter((executor: any) => !(executor.SalaryPercent === 0 && executor.ProductsPercent === 0))
-                                                        .map((executor: any) => (
-                                                            <option key={executor.ID} value={executor.Name} className={isLight ? 'bg-white text-slate-900' : 'bg-slate-800 text-slate-200'}>
-                                                                {executor.Name}
-                                                            </option>
-                                                        ))}
-                                                </select>
+                                                </button>
+
+                                                {openRowExecutorDropdownId === repair.id && (
+                                                    <div className="absolute top-full left-0 mt-1 w-full min-w-[160px] rounded-lg border-2 border-slate-500 shadow-[0_30px_90px_rgba(0,0,0,1)] overflow-hidden z-[9999] dropdown-solid-fix"
+                                                        style={{
+                                                            backgroundColor: isLight ? '#ffffff' : '#0f172a',
+                                                            opacity: '1 !important' as any,
+                                                            backgroundImage: 'none !important' as any,
+                                                            backdropFilter: 'none !important' as any
+                                                        }}
+                                                    >
+                                                        <div className="max-h-48 overflow-y-auto py-1">
+                                                            {executors
+                                                                .filter((executor: any) => (Number(executor.SalaryPercent || 0) > 0 || Number(executor.ProductsPercent || 0) > 0))
+                                                                .map((executor: any) => {
+                                                                    const matchingIcon = EXECUTOR_ICONS.find(i => i.name === executor.Icon);
+                                                                    const IconComp = matchingIcon ? matchingIcon.Icon : User;
+                                                                    const isSelected = repair.executor === executor.Name;
+
+                                                                    return (
+                                                                        <button
+                                                                            key={executor.ID}
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                updateExecutorMutation.mutate({ id: repair.id, executor: executor.Name });
+                                                                                setOpenRowExecutorDropdownId(null);
+                                                                            }}
+                                                                            className={clsx(
+                                                                                "w-full flex items-center gap-2 px-3 py-2 text-left transition-all duration-200",
+                                                                                isSelected
+                                                                                    ? "bg-blue-600/30 text-blue-400"
+                                                                                    : (isLight ? "text-slate-800 hover:bg-slate-100" : "text-slate-200 hover:bg-white/10")
+                                                                            )}
+                                                                        >
+                                                                            <IconComp
+                                                                                className="w-3.5 h-3.5"
+                                                                                style={{ color: executor.Color || (isLight ? '#334155' : '#94a3b8') }}
+                                                                            />
+                                                                            <span className="text-[11px] font-semibold">{executor.Name}</span>
+                                                                            {isSelected && <div className="ml-auto w-1 h-1 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />}
+                                                                        </button>
+                                                                    );
+                                                                })}
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         </td>
                                         <td
@@ -1197,6 +1434,7 @@ export const Dashboard: React.FC = () => {
                     }
                     setIsAdvancedModalOpen(false);
                 }}
+                executors={executors}
             />
 
             {refundModal && (

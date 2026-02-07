@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { profitsApi } from '../api/cashRegister';
-import { TrendingUp, Package, AlertCircle, DollarSign, ChevronDown, ChevronRight, Cpu, Zap, Settings as SettingsIcon, Printer } from 'lucide-react';
+import { TrendingUp, Package, AlertCircle, DollarSign, ChevronDown, ChevronRight, Printer, User } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { ProfitChart } from './ProfitChart';
 import { clsx } from 'clsx';
+import { EXECUTOR_ICONS } from '../constants/executors';
+import { executorsApi } from '../api/executors';
 
 export default function ProfitsTab() {
     const navigate = useNavigate();
@@ -65,6 +67,12 @@ export default function ProfitsTab() {
             window.history.replaceState({}, '');
         }
     }, [location.state]);
+
+    // Fetch executors list
+    const { data: executorsList = [] } = useQuery({
+        queryKey: ['executors'],
+        queryFn: () => executorsApi.getExecutors(),
+    });
 
     // Fetch executor profits
     const { data: executorProfits = [], isLoading: loadingExecutors } = useQuery({
@@ -269,10 +277,10 @@ export default function ProfitsTab() {
                                                                     )}
                                                                     <div className="flex-shrink-0">
                                                                         {(() => {
-                                                                            const name = executor.executorName?.toLowerCase() || '';
-                                                                            if (name.includes('андрій')) return <Cpu className="w-4 h-4 text-blue-500" />;
-                                                                            if (name.includes('юрій')) return <Zap className="w-4 h-4 text-amber-500" />;
-                                                                            return <SettingsIcon className="w-4 h-4 text-slate-500" />;
+                                                                            const executorData = executorsList.find((e: any) => e.Name === executor.executorName);
+                                                                            const matchingIcon = EXECUTOR_ICONS.find(i => i.name === executorData?.Icon);
+                                                                            const IconComp = matchingIcon ? matchingIcon.Icon : User;
+                                                                            return <IconComp className="w-4 h-4" style={{ color: executorData?.Color || '#64748b' }} />;
                                                                         })()}
                                                                     </div>
                                                                     {executor.executorName}
@@ -317,7 +325,7 @@ export default function ProfitsTab() {
                         </div>
 
                         {/* Products Statistics Section */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 no-print">
                             <div className="bg-slate-700 rounded-lg p-6 border border-slate-600 rainbow-groupbox">
                                 <div className="flex items-center gap-3 mb-2">
                                     <div className="p-2 bg-red-900/30 rounded-lg">
@@ -356,7 +364,7 @@ export default function ProfitsTab() {
                         </div>
 
                         {/* Unpaid Ready Orders Section */}
-                        <div className="bg-slate-700 rounded-lg border border-slate-600 overflow-hidden rainbow-groupbox">
+                        <div className="bg-slate-700 rounded-lg border border-slate-600 overflow-hidden rainbow-groupbox no-print">
                             <div className="px-6 py-4 border-b border-slate-600 bg-slate-800/50">
                                 <div className="flex items-center gap-2">
                                     <AlertCircle className={`w-5 h-5 ${isLight ? 'text-amber-800' : 'text-yellow-400'}`} />

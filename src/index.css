@@ -163,44 +163,71 @@ button,
   background-color: var(--theme-primary-hover) !important;
 }
 
-/* Date picker calendar icon visibility fix - dark by default, invert for dark themes */
+/* Force solid dropdowns to prevent transparency issues from parents */
+.dropdown-solid-fix {
+  background-color: #0f172a !important;
+  opacity: 1 !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  z-index: 99999 !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 1) !important;
+}
+
+html[data-theme-type="light"] .dropdown-solid-fix {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+/* Global styling for native inputs and selects */
+select,
+input[type="date"],
+input[type="datetime-local"],
+input[type="text"],
+input[type="number"],
+input[type="password"],
+input[type="checkbox"],
+textarea {
+  background-color: var(--theme-surface);
+  color: var(--theme-text);
+  border-color: var(--theme-border);
+  accent-color: var(--theme-primary);
+  color-scheme: inherit;
+  /* Respects root color-scheme */
+}
+
+/* Improve checkbox visibility and appearance */
+input[type="checkbox"] {
+  background-color: var(--theme-surface) !important;
+  border: 1px solid var(--theme-border) !important;
+  accent-color: var(--theme-primary) !important;
+  cursor: pointer;
+}
+
+[data-theme-type="dark"] input[type="checkbox"] {
+  filter: brightness(1.2);
+}
+
+/* Improve date inputs appearance */
 input[type="date"]::-webkit-calendar-picker-indicator,
 input[type="datetime-local"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
-  opacity: 0.7;
+  border-radius: 4px;
+  padding: 2px;
 }
 
-/* Invert for dark themes to make them white/visible */
-:root[data-theme-type="dark"] input[type="date"]::-webkit-calendar-picker-indicator,
-:root[data-theme-type="dark"] input[type="datetime-local"]::-webkit-calendar-picker-indicator {
-  filter: invert(1);
-}
+/* (Moved to end of file for priority) */
 
-input[type="date"]::-webkit-calendar-picker-indicator:hover,
-input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
-  opacity: 1;
-}
-
-/* Calendar popup styling - theme aware */
-::-webkit-calendar-picker-indicator {
-  background-color: transparent;
-  color: var(--theme-text);
-}
-
-input[type="date"]::-webkit-datetime-edit,
-input[type="datetime-local"]::-webkit-datetime-edit {
-  color: var(--theme-text);
-}
-
-input[type="date"]::-webkit-datetime-edit-fields-wrapper,
-input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper {
-  color: var(--theme-text);
-}
-
-/* Calendar window background - matches theme */
-::-webkit-calendar-picker-indicator:active,
-::-webkit-calendar-picker-indicator:focus {
+/* Force options to have theme backgrounds for browsers that support it */
+select option {
   background-color: var(--theme-surface);
+  color: var(--theme-text);
+}
+
+/* Ensure placeholder visibility */
+::placeholder {
+  color: var(--theme-text-secondary) !important;
+  opacity: 0.5;
 }
 
 @property --rainbow-angle {
@@ -209,51 +236,95 @@ input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper {
   inherits: false;
 }
 
-/* Rainbow Groupbox Animation - Pure Outline Glow */
+/* ---------------------------------------------------------
+   RGB SYSTEM - CLEAN & FINAL
+   --------------------------------------------------------- */
+
 .rainbow-groupbox {
   position: relative;
   z-index: 0;
-  border: none !important;
-  /* Ensure we don't have double borders */
 }
 
+/* Consolidated Base style for RGB effects */
 body.rainbow-mode .rainbow-groupbox::before {
   content: '';
   position: absolute;
-  /* Stay inside to avoid clipping by overflow: hidden */
-  inset: 0;
+  /* Grow outwards by thickness */
+  inset: calc(-1 * var(--rainbow-thickness, 2px));
   border-radius: inherit;
-  padding: var(--rainbow-thickness, 2px);
-
-  /* Conic gradient for circular motion around the edges */
-  background: conic-gradient(from var(--rainbow-angle),
-      #ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff, #7a00ff, #ff00c8, #ff0000);
-  background-size: 100% 100%;
-
-  /* Mask out the center to only show the border thinning/outline */
-  -webkit-mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  mask-composite: exclude;
-
   z-index: 10;
   pointer-events: none;
   opacity: var(--rainbow-brightness, 0.8);
-  filter: blur(0.5px);
+  transition: opacity 0.3s ease, inset 0.2s ease, padding 0.2s ease;
+
+  /* The Magic Mask: only show the border area defined by padding */
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  padding: var(--rainbow-thickness, 2px);
+
   animation: rainbow-rotate var(--rainbow-speed, 5s) linear infinite;
-  transition: opacity 0.3s ease;
 }
 
-/* Ensure content stays above the rainbow pseudo-element */
-.rainbow-groupbox>* {
+/* Layout adjustments */
+body.rainbow-mode .rainbow-groupbox {
+  border-color: transparent !important;
+  overflow: visible !important;
+  min-height: 0;
+  min-width: 0;
+}
+
+body.rainbow-mode .rainbow-groupbox>div {
+  border-radius: inherit;
   position: relative;
   z-index: 1;
+  min-height: 0;
+  min-width: 0;
 }
 
+/* Clip content to rounded corners by default, but allow scrollable containers to keep their behavior */
+body.rainbow-mode .rainbow-groupbox>div:not([class*="overflow-y-auto"]):not([class*="overflow-x-auto"]):not([class*="overflow-auto"]):not([class*="flex-1"]):not([class*="overflow-visible"]) {
+  overflow: hidden;
+}
+
+/* MODE: Rotate (Multicolor Circle) */
+body.rainbow-mode[data-rainbow-mode="rotate"] .rainbow-groupbox::before {
+  background: conic-gradient(from var(--rainbow-angle),
+      #ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff, #7a00ff, #ff00c8, #ff0000) center / 4000px 4000px no-repeat;
+  filter: blur(0.5px);
+}
+
+
+
+/* MODE: Pulse - Breathing glow effect */
+body.rainbow-mode[data-rainbow-mode="pulse"] .rainbow-groupbox::before {
+  background: linear-gradient(135deg,
+      var(--rainbow-color, #3b82f6),
+      transparent,
+      var(--rainbow-color, #3b82f6));
+  background-size: 200% 200%;
+  animation: rainbow-pulse 2s ease-in-out infinite;
+  filter: blur(1.5px);
+  box-shadow: 0 0 20px var(--rainbow-color, #3b82f6);
+}
+
+
+
+/* MODE: Fire */
+body.rainbow-mode[data-rainbow-mode="fire"] .rainbow-groupbox::before {
+  background: conic-gradient(from var(--rainbow-angle),
+      #ff0000, #ff7300, #ffb300, #ffea00, #ffb300, #ff7300, #ff0000) center / 4000px 4000px no-repeat;
+  filter: blur(1.5px);
+}
+
+
+
+/* KEYFRAMES */
 @keyframes rainbow-rotate {
   from {
     --rainbow-angle: 0deg;
@@ -264,23 +335,72 @@ body.rainbow-mode .rainbow-groupbox::before {
   }
 }
 
-@keyframes rainbow-scroll {
-  from {
-    background-position: 0% 0%;
+
+
+@keyframes rainbow-pulse {
+
+  0%,
+  100% {
+    opacity: var(--rainbow-brightness);
+    inset: calc(-1 * var(--rainbow-thickness, 2px));
+    padding: var(--rainbow-thickness, 2px);
   }
 
-  to {
-    background-position: var(--rainbow-length, 200%) 0%;
+  50% {
+    opacity: calc(var(--rainbow-brightness) * 1.5);
+    inset: calc(-1.3 * var(--rainbow-thickness, 2px));
+    padding: calc(1.3 * var(--rainbow-thickness, 2px));
   }
 }
 
-/* Print Styles for PDF Reports */
+
+
+
+/* ---------------------------------------------------------
+   FORCE WHITE CALENDAR ICONS ON DARK THEMES
+   --------------------------------------------------------- */
+html[data-theme-type="dark"] input[type="date"],
+html.dark input[type="date"],
+html[data-theme-type="dark"] input[type="datetime-local"],
+html.dark input[type="datetime-local"] {
+  color-scheme: dark !important;
+  /* Use a clear white SVG icon as background */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white' width='18' height='18'%3E%3Cpath d='M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z'%3E%3C/path%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: calc(100% - 8px) center !important;
+  background-size: 16px 16px !important;
+  padding-right: 32px !important;
+  position: relative !important;
+}
+
+/* Hide the default webkit icon but keep it clickable over the area */
+html[data-theme-type="dark"] input[type="date"]::-webkit-calendar-picker-indicator,
+html.dark input[type="date"]::-webkit-calendar-picker-indicator,
+html[data-theme-type="dark"] input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+html.dark input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  opacity: 0 !important;
+  cursor: pointer !important;
+  position: absolute !important;
+  right: 0 !important;
+  top: 0 !important;
+  width: 32px !important;
+  height: 100% !important;
+  margin: 0 !important;
+  display: block !important;
+}
+
+/* --------------------------------------------------------- */
+
+/* ---------------------------------------------------------
+   PRINT STYLES
+   --------------------------------------------------------- */
 @media print {
   body {
     background: white !important;
+    background-image: none !important;
     color: black !important;
-    print-color-adjust: exact;
-    -webkit-print-color-adjust: exact;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   .no-print,
@@ -289,62 +409,31 @@ body.rainbow-mode .rainbow-groupbox::before {
   input,
   select,
   header,
+  canvas,
   .sidebar {
     display: none !important;
+  }
+
+  .show-on-print {
+    display: block !important;
   }
 
   main {
     display: block !important;
     overflow: visible !important;
-    height: auto !important;
     width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
   }
 
-  .flex-1 {
-    overflow: visible !important;
-    height: auto !important;
-  }
-
+  .flex-1,
   .h-screen {
     height: auto !important;
-  }
-
-  .overflow-hidden,
-  .overflow-auto {
     overflow: visible !important;
-    height: auto !important;
   }
 
-  /* Absolute background reset for all containers during print */
   * {
     background-color: transparent !important;
-  }
-
-  html,
-  body,
-  #root,
-  main,
-  div,
-  section,
-  article,
-  header,
-  footer,
-  aside,
-  nav {
-    background-color: white !important;
-    background: white !important;
-    box-shadow: none !important;
-    color: black !important;
-  }
-
-  /* Reset layout constraints */
-  .h-screen,
-  .h-full,
-  .min-h-screen {
-    height: auto !important;
-    min-height: 0 !important;
   }
 
   .rainbow-groupbox {
@@ -353,22 +442,8 @@ body.rainbow-mode .rainbow-groupbox::before {
     box-shadow: none !important;
   }
 
-  .rainbow-groupbox::before,
-  .rgb-border::before,
-  .rgb-border::after {
+  .rainbow-groupbox::before {
     display: none !important;
-  }
-
-  /* Remove default margins/paddings from layout containers that wrap the report */
-  .p-4,
-  .p-6,
-  .p-8,
-  .p-10,
-  .m-4,
-  .m-6,
-  .m-8 {
-    padding: 0 !important;
-    margin: 0 !important;
   }
 
   table {
@@ -380,37 +455,5 @@ body.rainbow-mode .rainbow-groupbox::before {
   td {
     border: 1px solid #cbd5e1 !important;
     color: black !important;
-  }
-
-  .text-green-800,
-  .text-green-400,
-  .text-blue-800,
-  .text-blue-400,
-  .text-red-800,
-  .text-red-400,
-  .text-amber-800,
-  .text-yellow-400 {
-    color: black !important;
-    font-weight: bold !important;
-  }
-
-  /* Ensure the chart is visible if printing analytics */
-  .recharts-wrapper {
-    background: white !important;
-  }
-
-  .show-on-print {
-    display: block !important;
-    background-color: white !important;
-    color: black !important;
-    padding: 1cm !important;
-    width: 100% !important;
-    max-width: none !important;
-  }
-
-  /* Hide icons during print */
-  svg,
-  .flex-shrink-0 {
-    display: none !important;
   }
 }

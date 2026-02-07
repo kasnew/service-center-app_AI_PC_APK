@@ -148,8 +148,18 @@ export function registerIpcHandlers() {
   ipcMain.handle('check-repair-lock', async (_event, id) => {
     try {
       const db = getDb();
-      const lock = db.prepare('SELECT * FROM SyncLocks WHERE RecordID = ?').get(id) as any;
+      // Check for lock and its age (ignore if older than 5 minutes)
+      const lock = db.prepare(`
+        SELECT *, (strftime('%s', 'now') - strftime('%s', LockTime)) as age 
+        FROM SyncLocks 
+        WHERE RecordID = ?
+      `).get(id) as any;
+
       if (lock) {
+        if (lock.age > 300) { // 5 minutes
+          db.prepare('DELETE FROM SyncLocks WHERE RecordID = ?').run(id);
+          return { locked: false };
+        }
         return { locked: true, device: lock.DeviceName, time: lock.LockTime };
       }
       return { locked: false };
@@ -3071,48 +3081,46 @@ export function registerIpcHandlers() {
       executor.totalCommission += commission;
     }
 
-    // Get executor salary percentages
-    const executorSettings = db.prepare('SELECT Name, SalaryPercent FROM Executors').all() as any[];
-    const salaryMap = new Map(executorSettings.map((e: any) => [e.Name, e.SalaryPercent]));
+    // Get executor salary and product percentages
+    const executorSettings = db.prepare('SELECT Name, SalaryPercent, ProductsPercent FROM Executors').all() as any[];
+    const percentMap = new Map(executorSettings.map((e: any) => [e.Name, { salary: e.SalaryPercent, products: e.ProductsPercent }]));
 
     // Convert to array and calculate totals with commission
     const executors = Array.from(executorMap.entries())
       .map(([executorName, data]) => {
-        const salaryPercent = salaryMap.get(executorName) || 0;
+        const percents = percentMap.get(executorName) || { salary: 0, products: 0 };
+        const salaryPercent = percents.salary;
+        const productsPercent = percents.products;
+
         const totalLabor = data.totalLabor || 0;
         const productsProfit = data.totalProfit || 0; // Прибуток від товарів (Доход)
         const totalCommission = data.totalCommission || 0; // Загальна комісія для всіх ремонтів виконавця
 
-        // Прибуток виконавця = (вартість робіт - комісія банку) * коефіцієнт працівника
-        const executorProfit = ((totalLabor - totalCommission) * salaryPercent) / 100;
+        // Прибуток виконавця = (вартість робіт - комісія банку) * коефіцієнт працівника + (прибуток від товарів * відсоток за товари)
+        const executorProfit = ((totalLabor - totalCommission) * salaryPercent / 100) + (productsProfit * productsPercent / 100);
 
-        // Прибуток сервісу від роботи = вартість робіт - прибуток виконавця
-        // Виконавець отримує відсоток від (totalLabor - totalCommission), тому:
-        // serviceProfitFromWork = totalLabor - executorProfit
-        // Але комісія має бути віднята від прибутку сервісу, тому:
-        // serviceProfitFromWork = totalLabor - executorProfit - totalCommission
-        // Або: totalLabor - (totalLabor - totalCommission) * salaryPercent / 100 - totalCommission
-        // = totalLabor - totalLabor * salaryPercent / 100 + totalCommission * salaryPercent / 100 - totalCommission
-        // = totalLabor * (1 - salaryPercent / 100) - totalCommission * (1 - salaryPercent / 100)
-        // = (totalLabor - totalCommission) * (1 - salaryPercent / 100)
-        const serviceProfitFromWork = totalLabor - executorProfit - totalCommission;
+        // Прибуток сервісу від роботи = вартість робіт - прибуток виконавця - комісія
+        const serviceProfitFromWork = totalLabor - ((totalLabor - totalCommission) * salaryPercent / 100) - totalCommission;
+
+        // Прибуток сервісу від товарів = прибуток від товарів - відкат виконавцю
+        const serviceProfitFromProducts = productsProfit - (productsProfit * productsPercent / 100);
 
         // Списання за товар списуються тільки з Андрія (господаря), не з інших виконавців
         const executorWriteOffs = executorName === 'Андрій' ? totalWriteOffs : 0;
 
-        // Total service profit = products profit + service profit from work - write-offs
-        // Комісія вже віднята в serviceProfitFromWork
-        const totalServiceProfit = productsProfit + serviceProfitFromWork - executorWriteOffs;
+        // Total service profit = serviceProfitFromProducts + serviceProfitFromWork - write-offs
+        const totalServiceProfit = serviceProfitFromProducts + serviceProfitFromWork - executorWriteOffs;
 
         return {
           executorName: executorName,
           repairCount: data.repairCount,
-          totalProfit: totalServiceProfit, // Загальний прибуток сервісу (з урахуванням комісії)
-          productsProfit: productsProfit, // Прибуток від товарів (без комісії)
+          totalProfit: totalServiceProfit, // Загальний прибуток сервісу (з урахуванням комісії та виплат)
+          productsProfit: productsProfit, // Прибуток від товарів (брудний)
           serviceProfitFromWork: serviceProfitFromWork, // Прибуток сервісу від роботи
           totalLabor: totalLabor,
           salaryPercent: salaryPercent,
-          executorProfit: executorProfit, // Прибуток виконавця (не враховує комісію, бо він отримує відсоток від labor)
+          productsPercent: productsPercent,
+          executorProfit: executorProfit, // Прибуток виконавця (повний: робота + товари)
           totalCommission: totalCommission // Загальна комісія банку
         };
       })
@@ -3171,12 +3179,14 @@ export function registerIpcHandlers() {
     const settings = getCashRegisterSettings(db);
     const cardCommissionPercent = settings.cardCommissionPercent || 0;
 
-    // Get executor salary percentage
+    // Get executor salary and product percentages
     let salaryPercent = 0;
+    let productsPercent = 0;
     if (executorName) {
-      const executor = db.prepare('SELECT SalaryPercent FROM Executors WHERE Name = ?').get(executorName) as any;
+      const executor = db.prepare('SELECT SalaryPercent, ProductsPercent FROM Executors WHERE Name = ?').get(executorName) as any;
       if (executor) {
         salaryPercent = executor.SalaryPercent || 0;
+        productsPercent = executor.ProductsPercent || 0;
       }
     }
 
@@ -3221,7 +3231,8 @@ export function registerIpcHandlers() {
         commission: commission,
         paymentType: paymentType || 'Готівка',
         salaryPercent: salaryPercent,
-        executorProfit: ((repair.costLabor - commission) * salaryPercent) / 100
+        productsPercent: productsPercent,
+        executorProfit: (((repair.costLabor - commission) * salaryPercent) / 100) + ((repair.profit * productsPercent) / 100)
       };
     });
 

@@ -58,7 +58,7 @@ class ApiClient @Inject constructor() {
     }
 }
 
-// Custom adapter to convert status from number to string
+// Custom adapter to convert status from number to string and ensure non-null fields
 class RepairStatusAdapter : JsonDeserializer<com.servicecenter.data.models.Repair> {
     override fun deserialize(
         json: JsonElement?,
@@ -72,10 +72,11 @@ class RepairStatusAdapter : JsonDeserializer<com.servicecenter.data.models.Repai
         val jsonObject = json.asJsonObject
         
         // Convert status from number to string
-        val statusValue = jsonObject.get("status")
+        val statusElement = jsonObject.get("status")
         val statusString = when {
-            statusValue != null && statusValue.isJsonPrimitive -> {
-                val primitive = statusValue.asJsonPrimitive
+            statusElement == null || statusElement.isJsonNull -> "У черзі"
+            statusElement.isJsonPrimitive -> {
+                val primitive = statusElement.asJsonPrimitive
                 if (primitive.isNumber) {
                     val statusNum = primitive.asInt
                     when (statusNum) {
@@ -89,7 +90,25 @@ class RepairStatusAdapter : JsonDeserializer<com.servicecenter.data.models.Repai
                         else -> statusNum.toString()
                     }
                 } else if (primitive.isString) {
-                    primitive.asString
+                    val s = primitive.asString
+                    // Map "1", "2" strings as well if they come as strings
+                    when (s) {
+                        "1" -> "У черзі"
+                        "2" -> "У роботі"
+                        "3" -> "Очікув. відпов./деталі"
+                        "4" -> "Готовий до видачі"
+                        "5" -> "Не додзвонилися"
+                        "6" -> "Видано"
+                        "7" -> "Одеса"
+                        "Queue" -> "У черзі"
+                        "InProgress" -> "У роботі"
+                        "Waiting" -> "Очікув. відпов./деталі"
+                        "Ready" -> "Готовий до видачі"
+                        "NoAnswer" -> "Не додзвонилися"
+                        "Issued" -> "Видано"
+                        "Odessa" -> "Одеса"
+                        else -> s
+                    }
                 } else {
                     "У черзі"
                 }
@@ -97,38 +116,58 @@ class RepairStatusAdapter : JsonDeserializer<com.servicecenter.data.models.Repai
             else -> "У черзі"
         }
         
-        // Replace status in JSON object
+        // Update/Set status in JSON object
         jsonObject.addProperty("status", statusString)
         
-        // Ensure all string fields have default values if null
-        if (!jsonObject.has("faultDesc") || jsonObject.get("faultDesc").isJsonNull) {
-            jsonObject.addProperty("faultDesc", "")
+        // Ensure ALL required string fields have default values if null or missing
+        val stringFields = listOf(
+            "faultDesc", "workDone", "note", "executor", 
+            "paymentType", "clientName", "clientPhone", "deviceName"
+        )
+        
+        for (field in stringFields) {
+            if (!jsonObject.has(field) || jsonObject.get(field).isJsonNull) {
+                val defaultValue = when(field) {
+                    "executor" -> "Андрій"
+                    "paymentType" -> "Готівка"
+                    else -> ""
+                }
+                jsonObject.addProperty(field, defaultValue)
+            }
         }
-        if (!jsonObject.has("workDone") || jsonObject.get("workDone").isJsonNull) {
-            jsonObject.addProperty("workDone", "")
+        
+        // Ensure numeric fields are not null (primitive types in Kotlin must not be null)
+        val numericFields = listOf("receiptId", "costLabor", "totalCost", "profit")
+        for (field in numericFields) {
+            if (!jsonObject.has(field) || jsonObject.get(field).isJsonNull) {
+                jsonObject.addProperty(field, 0.0)
+            }
         }
-        if (!jsonObject.has("note") || jsonObject.get("note").isJsonNull) {
-            jsonObject.addProperty("note", "")
-        }
-        if (!jsonObject.has("executor") || jsonObject.get("executor").isJsonNull) {
-            jsonObject.addProperty("executor", "Андрій")
-        }
-        if (!jsonObject.has("paymentType") || jsonObject.get("paymentType").isJsonNull) {
-            jsonObject.addProperty("paymentType", "Готівка")
-        }
-        if (!jsonObject.has("clientName") || jsonObject.get("clientName").isJsonNull) {
-            jsonObject.addProperty("clientName", "")
-        }
-        if (!jsonObject.has("clientPhone") || jsonObject.get("clientPhone").isJsonNull) {
-            jsonObject.addProperty("clientPhone", "")
-        }
-        if (!jsonObject.has("deviceName") || jsonObject.get("deviceName").isJsonNull) {
-            jsonObject.addProperty("deviceName", "")
+        
+        // Ensure boolean fields are not null
+        val booleanFields = listOf("isPaid", "shouldCall")
+        for (field in booleanFields) {
+            if (!jsonObject.has(field) || jsonObject.get(field).isJsonNull) {
+                jsonObject.addProperty(field, false)
+            }
         }
         
         // Use default Gson deserializer with modified JSON
+        // Using a fresh Gson instance ensures we don't recurse back into this adapter
         val gson = Gson()
-        return gson.fromJson(jsonObject, com.servicecenter.data.models.Repair::class.java)
+        return try {
+            gson.fromJson(jsonObject, com.servicecenter.data.models.Repair::class.java)
+        } catch (e: Exception) {
+            android.util.Log.e("RepairStatusAdapter", "Error parsing repair: ${e.message}", e)
+            // Fallback: create empty repair instead of crashing
+            com.servicecenter.data.models.Repair(
+                receiptId = 0,
+                deviceName = "Error parsing",
+                status = "У черзі",
+                clientName = "",
+                clientPhone = ""
+            )
+        }
     }
 }
 

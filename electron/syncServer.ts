@@ -1324,9 +1324,19 @@ export async function startSyncServer(port: number = 3000): Promise<{ success: b
       try {
         const db = getDb();
         const id = parseInt(req.params.id, 10);
-        const lock = db.prepare('SELECT * FROM SyncLocks WHERE RecordID = ?').get(id) as any;
+        // Check for lock and its age (ignore if older than 5 minutes)
+        const lock = db.prepare(`
+          SELECT *, (strftime('%s', 'now') - strftime('%s', LockTime)) as age 
+          FROM SyncLocks 
+          WHERE RecordID = ?
+        `).get(id) as any;
 
         if (lock) {
+          if (lock.age > 300) { // 5 minutes = 300 seconds
+            // Stale lock - clean it up and report as not locked
+            db.prepare('DELETE FROM SyncLocks WHERE RecordID = ?').run(id);
+            return res.json({ locked: false });
+          }
           res.json({ locked: true, device: lock.DeviceName, time: lock.LockTime });
         } else {
           res.json({ locked: false });
@@ -1345,14 +1355,24 @@ export async function startSyncServer(port: number = 3000): Promise<{ success: b
         const { device } = req.body;
 
         // Check if already locked by another device
-        const existingLock = db.prepare('SELECT * FROM SyncLocks WHERE RecordID = ?').get(id) as any;
+        const existingLock = db.prepare(`
+          SELECT *, (strftime('%s', 'now') - strftime('%s', LockTime)) as age 
+          FROM SyncLocks 
+          WHERE RecordID = ?
+        `).get(id) as any;
+
         if (existingLock && existingLock.DeviceName !== device) {
-          return res.status(409).json({
-            success: false,
-            error: 'Already locked',
-            device: existingLock.DeviceName,
-            time: existingLock.LockTime
-          });
+          // If the lock is stale (older than 5 mins), allow override
+          if (existingLock.age > 300) {
+            console.log(`Overriding stale lock for record ${id} from ${existingLock.DeviceName}`);
+          } else {
+            return res.status(409).json({
+              success: false,
+              error: 'Already locked',
+              device: existingLock.DeviceName,
+              time: existingLock.LockTime
+            });
+          }
         }
 
         // Delete existing lock and create new one

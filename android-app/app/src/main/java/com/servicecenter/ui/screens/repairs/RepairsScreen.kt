@@ -24,6 +24,7 @@ import com.servicecenter.data.models.WarehouseItem
 import com.servicecenter.ui.components.ConnectionIndicator
 import com.servicecenter.ui.screens.settings.SettingsViewModel
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -339,8 +340,13 @@ fun RepairItem(
                     color = MaterialTheme.colorScheme.primaryContainer,
                     modifier = Modifier.padding(start = 8.dp)
                 ) {
+                    val formattedPrice = try {
+                        String.format(java.util.Locale.US, "%.2f", repair.totalCost ?: 0.0)
+                    } catch (e: Exception) {
+                        "0.00"
+                    }
                     Text(
-                        text = "${String.format("%.2f", repair.totalCost)} грн",
+                        text = "$formattedPrice грн",
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
@@ -467,8 +473,13 @@ fun RepairItem(
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
+                            val formattedPartPrice = try {
+                                String.format(Locale.US, "%.2f", part.priceUah)
+                            } catch (e: Exception) {
+                                "0.00"
+                            }
                             Text(
-                                text = "${String.format("%.2f", part.priceUah)} грн",
+                                text = "$formattedPartPrice грн",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.primary,
                                 fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
@@ -506,8 +517,13 @@ fun RepairItem(
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                             )
+                            val formattedTotal = try {
+                                String.format(Locale.US, "%.2f", partsTotal)
+                            } catch (e: Exception) {
+                                "0.00"
+                            }
                             Text(
-                                text = "${String.format("%.2f", partsTotal)} грн",
+                                text = "$formattedTotal грн",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer,
                                 fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
@@ -624,15 +640,17 @@ fun StatusFilterDropdown(
 }
 
 // Helper function to get status color matching PC app colors
-fun getStatusColor(status: String): Color {
+fun getStatusColor(status: String?): Color {
+    if (status == null) return Color(0xFF64748B) // slate-500
+    
     return when (status) {
-        "У черзі" -> Color(0xFFF59E0B) // amber-500
-        "У роботі" -> Color(0xFF3B82F6) // blue-500
-        "Очікув. відпов./деталі" -> Color(0xFFF97316) // orange-500
-        "Готовий до видачі" -> Color(0xFF22C55E) // green-500
-        "Не додзвонилися" -> Color(0xFFEF4444) // red-500
-        "Одеса" -> Color(0xFFA855F7) // purple-500
-        "Видано" -> Color(0xFF14B8A6) // teal-500
+        "У черзі", "1", "Queue" -> Color(0xFFF59E0B) // amber-500
+        "У роботі", "2", "InProgress" -> Color(0xFF3B82F6) // blue-500
+        "Очікування", "Очікув. відпов./деталі", "3", "Waiting" -> Color(0xFFF97316) // orange-500
+        "Готовий", "Готовий до видачі", "4", "Ready" -> Color(0xFF22C55E) // green-500
+        "Не додзвонилися", "Не додзвонились", "5", "NoAnswer" -> Color(0xFFEF4444) // red-500
+        "Одеса", "7", "Odessa" -> Color(0xFFA855F7) // purple-500
+        "Видано", "6", "Issued" -> Color(0xFF14B8A6) // teal-500
         else -> Color(0xFF64748B) // slate-500
     }
 }

@@ -623,7 +623,7 @@ export default function Settings() {
                                     onChange={(e) => updateBackupSettingsMutation.mutate({ autoBackupEnabled: e.target.checked })}
                                     className="peer sr-only"
                                 />
-                                <div className="w-10 h-5 bg-slate-600 rounded-full peer peer-checked:bg-blue-600 transition-colors"></div>
+                                <div className="w-10 h-5 bg-red-500 rounded-full peer peer-checked:bg-green-600 transition-colors"></div>
                                 <div className="absolute left-1 top-1 w-3 h-3 bg-white rounded-full transition-transform peer-checked:translate-x-5"></div>
                             </div>
                             <span className="text-sm font-medium text-slate-300 group-hover:text-slate-100 transition-colors">
@@ -651,7 +651,7 @@ export default function Settings() {
                                     onChange={(e) => updateBackupSettingsMutation.mutate({ backupOnExit: e.target.checked })}
                                     className="peer sr-only"
                                 />
-                                <div className="w-10 h-5 bg-slate-600 rounded-full peer peer-checked:bg-blue-600 transition-colors"></div>
+                                <div className="w-10 h-5 bg-red-500 rounded-full peer peer-checked:bg-green-600 transition-colors"></div>
                                 <div className="absolute left-1 top-1 w-3 h-3 bg-white rounded-full transition-transform peer-checked:translate-x-5"></div>
                             </div>
                             <span className="text-sm font-medium text-slate-300 group-hover:text-slate-100 transition-colors">

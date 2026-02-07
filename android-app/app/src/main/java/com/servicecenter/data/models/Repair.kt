@@ -6,12 +6,12 @@ import com.google.gson.annotations.SerializedName
 
 @Entity(tableName = "repairs")
 data class Repair(
-    @PrimaryKey
+    @PrimaryKey(autoGenerate = true)
     val id: Int? = null,
     @SerializedName("receiptId")
-    val receiptId: Int,
+    val receiptId: Int = 0,
     @SerializedName("deviceName")
-    val deviceName: String,
+    val deviceName: String = "",
     @SerializedName("faultDesc")
     val faultDesc: String = "",
     @SerializedName("workDone")
@@ -23,11 +23,11 @@ data class Repair(
     @SerializedName("isPaid")
     val isPaid: Boolean = false,
     @SerializedName("status")
-    val status: String,
+    val status: String = "У черзі",
     @SerializedName("clientName")
-    val clientName: String,
+    val clientName: String = "",
     @SerializedName("clientPhone")
-    val clientPhone: String,
+    val clientPhone: String = "",
     @SerializedName("profit")
     val profit: Double = 0.0,
     @SerializedName("dateStart")

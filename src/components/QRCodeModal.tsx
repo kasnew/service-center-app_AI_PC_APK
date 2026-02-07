@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
-import { X, Smartphone } from 'lucide-react';
+import { X, Smartphone, Copy, Check } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
 import { useHotkeys } from '../hooks/useHotkeys';
@@ -18,6 +18,13 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({ isOpen, onClose, phone
     const isLight = currentTheme.type === 'light';
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [qrError, setQrError] = useState<string | null>(null);
+    const [copied, setCopied] = useState(false);
+
+    const handleCopy = () => {
+        navigator.clipboard.writeText(phoneNumber);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
 
     useHotkeys('escape', () => {
         if (isOpen) onClose();
@@ -91,14 +98,44 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({ isOpen, onClose, phone
                                 {qrError}
                             </div>
                         ) : (
-                            <canvas ref={canvasRef} className="w-64 h-64 rounded-lg" />
+                            <div
+                                className="relative cursor-pointer group"
+                                onClick={handleCopy}
+                                title="Натисніть, щоб скопіювати номер"
+                            >
+                                <canvas ref={canvasRef} className="w-64 h-64 rounded-lg transition-opacity group-hover:opacity-75" />
+                                <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20 rounded-lg">
+                                    {copied ? (
+                                        <div className="bg-green-600 text-white px-3 py-1.5 rounded-full flex items-center gap-2 shadow-lg animate-in zoom-in-95">
+                                            <Check className="w-4 h-4" />
+                                            <span className="text-xs font-bold">Скопійовано!</span>
+                                        </div>
+                                    ) : (
+                                        <div className="bg-blue-600 text-white px-3 py-1.5 rounded-full flex items-center gap-2 shadow-lg">
+                                            <Copy className="w-4 h-4" />
+                                            <span className="text-xs font-bold">Копіювати</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         )}
                     </div>
 
                     <div className="text-center space-y-2 mb-6">
-                        <p className={`text-xl font-bold ${isLight ? 'text-slate-900' : 'text-slate-100'}`}>
-                            {phoneNumber}
-                        </p>
+                        <div
+                            className="flex flex-col items-center cursor-pointer group"
+                            onClick={handleCopy}
+                            title="Натисніть, щоб скопіювати номер"
+                        >
+                            <p className={`text-xl font-bold transition-colors ${isLight ? 'text-slate-900 group-hover:text-blue-600' : 'text-slate-100 group-hover:text-blue-400'}`}>
+                                {phoneNumber}
+                            </p>
+                            {copied && !qrError && (
+                                <span className="text-[10px] text-green-500 font-bold animate-in fade-in slide-in-from-top-1">
+                                    Скопійовано
+                                </span>
+                            )}
+                        </div>
                         {clientName && (
                             <p className="text-sm font-medium text-slate-400 uppercase tracking-wide">
                                 {clientName}

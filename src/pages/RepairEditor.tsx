@@ -5,7 +5,8 @@ import { repairApi } from '../api/repairs';
 import { warehouseApi } from '../api/warehouse';
 import { executorsApi } from '../api/executors';
 import { RepairStatus } from '../types/db';
-import { Save, X, Trash2, Calendar, User, Laptop, Package, DollarSign, FileText, Phone, Smartphone, RotateCcw } from 'lucide-react';
+import { Save, X, Trash2, Calendar, User, Laptop, Package, DollarSign, FileText, Phone, Smartphone, RotateCcw, ChevronDown } from 'lucide-react';
+import { clsx } from 'clsx';
 import { EXECUTOR_ICONS } from '../constants/executors';
 import PartsManager from '../components/PartsManager';
 import { formatPhoneNumber, normalizeMoneyInput, parseMoneyValue } from '../utils/formatters';
@@ -31,6 +32,8 @@ export const RepairEditor: React.FC = () => {
 
     const isNew = !id || id === 'new';
     const clientNameInputRef = useRef<HTMLInputElement>(null);
+    const deviceNameInputRef = useRef<HTMLInputElement>(null);
+    const faultDescInputRef = useRef<HTMLTextAreaElement>(null);
 
     const [formData, setFormData] = useState({
         receiptId: 0,
@@ -61,6 +64,8 @@ export const RepairEditor: React.FC = () => {
     const [isSaveOnExitModalOpen, setIsSaveOnExitModalOpen] = useState(false);
     const [isQRModalOpen, setIsQRModalOpen] = useState(false);
     const [isRefundModalOpen, setIsRefundModalOpen] = useState(false);
+    const [showExecutorDropdown, setShowExecutorDropdown] = useState(false);
+    const executorDropdownRef = useRef<HTMLDivElement>(null);
     const loadedIdRef = useRef<string | null>(null);
 
     // Load existing repair
@@ -101,6 +106,17 @@ export const RepairEditor: React.FC = () => {
             };
         }
     }, [id, isNew]);
+
+    // Handle click outside for executor dropdown
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (executorDropdownRef.current && !executorDropdownRef.current.contains(event.target as Node)) {
+                setShowExecutorDropdown(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     // Load next receipt ID for new repairs
     const { data: nextReceiptId } = useQuery({
@@ -229,10 +245,15 @@ export const RepairEditor: React.FC = () => {
     const isDirty = initialData && (hasPartsChanged || JSON.stringify(formData) !== JSON.stringify(initialData));
 
     useEffect(() => {
-        if (clientNameInputRef.current) {
+        const mode = location.state?.copyMode;
+        if (mode === 'client' && deviceNameInputRef.current) {
+            deviceNameInputRef.current.focus();
+        } else if (mode === 'client_device' && faultDescInputRef.current) {
+            faultDescInputRef.current.focus();
+        } else if (clientNameInputRef.current) {
             clientNameInputRef.current.focus();
         }
-    }, []);
+    }, [location.state?.copyMode]);
 
     useEffect(() => {
         if (!isNew && formData.isPaid !== previousPaidStatus && effectiveRepairId) {
@@ -509,12 +530,26 @@ export const RepairEditor: React.FC = () => {
                     {isNew ? `Новий ремонт #${formData.receiptId}` : `Ремонт #${formData.receiptId}`}
                 </h2>
                 {lockInfo?.locked && (
-                    <div className="mt-2 p-3 bg-amber-900/40 border-2 border-amber-600/50 rounded-lg text-amber-200 flex items-center gap-2 animate-pulse">
-                        <span className="text-xl">⚠️</span>
-                        <span>
-                            <b>Увага!</b> Ця квитанція зараз редагується на пристрої: <b>{lockInfo.device}</b>.
-                            Зміни можуть бути втрачені при одночасному збереженні.
-                        </span>
+                    <div className="mt-2 p-3 bg-amber-900/40 border-2 border-amber-600/50 rounded-lg text-amber-200 flex items-center justify-between gap-2 animate-pulse">
+                        <div className="flex items-center gap-2">
+                            <span className="text-xl">⚠️</span>
+                            <span>
+                                <b>Увага!</b> Ця квитанція зараз редагується на пристрої: <b>{lockInfo.device}</b>.
+                                Зміни можуть бути втрачені при одночасному збереженні.
+                            </span>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={async () => {
+                                await (window as any).ipcRenderer.invoke('unlock-repair', Number(id));
+                                setLockInfo(null);
+                                // Also set our own lock to take over
+                                await (window as any).ipcRenderer.invoke('lock-repair', Number(id));
+                            }}
+                            className="px-3 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded text-xs font-bold transition-colors whitespace-nowrap"
+                        >
+                            Розблокувати
+                        </button>
                     </div>
                 )}
             </div>
@@ -575,7 +610,10 @@ export const RepairEditor: React.FC = () => {
                                         {formData.clientPhone && (
                                             <button
                                                 type="button"
-                                                onClick={() => setIsQRModalOpen(true)}
+                                                onClick={(e) => {
+                                                    (e.currentTarget as HTMLButtonElement).blur();
+                                                    setIsQRModalOpen(true);
+                                                }}
                                                 className="p-1 rounded bg-slate-800/50 hover:bg-blue-600/30 text-slate-400 hover:text-blue-400 transition-all"
                                                 title="Показати QR-код для дзвінка"
                                             >
@@ -613,28 +651,75 @@ export const RepairEditor: React.FC = () => {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-slate-300 mb-0.5">Виконавець</label>
-                                    <div className="flex items-center gap-2">
-                                        <div className="flex-shrink-0 mt-1">
-                                            {(() => {
-                                                const executorName = formData.executor;
-                                                const executorData = executors.find((e: any) => e.Name === executorName);
-                                                const matchingIcon = EXECUTOR_ICONS.find(i => i.name === executorData?.Icon);
-                                                const IconComp = matchingIcon ? matchingIcon.Icon : User;
-                                                return <IconComp className="w-5 h-5 transition-colors" style={{ color: executorData?.Color || (isLight ? '#334155' : '#94a3b8') }} />;
-                                            })()}
-                                        </div>
-                                        <select
-                                            value={formData.executor}
-                                            onChange={(e) => setFormData({ ...formData, executor: e.target.value })}
-                                            className="w-full bg-slate-800 border-2 border-slate-600 rounded-lg px-4 py-1.5 text-base focus:outline-none focus:border-blue-500 shadow-sm"
-                                            tabIndex={6}
+                                    <div className="relative" ref={executorDropdownRef}>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowExecutorDropdown(!showExecutorDropdown)}
+                                            className={clsx(
+                                                "w-full flex items-center justify-between gap-2 px-4 py-1.5 rounded-lg border-2 transition-all shadow-sm",
+                                                showExecutorDropdown
+                                                    ? "bg-slate-700 border-blue-500 ring-2 ring-blue-500/20"
+                                                    : "bg-slate-800 border-slate-600 hover:border-slate-500"
+                                            )}
                                         >
-                                            {executors
-                                                .filter((executor: any) => !(executor.SalaryPercent === 0 && executor.ProductsPercent === 0))
-                                                .map((executor: any) => (
-                                                    <option key={executor.ID} value={executor.Name}>{executor.Name}</option>
-                                                ))}
-                                        </select>
+                                            <div className="flex items-center gap-2 overflow-hidden">
+                                                {(() => {
+                                                    const executorName = formData.executor;
+                                                    const executorData = executors.find((e: any) => e.Name === executorName);
+                                                    const matchingIcon = EXECUTOR_ICONS.find(i => i.name === executorData?.Icon);
+                                                    const IconComp = matchingIcon ? matchingIcon.Icon : User;
+                                                    return (
+                                                        <>
+                                                            <IconComp
+                                                                className="w-4 h-4 flex-shrink-0"
+                                                                style={{ color: executorData?.Color || (isLight ? '#334155' : '#94a3b8') }}
+                                                            />
+                                                            <span className="truncate text-base text-slate-100">{executorName}</span>
+                                                        </>
+                                                    );
+                                                })()}
+                                            </div>
+                                            <ChevronDown className={clsx("w-4 h-4 text-slate-400 transition-transform duration-300", showExecutorDropdown && "rotate-180")} />
+                                        </button>
+
+                                        {showExecutorDropdown && (
+                                            <div
+                                                className="absolute bottom-full left-0 mb-2 w-full min-w-[200px] rounded-xl border border-slate-600/50 shadow-2xl overflow-hidden z-[100] animate-in fade-in slide-in-from-bottom-2 backdrop-blur-xl"
+                                                style={{ backgroundColor: 'var(--theme-surface)', color: 'var(--theme-text)' }}
+                                            >
+                                                <div className="max-h-60 overflow-y-auto py-1">
+                                                    {executors
+                                                        .filter((executor: any) => !(executor.SalaryPercent === 0 && executor.ProductsPercent === 0))
+                                                        .map((executor: any) => {
+                                                            const matchingIcon = EXECUTOR_ICONS.find(i => i.name === executor.Icon);
+                                                            const IconComp = matchingIcon ? matchingIcon.Icon : User;
+                                                            const isSelected = formData.executor === executor.Name;
+
+                                                            return (
+                                                                <button
+                                                                    key={executor.ID}
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        setFormData({ ...formData, executor: executor.Name });
+                                                                        setShowExecutorDropdown(false);
+                                                                    }}
+                                                                    className={clsx(
+                                                                        "w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors",
+                                                                        isSelected ? "bg-blue-600/20 text-blue-400" : "hover:bg-white/5"
+                                                                    )}
+                                                                >
+                                                                    <IconComp
+                                                                        className="w-4 h-4"
+                                                                        style={{ color: executor.Color || (isLight ? '#334155' : '#94a3b8') }}
+                                                                    />
+                                                                    <span className="text-sm font-medium">{executor.Name}</span>
+                                                                    {isSelected && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />}
+                                                                </button>
+                                                            );
+                                                        })}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -645,7 +730,11 @@ export const RepairEditor: React.FC = () => {
                                         type="checkbox"
                                         checked={formData.isPaid}
                                         onChange={handlePaymentChange}
-                                        className="w-5 h-5 rounded border-slate-600 bg-slate-800 text-blue-600 focus:ring-blue-500"
+                                        className="w-5 h-5 rounded border-2 transition-all cursor-pointer"
+                                        style={{
+                                            backgroundColor: 'var(--theme-surface)',
+                                            borderColor: 'var(--theme-border)'
+                                        }}
                                         tabIndex={7}
                                     />
                                     <div className="flex items-center gap-1.5">
@@ -658,7 +747,11 @@ export const RepairEditor: React.FC = () => {
                                         type="checkbox"
                                         checked={formData.shouldCall}
                                         onChange={(e) => setFormData({ ...formData, shouldCall: e.target.checked })}
-                                        className="w-5 h-5 rounded border-slate-600 bg-slate-800 text-blue-600 focus:ring-blue-500"
+                                        className="w-5 h-5 rounded border-2 transition-all cursor-pointer"
+                                        style={{
+                                            backgroundColor: 'var(--theme-surface)',
+                                            borderColor: 'var(--theme-border)'
+                                        }}
                                         tabIndex={8}
                                     />
                                     <div className="flex items-center gap-1.5">
@@ -799,6 +892,7 @@ export const RepairEditor: React.FC = () => {
                             <div>
                                 <label className="block text-sm font-medium text-slate-300 mb-1.5">Найменування техники</label>
                                 <input
+                                    ref={deviceNameInputRef}
                                     type="text"
                                     value={formData.deviceName}
                                     onChange={(e) => setFormData({ ...formData, deviceName: e.target.value })}
@@ -809,6 +903,7 @@ export const RepairEditor: React.FC = () => {
                             <div>
                                 <label className="block text-sm font-medium text-slate-300 mb-1.5">Опис несправності</label>
                                 <textarea
+                                    ref={faultDescInputRef}
                                     rows={2}
                                     value={formData.faultDesc}
                                     onChange={(e) => setFormData({ ...formData, faultDesc: e.target.value })}

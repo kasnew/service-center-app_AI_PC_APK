@@ -349,10 +349,20 @@ export default function CashRegister() {
                     {/* Transactions Table */}
                     <div className="flex-1 bg-slate-700 rounded-lg shadow-sm border border-slate-600 overflow-hidden flex flex-col rainbow-groupbox mb-2">
                         <div className="overflow-auto flex-1">
-                            <table className="w-full">
+                            <table className="w-full table-fixed">
+                                <colgroup>
+                                    <col style={{ width: '160px' }} />
+                                    <col style={{ width: '140px' }} />
+                                    <col style={{ width: 'auto' }} />
+                                    <col style={{ width: '120px' }} />
+                                    <col style={{ width: '100px' }} />
+                                    <col style={{ width: '100px' }} />
+                                    <col style={{ width: '100px' }} />
+                                    <col style={{ width: '60px' }} />
+                                </colgroup>
                                 <thead className="bg-slate-800/50 border-b border-slate-600 sticky top-0">
                                     <tr>
-                                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Дата</th>
+                                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-400 uppercase tracking-wider whitespace-nowrap">Дата</th>
                                         <th className="px-4 py-2 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Категорія</th>
                                         <th className="px-4 py-2 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Опис</th>
                                         <th className="px-4 py-2 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Виконавець</th>
@@ -374,7 +384,7 @@ export default function CashRegister() {
                                     ) : (
                                         transactions.map((tx: any) => (
                                             <tr key={tx.id} className="hover:bg-slate-600/30 transition-colors">
-                                                <td className="px-4 py-1 text-sm text-slate-300">
+                                                <td className="px-4 py-1 text-sm text-slate-300 whitespace-nowrap">
                                                     {new Date(tx.dateExecuted).toLocaleString('uk-UA')}
                                                 </td>
                                                 <td className="px-4 py-1 text-sm">
@@ -391,8 +401,8 @@ export default function CashRegister() {
                                                         {tx.category}
                                                     </span>
                                                 </td>
-                                                <td className="px-4 py-1 text-sm text-slate-200">{tx.description}</td>
-                                                <td className="px-4 py-1 text-sm text-slate-300">{tx.executorName || '-'}</td>
+                                                <td className="px-4 py-1 text-sm text-slate-200 truncate" title={tx.description}>{tx.description}</td>
+                                                <td className="px-4 py-1 text-sm text-slate-300 truncate" title={tx.executorName || ''}>{tx.executorName || '-'}</td>
                                                 <td className={clsx(
                                                     "px-4 py-1 text-sm text-right",
                                                     tx.amount > 0 ? (isLight ? 'text-green-800' : 'text-green-400') : (isLight ? 'text-red-800' : 'text-red-400')

@@ -141,6 +141,7 @@ fun SettingsScreen(
                             onCheckedChange = { viewModel.setOfflineMode(it) }
                         )
                     }
+                }
             }
             
             // Autostart Switch

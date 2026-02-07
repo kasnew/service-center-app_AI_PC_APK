@@ -14,7 +14,7 @@ import com.servicecenter.data.local.dao.WarehouseItemDao
 
 @Database(
     entities = [Repair::class, WarehouseItem::class, Transaction::class],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

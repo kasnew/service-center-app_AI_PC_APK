@@ -116,6 +116,20 @@ class SyncManager @Inject constructor(
         android.util.Log.d("SyncManager", "setCreatingRepair: $creating")
     }
     
+    fun releaseLock(id: Int) {
+        scope.launch {
+            try {
+                val serverUrl = getServerUrl()
+                if (!serverUrl.isNullOrEmpty()) {
+                    android.util.Log.d("SyncManager", "Releasing lock for repair $id via SyncManager global scope")
+                    repairRepository.releaseLock(id, serverUrl)
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("SyncManager", "Failed to release lock for $id: ${e.message}")
+            }
+        }
+    }
+    
     private suspend fun performSyncIfNeeded() {
         if (_isOfflineMode.value) {
             android.util.Log.d("SyncManager", "Skipping sync: Offline Mode is active")

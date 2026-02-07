@@ -134,9 +134,7 @@ fun RepairDetailScreen(
     DisposableEffect(repairId) {
         onDispose {
             if (repairId != null) {
-                scope.launch {
-                    viewModel.releaseLock(repairId)
-                }
+                viewModel.releaseLock(repairId)
             }
         }
     }

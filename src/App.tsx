@@ -9,6 +9,16 @@ import { RepairEditor } from './pages/RepairEditor';
 import Warehouse from './pages/Warehouse';
 import Settings from './pages/Settings';
 import CashRegister from './pages/CashRegister';
+import { MatrixBackground } from './components/MatrixBackground';
+import { SnowflakesBackground } from './components/SnowflakesBackground';
+import { RainBackground } from './components/RainBackground';
+import { CelestialBody } from './components/CelestialBody';
+import { StormySky } from './components/StormySky';
+import { SpaceBackground } from './components/SpaceBackground';
+import { AquariumBackground } from './components/AquariumBackground';
+import { ParticlesBackground } from './components/ParticlesBackground';
+import { DNAHelixBackground } from './components/DNAHelixBackground';
+import { FirefliesBackground } from './components/FirefliesBackground';
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -30,6 +40,16 @@ const queryClient = new QueryClient({
 const App: React.FC = () => {
     return (
         <ThemeProvider>
+            <MatrixBackground />
+            <SnowflakesBackground />
+            <StormySky />
+            <SpaceBackground />
+            <AquariumBackground />
+            <ParticlesBackground />
+            <DNAHelixBackground />
+            <FirefliesBackground />
+            <RainBackground showForeground={true} />
+            <CelestialBody />
             <UpdateProvider>
                 <QueryClientProvider client={queryClient}>
                     <HashRouter>

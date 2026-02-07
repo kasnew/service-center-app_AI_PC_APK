@@ -98,17 +98,20 @@ export const ProfitChart: React.FC<ProfitChartProps> = ({ receipts, groupBy }) =
     const gridColor = isLight ? '#e2e8f0' : '#334155';
 
     return (
-        <div className="w-full h-full min-h-[300px] mt-4">
+        <div className="w-full h-full min-h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={sortedData} margin={{ top: 25, right: 30, left: 20, bottom: 5 }}>
+                <LineChart data={sortedData} margin={{ top: 25, right: 30, left: 40, bottom: 60 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} opacity={0.5} />
                     <XAxis
                         dataKey="date"
                         stroke={textColor}
-                        fontSize={12}
+                        fontSize={11}
                         tickLine={false}
                         axisLine={false}
-                        dy={10}
+                        interval={0}
+                        angle={-45}
+                        textAnchor="end"
+                        height={60}
                     />
                     <YAxis
                         stroke={textColor}

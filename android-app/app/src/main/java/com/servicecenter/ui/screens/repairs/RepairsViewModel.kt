@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import javax.inject.Inject
@@ -81,23 +82,24 @@ class RepairsViewModel @Inject constructor(
             }.flatMapLatest { (query, status) ->
                 when {
                     status != null && query.isNotEmpty() -> {
-                        // Фільтр по статусу та пошуку
                         repairRepository.searchRepairsByStatus(query, status)
                     }
                     status != null -> {
-                        // Тільки фільтр по статусу
                         repairRepository.getRepairsByStatus(status)
                     }
                     query.isNotEmpty() -> {
-                        // Тільки пошук
                         repairRepository.searchRepairs(query)
                     }
                     else -> {
-                        // Всі ремонти
                         repairRepository.getAllRepairs()
                     }
                 }
-            }.collect { repairs ->
+            }
+            .catch { e ->
+                android.util.Log.e("RepairsViewModel", "Error in repairs flow: ${e.message}", e)
+                _error.value = "Помилка завантаження даних: ${e.message}"
+            }
+            .collect { repairs ->
                 android.util.Log.d("RepairsViewModel", "Observed ${repairs.size} repairs (status: ${_selectedStatus.value}, query: ${_searchQuery.value})")
                 _repairs.value = repairs
             }
@@ -110,12 +112,20 @@ class RepairsViewModel @Inject constructor(
             _error.value = null
             try {
                 val serverUrl = getServerUrl()
-                android.util.Log.d("RepairsViewModel", "Loading repairs, serverUrl: $serverUrl")
+                android.util.Log.d("RepairsViewModel", "Starting manual sync, serverUrl: $serverUrl")
+                
+                // 1. Download from server
                 repairRepository.syncRepairs(serverUrl)
-                android.util.Log.d("RepairsViewModel", "Sync completed")
+                android.util.Log.d("RepairsViewModel", "Downloaded repairs from server")
+                
+                // 2. Upload unsynced local repairs
+                repairRepository.syncUnsyncedRepairs(serverUrl)
+                android.util.Log.d("RepairsViewModel", "Uploaded unsynced local repairs to server")
+                
+                android.util.Log.d("RepairsViewModel", "Sync fully completed")
             } catch (e: Exception) {
-                android.util.Log.e("RepairsViewModel", "Error loading repairs: ${e.message}", e)
-                _error.value = e.message
+                android.util.Log.e("RepairsViewModel", "Sync error: ${e.message}", e)
+                _error.value = "Помилка синхронізації: ${e.localizedMessage ?: e.message}"
             } finally {
                 _isLoading.value = false
             }
@@ -271,10 +281,7 @@ class RepairsViewModel @Inject constructor(
     }
 
     fun releaseLock(id: Int) {
-        viewModelScope.launch {
-            val serverUrl = getServerUrl()
-            repairRepository.releaseLock(id, serverUrl)
-        }
+        syncManager.releaseLock(id)
     }
 }
 

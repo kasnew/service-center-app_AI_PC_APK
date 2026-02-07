@@ -93,50 +93,45 @@ class RepairRepository(
         try {
             android.util.Log.d("RepairRepository", "Starting sync with serverUrl: $serverUrl")
             val response = api.getRepairs(limit = 1000)
-            android.util.Log.d("RepairRepository", "Response code: ${response.code()}, isSuccessful: ${response.isSuccessful()}")
             
             if (response.isSuccessful) {
                 val body = response.body()
-                android.util.Log.d("RepairRepository", "Response body: $body")
-                
                 body?.data?.let { repairs ->
                     android.util.Log.d("RepairRepository", "Received ${repairs.size} repairs from server")
-                    // Get all existing repair IDs from local DB
+                    
+                    // Get all local unsynced repairs to protect them
+                    val unsyncedRepairs = repairDao.getUnsyncedRepairs()
+                    val unsyncedReceiptIds = unsyncedRepairs.map { it.receiptId }.toSet()
+                    
+                    // Get existing synced repairs
                     val existingRepairs = repairDao.getAllRepairs().first()
-                    val existingIds = existingRepairs.mapNotNull { it.id }.toSet()
                     val serverIds = repairs.mapNotNull { it.id }.toSet()
                     
-                    // IMPORTANT: Only delete repairs that:
-                    // 1. Have an ID (were synced before)
-                    // 2. Exist on server but not in server response (were deleted on server)
-                    // DO NOT delete unsynced repairs (those without ID) - they are new local repairs
+                    // Delete repairs that were removed on server (only if they were already synced)
                     val toDelete = existingRepairs.filter { repair ->
-                        repair.id != null && // Has ID (was synced)
-                        repair.synced && // Was synced
-                        !serverIds.contains(repair.id) // Not in server response
+                        repair.id != null && 
+                        repair.synced && 
+                        !serverIds.contains(repair.id)
                     }
                     
                     if (toDelete.isNotEmpty()) {
-                        android.util.Log.d("RepairRepository", "Deleting ${toDelete.size} repairs that were removed on server")
-                        toDelete.forEach { repair ->
-                            repairDao.deleteRepair(repair)
-                        }
+                        android.util.Log.d("RepairRepository", "Deleting ${toDelete.size} repairs removed from server")
+                        toDelete.forEach { repairDao.deleteRepair(it) }
                     }
                     
-                    // Insert/update repairs from server
-                    // Status is already converted to string by RepairStatusAdapter
-                    repairDao.insertRepairs(repairs.map { repair ->
-                        repair.copy(synced = true)
-                    })
-                    android.util.Log.d("RepairRepository", "Inserted/updated ${repairs.size} repairs into local database")
-                } ?: android.util.Log.w("RepairRepository", "Response body is null or data is null")
+                    // Insert/update repairs from server, but SKIP those that are currently being edited/unsynced locally
+                    val validRepairs = repairs.filter { !unsyncedReceiptIds.contains(it.receiptId) }
+                    repairDao.insertRepairs(validRepairs.map { it.copy(synced = true) })
+                    android.util.Log.d("RepairRepository", "Synced ${validRepairs.size} repairs from server")
+                }
             } else {
-                android.util.Log.e("RepairRepository", "Sync failed: ${response.code()} - ${response.message()}")
-                android.util.Log.e("RepairRepository", "Error body: ${response.errorBody()?.string()}")
+                val errorMsg = "Sync failed: ${response.code()} ${response.message()}"
+                android.util.Log.e("RepairRepository", errorMsg)
+                throw Exception(errorMsg)
             }
         } catch (e: Exception) {
-            android.util.Log.e("RepairRepository", "Sync error: ${e.javaClass.simpleName} - ${e.message}", e)
-            e.printStackTrace()
+            android.util.Log.e("RepairRepository", "Error in syncRepairs: ${e.message}", e)
+            throw e
         }
     }
     
@@ -176,12 +171,6 @@ class RepairRepository(
             }
         } catch (e: Exception) {
             android.util.Log.e("RepairRepository", "Error creating repair: ${e.message}", e)
-            // Check again before saving to avoid duplicates on retry
-            val existingUnsynced = repairDao.getUnsyncedRepairByReceiptId(repair.receiptId)
-            if (existingUnsynced != null) {
-                android.util.Log.w("RepairRepository", "Repair already exists after error, returning existing: ${repair.receiptId}")
-                return Result.success(existingUnsynced)
-            }
             // Save locally for later sync
             val localRepair = repair.copy(synced = false)
             repairDao.insertRepair(localRepair)
@@ -287,33 +276,41 @@ class RepairRepository(
     
     suspend fun syncUnsyncedRepairs(serverUrl: String? = null) {
         val unsynced = repairDao.getUnsyncedRepairs()
+        if (unsynced.isEmpty()) return
+        
         val api = getApiService(serverUrl)
+        if (api == null) return
+        
+        android.util.Log.d("RepairRepository", "Syncing ${unsynced.size} unsynced repairs to server")
         unsynced.forEach { repair ->
             try {
                 if (repair.id == null) {
-                    // New repair
-                    api?.let { service ->
-                        val response = service.createRepair(repair)
-                        if (response.isSuccessful) {
-                            val syncedRepair = repair.copy(
-                                id = response.body()?.id,
-                                synced = true
-                            )
-                            repairDao.updateRepair(syncedRepair)
-                        }
+                    // NEW REPAIR - needs creation on server
+                    val response = api.createRepair(repair)
+                    if (response.isSuccessful) {
+                        val serverId = response.body()?.id
+                        val syncedRepair = repair.copy(id = serverId, synced = true)
+                        
+                        // ID changed, delete old and insert new
+                        repairDao.deleteRepair(repair)
+                        repairDao.insertRepair(syncedRepair)
+                        android.util.Log.d("RepairRepository", "Successfully synced NEW repair: ${repair.receiptId} -> ID $serverId")
+                    } else {
+                        android.util.Log.e("RepairRepository", "Failed to sync NEW repair ${repair.receiptId}: ${response.code()}")
                     }
-                } else {
-                    // Update existing
-                    api?.let { service ->
-                        val response = service.updateRepair(repair.id, repair)
-                        if (response.isSuccessful) {
-                            val syncedRepair = repair.copy(synced = true)
-                            repairDao.updateRepair(syncedRepair)
-                        }
+                } else if (!repair.synced) {
+                    // EXISTING REPAIR - needs update on server
+                    val response = api.updateRepair(repair.id, repair)
+                    if (response.isSuccessful) {
+                        val syncedRepair = repair.copy(synced = true)
+                        repairDao.insertRepair(syncedRepair)
+                        android.util.Log.d("RepairRepository", "Successfully updated existing repair: ${repair.receiptId}")
+                    } else {
+                        android.util.Log.e("RepairRepository", "Failed to update repair ${repair.receiptId}: ${response.code()}")
                     }
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
+                android.util.Log.e("RepairRepository", "Error syncing repair ${repair.receiptId}: ${e.message}")
             }
         }
     }

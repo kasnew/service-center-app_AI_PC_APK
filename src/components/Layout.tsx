@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, ShoppingCart, Banknote, Settings, X, AlertTriangle, Globe } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, Banknote, Settings, X, AlertTriangle, Globe, ChevronDown, Palette } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { syncApi } from '../api/sync';
@@ -14,12 +14,15 @@ import { RefreshCw, AlertCircle } from 'lucide-react';
 import { warehouseApi } from '../api/warehouse';
 
 export const Layout: React.FC = () => {
-    const { currentTheme } = useTheme();
+    const { currentTheme, matrixEnabled, snowflakesEnabled, celestialEnabled, rainEnabled, cosmosEnabled, aquariumEnabled, particlesEnabled, dnaEnabled, firefliesEnabled, presets, loadPreset } = useTheme();
+    const isAnyBackgroundEffectEnabled = matrixEnabled || snowflakesEnabled || celestialEnabled || rainEnabled || cosmosEnabled || aquariumEnabled || particlesEnabled || dnaEnabled || firefliesEnabled;
     const { updateResult, isChecking, checkUpdates, manualCheckResult } = useUpdate();
     const queryClient = useQueryClient();
     const navigate = useNavigate();
     const [isToggling, setIsToggling] = useState(false);
     const [showDeficitModal, setShowDeficitModal] = useState(false);
+    const [showPresetsDropdown, setShowPresetsDropdown] = useState(false);
+    const presetsRef = useRef<HTMLDivElement>(null);
 
     // Global drag and drop prevention
     useEffect(() => {
@@ -84,7 +87,26 @@ export const Layout: React.FC = () => {
         if (showDeficitModal) {
             setShowDeficitModal(false);
         }
+        if (showPresetsDropdown) {
+            setShowPresetsDropdown(false);
+        }
     });
+
+    // Handle click outside for presets dropdown
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (presetsRef.current && !presetsRef.current.contains(event.target as Node)) {
+                setShowPresetsDropdown(false);
+            }
+        };
+
+        if (showPresetsDropdown) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [showPresetsDropdown]);
 
     // Fetch warehouse deficit count
     const { data: deficitCount = 0 } = useQuery({
@@ -156,18 +178,21 @@ export const Layout: React.FC = () => {
     };
 
     return (
-        <div className="flex flex-col h-screen bg-main-layout">
+        <div className={clsx(
+            "flex flex-col h-screen relative",
+            !isAnyBackgroundEffectEnabled && "bg-main-layout"
+        )}>
             {/* Main Content */}
             <main className={clsx(
-                "flex-1 overflow-hidden flex flex-col transition-all duration-500",
+                "flex-1 overflow-hidden flex flex-col transition-all duration-500 relative z-10",
                 currentTheme.id === 'cyberpunk' && "rgb-border"
             )}>
                 {/* Navigation Tabs Bar with Connection Status */}
                 <div
-                    className="flex items-center justify-between px-6 py-3 border-b gap-4 no-print"
+                    className="flex items-center justify-between px-6 py-3 border-b gap-4 no-print transition-colors duration-500"
                     style={{
-                        backgroundColor: 'var(--theme-surface)',
-                        borderColor: 'var(--theme-border)',
+                        backgroundColor: isAnyBackgroundEffectEnabled ? 'transparent' : 'var(--theme-surface)',
+                        borderColor: isAnyBackgroundEffectEnabled ? 'rgba(255,255,255,0.1)' : 'var(--theme-border)',
                     }}
                 >
                     <div className="flex items-center gap-6">
@@ -205,7 +230,7 @@ export const Layout: React.FC = () => {
                             {deficitCount > 0 && (
                                 <button
                                     onClick={() => setShowDeficitModal(true)}
-                                    className="flex items-center justify-center min-w-[20px] h-6 px-2 text-[11px] font-black text-white bg-red-500 rounded-full animate-pulse shadow-lg shadow-red-500/50 hover:bg-red-400 hover:scale-110 transition-all cursor-pointer -ml-2"
+                                    className="flex items-center justify-center min-w-[20px] h-6 px-2 text-[11px] font-black text-white bg-red-500 rounded-full animate-pulse shadow-lg shadow-red-500/50 hover:bg-red-400 hover:scale-110 transition-all cursor-pointer -ml-1"
                                     title="Показати товари для дозамовлення"
                                 >
                                     <AlertTriangle className="w-3 h-3 mr-1" />
@@ -232,16 +257,67 @@ export const Layout: React.FC = () => {
                                 draggable="false"
                                 className={({ isActive }) =>
                                     clsx(
-                                        'flex items-center gap-3 px-5 py-2.5 rounded-xl transition-all duration-300 text-sm font-semibold tracking-wide',
+                                        'flex items-center gap-3 px-5 py-2.5 rounded-xl transition-all duration-300 text-sm font-semibold tracking-wide group',
                                         isActive
                                             ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40 translate-y-[-1px]'
                                             : 'text-slate-400 hover:text-slate-100 hover:bg-slate-700/40 hover:translate-y-[-1px]'
                                     )
                                 }
                             >
-                                <Settings className="w-5 h-5" />
-                                Налаштування
+                                <Settings className="w-5 h-5 text-slate-400 group-hover:text-blue-500 transition-colors" />
+                                <span className="group-hover:text-blue-500 transition-colors">Налаштування</span>
                             </NavLink>
+                            {presets.length > 0 && (
+                                <div className="relative" ref={presetsRef}>
+                                    <button
+                                        onClick={() => setShowPresetsDropdown(!showPresetsDropdown)}
+                                        className={clsx(
+                                            "flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all border shadow-sm",
+                                            showPresetsDropdown
+                                                ? "bg-blue-600 text-white border-blue-500 shadow-blue-500/20"
+                                                : "bg-slate-800/40 border-slate-700/50 text-slate-300 hover:border-slate-500 hover:text-white"
+                                        )}
+                                    >
+                                        <Palette className="w-3.5 h-3.5" />
+                                        <span>ПРЕСЕТИ</span>
+                                        <ChevronDown className={clsx("w-3 h-3 transition-transform duration-300", showPresetsDropdown && "rotate-180")} />
+                                    </button>
+
+                                    {showPresetsDropdown && (
+                                        <div
+                                            className="absolute top-full left-0 mt-2 w-48 rounded-xl border border-slate-600/50 shadow-2xl overflow-hidden z-[100] animate-in fade-in slide-in-from-top-2 backdrop-blur-xl"
+                                            style={{ backgroundColor: 'var(--theme-surface)', color: 'var(--theme-text)' }}
+                                        >
+                                            <div className="p-2 border-b border-white/5 bg-white/5">
+                                                <span className="text-[10px] font-bold uppercase tracking-widest opacity-50 px-2">Ваші теми</span>
+                                            </div>
+                                            <div className="max-h-64 overflow-y-auto py-1">
+                                                {presets.map(preset => (
+                                                    <button
+                                                        key={preset.id}
+                                                        onClick={() => {
+                                                            loadPreset(preset.id);
+                                                            setShowPresetsDropdown(false);
+                                                        }}
+                                                        className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-medium hover:bg-blue-600 hover:text-white transition-all text-left group"
+                                                    >
+                                                        <div
+                                                            className="w-2 h-2 rounded-full border border-white/20 shadow-sm"
+                                                            style={{ backgroundColor: preset.settings.themeId === 'cyberpunk' ? '#00ff41' : (preset.settings.themeId === 'light' ? '#fff' : '#1e293b') }}
+                                                        />
+                                                        <span className="truncate">{preset.name}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            {presets.length === 0 && (
+                                                <div className="px-4 py-3 text-xs opacity-50 italic text-center">
+                                                    Пресетів не знайдено
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </nav>
                     </div>
 
@@ -260,7 +336,9 @@ export const Layout: React.FC = () => {
                             disabled={isToggling}
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all duration-200 disabled:opacity-50 h-10"
                             style={{
-                                backgroundColor: isServerRunning ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                backgroundColor: isAnyBackgroundEffectEnabled
+                                    ? 'transparent'
+                                    : (isServerRunning ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)'),
                                 border: `1px solid ${isServerRunning ? '#10b981' : '#ef4444'}`,
                                 cursor: isToggling ? 'wait' : 'pointer',
                             }}
@@ -317,7 +395,7 @@ export const Layout: React.FC = () => {
                                 className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs transition-colors cursor-pointer h-10"
                                 style={{
                                     color: '#818cf8',
-                                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                                    backgroundColor: isAnyBackgroundEffectEnabled ? 'transparent' : 'rgba(99, 102, 241, 0.1)',
                                     border: '1px solid rgba(99, 102, 241, 0.3)',
                                 }}
                                 title="Натисніть щоб скопіювати адресу"
@@ -335,12 +413,12 @@ export const Layout: React.FC = () => {
                                 disabled={isChecking}
                                 className={`group relative flex items-center gap-2 px-3 py-1 rounded-lg transition-all h-10
                                     ${updateResult?.hasUpdate
-                                        ? 'bg-orange-500/10 text-orange-400 hover:bg-orange-500/20'
+                                        ? (isAnyBackgroundEffectEnabled ? 'bg-orange-500/20' : 'bg-orange-500/10') + ' text-orange-400 hover:bg-orange-500/20'
                                         : manualCheckResult === 'no-update'
-                                            ? 'bg-green-500/10 text-green-400'
+                                            ? (isAnyBackgroundEffectEnabled ? 'bg-green-500/20' : 'bg-green-500/10') + ' text-green-400'
                                             : manualCheckResult === 'error'
-                                                ? 'bg-red-500/10 text-red-400'
-                                                : 'text-slate-500 hover:bg-slate-700/50 hover:text-slate-300'}`}
+                                                ? (isAnyBackgroundEffectEnabled ? 'bg-red-500/20' : 'bg-red-500/10') + ' text-red-400'
+                                                : isAnyBackgroundEffectEnabled ? 'text-slate-400 hover:bg-white/10' : 'text-slate-500 hover:bg-slate-700/50 hover:text-slate-300'}`}
                                 title={
                                     updateResult?.hasUpdate
                                         ? `Доступна версія ${updateResult.latestVersion}! Натисніть для перевірки.`
@@ -380,7 +458,7 @@ export const Layout: React.FC = () => {
                             </button>
                             <button
                                 onClick={() => window.close()}
-                                className="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm font-medium h-10 text-red-400 hover:bg-red-500/10"
+                                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm font-medium h-10 text-red-400 ${isAnyBackgroundEffectEnabled ? 'hover:bg-red-500/20 bg-transparent' : 'hover:bg-red-500/10'}`}
                                 title="Завершити роботу"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
@@ -392,98 +470,100 @@ export const Layout: React.FC = () => {
                 <div className="flex-1 overflow-hidden">
                     <Outlet />
                 </div>
-            </main>
+            </main >
 
             {/* Update notification toast */}
-            <UpdateNotification />
+            < UpdateNotification />
 
             {/* Deficit Modal */}
-            {showDeficitModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-                    <div className="bg-slate-800 rounded-2xl shadow-2xl border border-slate-600/50 w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                        <div className="flex items-center justify-between p-4 border-b border-slate-600/50 bg-gradient-to-r from-red-900/30 to-orange-900/20">
-                            <div className="flex items-center gap-3">
-                                <AlertTriangle className="w-6 h-6 text-red-400" />
-                                <h2 className="text-lg font-bold text-slate-100">Товари для дозамовлення</h2>
-                                <span className="px-2 py-0.5 text-xs font-bold bg-red-500 text-white rounded-full">
-                                    {deficitList.length}
-                                </span>
-                            </div>
-                            <button
-                                onClick={() => setShowDeficitModal(false)}
-                                className="p-1.5 rounded-lg hover:bg-slate-700/50 text-slate-400 hover:text-slate-100 transition-colors"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-                        <div className="flex-1 overflow-auto p-4">
-                            {deficitList.length === 0 ? (
-                                <div className="text-center text-slate-400 py-8">
-                                    Усі товари в достатній кількості
+            {
+                showDeficitModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                        <div className="bg-slate-800 rounded-2xl shadow-2xl border border-slate-600/50 w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                            <div className="flex items-center justify-between p-4 border-b border-slate-600/50 bg-gradient-to-r from-red-900/30 to-orange-900/20">
+                                <div className="flex items-center gap-3">
+                                    <AlertTriangle className="w-6 h-6 text-red-400" />
+                                    <h2 className="text-lg font-bold text-slate-100">Товари для дозамовлення</h2>
+                                    <span className="px-2 py-0.5 text-xs font-bold bg-red-500 text-white rounded-full">
+                                        {deficitList.length}
+                                    </span>
                                 </div>
-                            ) : (
-                                <table className="w-full">
-                                    <thead className="text-xs text-slate-400 uppercase tracking-wider sticky top-0 bg-slate-800">
-                                        <tr>
-                                            <th className="text-left py-2 px-3">Код</th>
-                                            <th className="text-left py-2 px-3">Назва</th>
-                                            <th className="text-center py-2 px-3">Є</th>
-                                            <th className="text-center py-2 px-3">Мін.</th>
-                                            <th className="text-center py-2 px-3">Дозамовити</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-700/50">
-                                        {deficitList.map((item, index) => (
-                                            <tr
-                                                key={item.productCode}
-                                                className={clsx(
-                                                    "hover:bg-slate-700/30 transition-colors",
-                                                    index % 2 === 0 ? "bg-slate-800/50" : ""
-                                                )}
-                                            >
-                                                <td className="py-3 px-3 text-sm font-mono text-blue-400">
-                                                    {item.productCode}
-                                                </td>
-                                                <td className="py-3 px-3 text-sm text-slate-200 max-w-[300px] truncate" title={item.name}>
-                                                    {item.name}
-                                                </td>
-                                                <td className="py-3 px-3 text-sm text-center text-red-400 font-bold">
-                                                    {item.currentQty}
-                                                </td>
-                                                <td className="py-3 px-3 text-sm text-center text-slate-400">
-                                                    {item.minQty}
-                                                </td>
-                                                <td className="py-3 px-3 text-center">
-                                                    <span className="inline-flex items-center justify-center px-2.5 py-1 text-xs font-bold bg-red-500/20 text-red-400 rounded-full border border-red-500/30">
-                                                        +{item.deficit}
-                                                    </span>
-                                                </td>
+                                <button
+                                    onClick={() => setShowDeficitModal(false)}
+                                    className="p-1.5 rounded-lg hover:bg-slate-700/50 text-slate-400 hover:text-slate-100 transition-colors"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                            <div className="flex-1 overflow-auto p-4">
+                                {deficitList.length === 0 ? (
+                                    <div className="text-center text-slate-400 py-8">
+                                        Усі товари в достатній кількості
+                                    </div>
+                                ) : (
+                                    <table className="w-full">
+                                        <thead className="text-xs text-slate-400 uppercase tracking-wider sticky top-0 bg-slate-800">
+                                            <tr>
+                                                <th className="text-left py-2 px-3">Код</th>
+                                                <th className="text-left py-2 px-3">Назва</th>
+                                                <th className="text-center py-2 px-3">Є</th>
+                                                <th className="text-center py-2 px-3">Мін.</th>
+                                                <th className="text-center py-2 px-3">Дозамовити</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            )}
-                        </div>
-                        <div className="p-4 border-t border-slate-600/50 flex justify-end gap-3">
-                            <button
-                                onClick={() => {
-                                    setShowDeficitModal(false);
-                                    navigate('/inventory');
-                                }}
-                                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors"
-                            >
-                                Перейти на склад
-                            </button>
-                            <button
-                                onClick={() => setShowDeficitModal(false)}
-                                className="px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-lg font-medium transition-colors"
-                            >
-                                Закрити
-                            </button>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-700/50">
+                                            {deficitList.map((item, index) => (
+                                                <tr
+                                                    key={item.productCode}
+                                                    className={clsx(
+                                                        "hover:bg-slate-700/30 transition-colors",
+                                                        index % 2 === 0 ? "bg-slate-800/50" : ""
+                                                    )}
+                                                >
+                                                    <td className="py-3 px-3 text-sm font-mono text-blue-400">
+                                                        {item.productCode}
+                                                    </td>
+                                                    <td className="py-3 px-3 text-sm text-slate-200 max-w-[300px] truncate" title={item.name}>
+                                                        {item.name}
+                                                    </td>
+                                                    <td className="py-3 px-3 text-sm text-center text-red-400 font-bold">
+                                                        {item.currentQty}
+                                                    </td>
+                                                    <td className="py-3 px-3 text-sm text-center text-slate-400">
+                                                        {item.minQty}
+                                                    </td>
+                                                    <td className="py-3 px-3 text-center">
+                                                        <span className="inline-flex items-center justify-center px-2.5 py-1 text-xs font-bold bg-red-500/20 text-red-400 rounded-full border border-red-500/30">
+                                                            +{item.deficit}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                )}
+                            </div>
+                            <div className="p-4 border-t border-slate-600/50 flex justify-end gap-3">
+                                <button
+                                    onClick={() => {
+                                        setShowDeficitModal(false);
+                                        navigate('/inventory');
+                                    }}
+                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors"
+                                >
+                                    Перейти на склад
+                                </button>
+                                <button
+                                    onClick={() => setShowDeficitModal(false)}
+                                    className="px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-lg font-medium transition-colors"
+                                >
+                                    Закрити
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };
